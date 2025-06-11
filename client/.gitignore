@@ -1,0 +1,10 @@
+# Dependencies
+/node_modules
+
+# Build artifacts
+/dist
+.eslintcache
+
+# Local environment variables
+.env.local
+.env.*.local
