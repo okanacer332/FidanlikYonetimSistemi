@@ -52,52 +52,55 @@ const seedDatabase = async () => {
     const savedPermissions = await Promise.all(permissionPromises);
     console.log('🔑 Temel izinler kontrol edildi/oluşturuldu.');
 
-    // 2. Varsayılan Müşteri ID'sini tanımla (artık fidanys)
-    const musteriIdForSeed = 'fidanys'; 
+    // 2. Birden fazla müşteri için varsayılan verileri oluştur
+    const tenantIdsToSeed = ['fidanys', 'ata', 'okan']; // Tanımlı müşteri ID'leri
 
-    // 3. Varsayılan rolleri ve izinlerini tanımla
-    const rolesToSeed = [
-      {
-        name: 'Yönetici',
-        musteriId: musteriIdForSeed,
-        permissions: savedPermissions.map(p => p._id) // Yönetici tüm izinlere sahiptir
-      },
-      {
-        name: 'Satış Personeli',
-        musteriId: musteriIdForSeed,
-        permissions: savedPermissions.filter(p => ['fidan:read'].includes(p.action)).map(p => p._id)
-      },
-      {
-        name: 'Depo Sorumlusu',
-        musteriId: musteriIdForSeed,
-        permissions: savedPermissions.filter(p => ['fidan:read', 'fidan:update'].includes(p.action)).map(p => p._id)
+    for (const musteriId of tenantIdsToSeed) {
+      console.log(`\n⚙️ Müşteri ID: ${musteriId} için rol ve kullanıcı oluşturuluyor...`);
+
+      // Varsayılan rolleri ve izinlerini tanımla (her musteriId için)
+      const rolesToSeed = [
+        {
+          name: 'Yönetici',
+          musteriId,
+          permissions: savedPermissions.map(p => p._id) // Yönetici tüm izinlere sahiptir
+        },
+        {
+          name: 'Satış Personeli',
+          musteriId,
+          permissions: savedPermissions.filter(p => ['fidan:read'].includes(p.action)).map(p => p._id)
+        },
+        {
+          name: 'Depo Sorumlusu',
+          musteriId,
+          permissions: savedPermissions.filter(p => ['fidan:read', 'fidan:update'].includes(p.action)).map(p => p._id)
+        }
+      ];
+
+      const rolePromises = rolesToSeed.map(roleData =>
+        Role.findOneAndUpdate({ name: roleData.name, musteriId: roleData.musteriId }, roleData, { upsert: true, new: true })
+      );
+      await Promise.all(rolePromises);
+      console.log(`🧑‍⚖️ Müşteri ${musteriId} için varsayılan roller kontrol edildi/oluşturuldu.`);
+
+      // İlk Yönetici kullanıcısını oluştur veya güncelle (her musteriId için)
+      const adminEmail = `admin@${musteriId}.com`; // Her müşteri için kendi admin maili
+      const adminRole = await Role.findOne({ name: 'Yönetici', musteriId });
+
+      if (adminRole) {
+          await Kullanici.findOneAndUpdate(
+              { email: adminEmail },
+              {
+                  $setOnInsert: { // Sadece yeni oluşturulursa şifreyi ata
+                      sifre: await bcrypt.hash('admin123', 12) // Tüm adminler için aynı şifre
+                  },
+                  role: adminRole._id, // Her durumda rolü ata/güncelle
+                  musteriId: musteriId
+              },
+              { upsert: true, new: true } // Varsa güncelle, yoksa oluştur
+          );
+          console.log(`👑 Müşteri ${musteriId} için yönetici kullanıcısı kontrol edildi/güncellendi.`);
       }
-    ];
-
-    const rolePromises = rolesToSeed.map(roleData =>
-      Role.findOneAndUpdate({ name: roleData.name, musteriId: roleData.musteriId }, roleData, { upsert: true, new: true })
-    );
-    await Promise.all(rolePromises);
-    console.log('🧑‍⚖️ Varsayılan roller kontrol edildi/oluşturuldu.');
-
-
-    // 4. İlk Yönetici kullanıcısını oluştur veya güncelle
-    const adminEmail = 'admin@fidanys.com'; // Admin mailini de fidanys'e göre güncelleyelim
-    const adminRole = await Role.findOne({ name: 'Yönetici', musteriId: musteriIdForSeed });
-
-    if (adminRole) {
-        await Kullanici.findOneAndUpdate(
-            { email: adminEmail },
-            {
-                $setOnInsert: { // Sadece yeni oluşturulursa şifreyi ata
-                    sifre: await bcrypt.hash('admin123', 12)
-                },
-                role: adminRole._id, // Her durumda rolü ata/güncelle
-                musteriId: musteriIdForSeed
-            },
-            { upsert: true, new: true } // Varsa güncelle, yoksa oluştur
-        );
-        console.log('👑 Yönetici kullanıcısı kontrol edildi/güncellendi.');
     }
     console.log('✅ Seeding işlemi tamamlandı.');
 
@@ -134,13 +137,14 @@ const startServer = async () => {
           const host = req.headers.host; // örn: "ata.fidanys.xyz" veya "localhost:3000"
           const parts = host.split('.');
           
-          if (parts.length >= 3 && parts[0] !== 'www') { // En az 3 parça olmalı ve www değilse
+          // Subdomain varsa (örn: ata.fidanys.xyz -> parts[0] = "ata") ve "www" değilse
+          if (parts.length >= 3 && parts[0] !== 'www') { 
             musteriId = parts[0]; // İlk kısım (subdomain) musteriId olabilir
           } else if (host.includes('localhost') || host.includes('127.0.0.1')) {
-            // Geliştirme ortamı için varsayılan musteriId
+            // Geliştirme ortamı (localhost) için varsayılan musteriId
             musteriId = 'fidanys'; // Lokal için fidanys kullan
           } else {
-            // Ana domain'den (fidanys.xyz) veya "www" gibi özel bir subdomain'den gelirse
+            // Ana domain'den (fidanys.xyz) veya "www.fidanys.xyz" gibi bir adresden gelirse
             // varsayılan olarak ana şirket musteriId'sini ata.
             musteriId = 'fidanys'; 
           }
@@ -154,6 +158,7 @@ const startServer = async () => {
         return { kullanici, musteriId }; // musteriId'yi context'e ekle
       } catch (err) {
         console.error('Context oluşturulurken veya token doğrulanırken hata:', err.message);
+        // Hata durumunda (örn: geçersiz token) da bir musteriId sağlamak gerekebilir.
         return { musteriId: 'fidanys' }; // Hata durumunda varsayılan musteriId ile devam et
       }
     },
