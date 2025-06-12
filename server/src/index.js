@@ -17,6 +17,8 @@ const resolvers = require('./graphql/resolvers');
 const Kullanici = require('./models/Kullanici');
 const Permission = require('./models/Permission');
 const Role = require('./models/Role');
+const Fidan = require('./models/Fidan'); // Fidan modelini de burada tanımlayalım (seedDatabase içinde kullanılıyor)
+
 
 // Ortam Değişkenlerini Yükle
 dotenv.config();
@@ -50,29 +52,29 @@ const seedDatabase = async () => {
     const savedPermissions = await Promise.all(permissionPromises);
     console.log('🔑 Temel izinler kontrol edildi/oluşturuldu.');
 
-    // 2. Varsayılan Müşteri ID'sini tanımla
-    const musteriId = 'ekizfidancilik';
+    // 2. Varsayılan Müşteri ID'sini tanımla (artık fidanys)
+    const musteriIdForSeed = 'fidanys'; 
 
     // 3. Varsayılan rolleri ve izinlerini tanımla
     const rolesToSeed = [
       {
         name: 'Yönetici',
-        musteriId,
+        musteriId: musteriIdForSeed,
         permissions: savedPermissions.map(p => p._id) // Yönetici tüm izinlere sahiptir
       },
       {
         name: 'Satış Personeli',
-        musteriId,
+        musteriId: musteriIdForSeed,
         permissions: savedPermissions.filter(p => ['fidan:read'].includes(p.action)).map(p => p._id)
       },
       {
         name: 'Depo Sorumlusu',
-        musteriId,
+        musteriId: musteriIdForSeed,
         permissions: savedPermissions.filter(p => ['fidan:read', 'fidan:update'].includes(p.action)).map(p => p._id)
       }
     ];
 
-    const rolePromises = rolesToSeed.map(roleData => 
+    const rolePromises = rolesToSeed.map(roleData =>
       Role.findOneAndUpdate({ name: roleData.name, musteriId: roleData.musteriId }, roleData, { upsert: true, new: true })
     );
     await Promise.all(rolePromises);
@@ -80,18 +82,18 @@ const seedDatabase = async () => {
 
 
     // 4. İlk Yönetici kullanıcısını oluştur veya güncelle
-    const adminEmail = 'admin@ekiz.com';
-    const adminRole = await Role.findOne({ name: 'Yönetici', musteriId });
+    const adminEmail = 'admin@fidanys.com'; // Admin mailini de fidanys'e göre güncelleyelim
+    const adminRole = await Role.findOne({ name: 'Yönetici', musteriId: musteriIdForSeed });
 
     if (adminRole) {
         await Kullanici.findOneAndUpdate(
             { email: adminEmail },
-            { 
+            {
                 $setOnInsert: { // Sadece yeni oluşturulursa şifreyi ata
                     sifre: await bcrypt.hash('admin123', 12)
                 },
                 role: adminRole._id, // Her durumda rolü ata/güncelle
-                musteriId: musteriId
+                musteriId: musteriIdForSeed
             },
             { upsert: true, new: true } // Varsa güncelle, yoksa oluştur
         );
@@ -116,20 +118,43 @@ const startServer = async () => {
     resolvers,
     context: async ({ req }) => {
       const token = req.headers.authorization || '';
+      let kullanici = null;
+      let musteriId = null;
+
       try {
         if (token) {
           const decodedToken = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-          // Token'dan gelen kullanıcı ID'si ile veritabanından kullanıcıyı bul
-          // ve rolüyle birlikte izinlerini de anlık olarak getir (.populate)
-          const kullanici = await Kullanici.findById(decodedToken.id).populate({
+          kullanici = await Kullanici.findById(decodedToken.id).populate({
             path: 'role',
             populate: { path: 'permissions' }
           });
-          return { kullanici };
+          musteriId = kullanici.musteriId; // Kullanıcı giriş yapmışsa musteriId'yi token'dan/kullanıcıdan al
+        } else {
+          // Token yoksa (örn: login anında veya ilk sayfa yüklemede), musteriId'yi domain'den al
+          const host = req.headers.host; // örn: "ata.fidanys.xyz" veya "localhost:3000"
+          const parts = host.split('.');
+          
+          if (parts.length >= 3 && parts[0] !== 'www') { // En az 3 parça olmalı ve www değilse
+            musteriId = parts[0]; // İlk kısım (subdomain) musteriId olabilir
+          } else if (host.includes('localhost') || host.includes('127.0.0.1')) {
+            // Geliştirme ortamı için varsayılan musteriId
+            musteriId = 'fidanys'; // Lokal için fidanys kullan
+          } else {
+            // Ana domain'den (fidanys.xyz) veya "www" gibi özel bir subdomain'den gelirse
+            // varsayılan olarak ana şirket musteriId'sini ata.
+            musteriId = 'fidanys'; 
+          }
         }
-        return {};
+        
+        // Eğer musteriId hala boşsa veya tanımsızsa, güvenlik için varsayılan atayabiliriz
+        if (!musteriId) {
+            musteriId = 'fidanys'; // Son çare varsayılan atama
+        }
+
+        return { kullanici, musteriId }; // musteriId'yi context'e ekle
       } catch (err) {
-        return {};
+        console.error('Context oluşturulurken veya token doğrulanırken hata:', err.message);
+        return { musteriId: 'fidanys' }; // Hata durumunda varsayılan musteriId ile devam et
       }
     },
   });
@@ -142,10 +167,7 @@ const startServer = async () => {
   mongoose.connect(process.env.MONGO_URI)
     .then(async () => {
       console.log('🍃 MongoDB bağlantısı başarılı.');
-      
-      // Veritabanı bağlandıktan sonra SEED fonksiyonunu çalıştır
-      await seedDatabase();
-
+      await seedDatabase(); // Veritabanı bağlandıktan sonra SEED fonksiyonunu çalıştır
       app.listen(PORT, () =>
         console.log(`🚀 Sunucu http://localhost:${PORT}${server.graphqlPath} adresinde çalışıyor.`)
       );

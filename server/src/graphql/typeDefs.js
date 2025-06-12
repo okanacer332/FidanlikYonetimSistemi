@@ -11,8 +11,8 @@ const typeDefs = gql`
     id: ID!
     name: String!
     parentId: ID
-    fidanKodu: String
-    satisFiyati: Float
+    # fidanKodu: String # Kaldırıldı
+    # satisFiyati: Float # Kaldırıldı
     children: [Fidan]!
   }
 
@@ -22,6 +22,8 @@ const typeDefs = gql`
   input FidanEkleInput {
       name: String!
       parentId: ID
+      # fidanKodu: String # Kaldırıldı
+      # satisFiyati: Float # Kaldırıldı
   }
 
   # ============== ANA SORGULAR (QUERIES) ==============

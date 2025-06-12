@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
+import React, { useState, useEffect } from 'react'; //
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material'; //
 
-const FidanFormModal = ({ open, onClose, onSave, loading, initialData }) => {
-  const [name, setName] = useState('');
+const FidanFormModal = ({ open, onClose, onSave, loading, initialData }) => { //
+  const [name, setName] = useState(''); //
 
-  useEffect(() => {
+  useEffect(() => { //
     // Modal açıldığında, eğer düzenleme yapılıyorsa, mevcut ismi forma yazdır
-    if (initialData) {
-      setName(initialData.name);
-    } else {
-      setName('');
+    if (initialData) { //
+      setName(initialData.name); //
+    } else { //
+      setName(''); //
     }
-  }, [initialData, open]);
+  }, [initialData, open]); //
 
-  const handleSave = () => {
-    if (name.trim()) {
-      onSave(name);
+  const handleSave = () => { //
+    if (name.trim()) { //
+      onSave(name); //
     }
   };
 

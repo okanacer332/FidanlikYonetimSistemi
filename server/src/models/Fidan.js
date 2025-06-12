@@ -1,29 +1,29 @@
 // server/src/models/Fidan.js
-const { Schema, model } = require('mongoose');
+const { Schema, model } = require('mongoose'); //
 
-const fidanSchema = new Schema({
-  name: { 
-    type: String,
-    required: true,
+const fidanSchema = new Schema({ //
+  name: { //
+    type: String, //
+    required: true, //
   },
-  parentId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Fidan',
-    default: null,
+  parentId: { //
+    type: Schema.Types.ObjectId, //
+    ref: 'Fidan', //
+    default: null, //
   },
-  musteriId: { // <-- EKLENEN KRİTİK ALAN
-    type: String,
-    required: true,
+  musteriId: { // <-- EKLENEN KRİTİK ALAN //
+    type: String, //
+    required: true, //
   },
-  fidanKodu: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
-  satisFiyati: {
-    type: Number,
-  },
-}, { timestamps: true });
+  // fidanKodu: { // Kaldırıldı
+  //   type: String,
+  //   unique: true,
+  //   sparse: true,
+  // },
+  // satisFiyati: { // Kaldırıldı
+  //   type: Number,
+  // },
+}, { timestamps: true }); //
 
-const Fidan = model('Fidan', fidanSchema);
+const Fidan = model('Fidan', fidanSchema); //
 module.exports = Fidan;
