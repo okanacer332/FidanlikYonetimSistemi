@@ -1,47 +1,75 @@
-// server/src/graphql/typeDefs.js
+// Konum: server/src/graphql/typeDefs.js
+
 const { gql } = require('apollo-server-express');
 
 const typeDefs = gql`
-  # ============== TEMEL TİPLER ==============
-  type Permission { id: ID!, action: String!, description: String! }
-  type Role { id: ID!, name: String!, permissions: [Permission]! }
-  type Kullanici { id: ID!, email: String!, role: Role! }
+  # Types
+  type Kullanici {
+    id: ID!
+    kullaniciAdi: String!
+    email: String!
+    roller: [Role]
+  }
 
+  type Role {
+    id: ID!
+    rolAdi: String!
+    izinler: [Permission]
+  }
+
+  type Permission {
+    id: ID!
+    izinAdi: String!
+    aciklama: String
+  }
+  
   type Fidan {
     id: ID!
-    name: String!
-    parentId: ID
-    # fidanKodu: String # Kaldırıldı
-    # satisFiyati: Float # Kaldırıldı
-    children: [Fidan]!
+    ad: String!
+    aciklama: String
+    stokMiktari: Int!
+    alisFiyati: Float
+    satisFiyati: Float
+    kategori: String
+    tedarikci: String
+    lokasyon: String
   }
 
-  type AuthPayload { token: String!, kullanici: Kullanici! }
-
-  # ============== INPUT TİPLERİ ==============
-  input FidanEkleInput {
-      name: String!
-      parentId: ID
-      # fidanKodu: String # Kaldırıldı
-      # satisFiyati: Float # Kaldırıldı
+  type AuthPayload {
+    token: String!
+    kullanici: Kullanici!
   }
 
-  # ============== ANA SORGULAR (QUERIES) ==============
+  # ================== YENİ EKLENEN TİP ==================
+  type DashboardData {
+    toplamFidanCesidi: Int
+    toplamStokAdedi: Int
+  }
+  # ======================================================
+
+  # Queries
   type Query {
-    fidanTreeGetir: [Fidan]!
-    izinleriGetir: [Permission]!
-    rolleriGetir: [Role]!
+    kullanicilar: [Kullanici]
+    roller: [Role]
+    izinler: [Permission]
+    fidanlar: [Fidan]
+    
+    # ================== YENİ EKLENEN SORGU ==================
+    getDashboardData: DashboardData
+    # ========================================================
   }
 
-  # ============== ANA MUTASYONLAR ==============
+  # Mutations
   type Mutation {
-    fidanEkle(input: FidanEkleInput!): Fidan!
-    fidanGuncelle(id: ID!, name: String!): Fidan!
+    kullaniciOlustur(kullaniciAdi: String!, email: String!, sifre: String!, roller: [ID!]): Kullanici
+    rolOlustur(rolAdi: String!, izinler: [ID!]): Role
+    izinOlustur(izinAdi: String!, aciklama: String): Permission
+    
+    fidanEkle(ad: String!, aciklama: String, stokMiktari: Int!, alisFiyati: Float, satisFiyati: Float, kategori: String, tedarikci: String, lokasyon: String): Fidan
+    fidanGuncelle(id: ID!, ad: String, aciklama: String, stokMiktari: Int, alisFiyati: Float, satisFiyati: Float, kategori: String, tedarikci: String, lokasyon: String): Fidan
     fidanSil(id: ID!): Boolean
-
-    girisYap(email: String!, sifre: String!): AuthPayload!
-    kullaniciOlustur(email: String!, sifre: String!, roleId: ID!): Kullanici!
-    rolGuncelle(roleId: ID!, permissionIds: [ID!]!): Role!
+    
+    girisYap(kullaniciAdi: String!, sifre: String!): AuthPayload
   }
 `;
 
