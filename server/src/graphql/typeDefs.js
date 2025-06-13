@@ -53,6 +53,7 @@ const typeDefs = gql`
     roller: [Role]
     izinler: [Permission]
     fidanlar: [Fidan]
+    me: Kullanici # YENİ EKLENDİ
     
     # ================== YENİ EKLENEN SORGU ==================
     getDashboardData: DashboardData

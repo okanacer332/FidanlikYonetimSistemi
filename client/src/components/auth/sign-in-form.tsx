@@ -1,3 +1,4 @@
+// Konum: client/src/components/auth/sign-in-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -13,32 +14,47 @@ import Link from '@mui/material/Link';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
-import { EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
+import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
+import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
+import { useMutation, gql } from '@apollo/client';
 
 import { paths } from '@/paths';
-import { authClient } from '@/lib/auth/client';
 import { useUser } from '@/hooks/use-user';
 
+const LOGIN_MUTATION = gql`
+  mutation GirisYap($kullaniciAdi: String!, $sifre: String!) {
+    girisYap(kullaniciAdi: $kullaniciAdi, sifre: $sifre) {
+      token
+      kullanici {
+        id
+        kullaniciAdi
+        email
+        roller {
+          id
+          rolAdi
+        }
+      }
+    }
+  }
+`;
+
 const schema = zod.object({
-  email: zod.string().min(1, { message: 'Email is required' }).email(),
-  password: zod.string().min(1, { message: 'Password is required' }),
+  username: zod.string().min(1, { message: 'Kullanıcı adı gereklidir' }),
+  password: zod.string().min(1, { message: 'Parola gereklidir' }),
 });
 
 type Values = zod.infer<typeof schema>;
 
-const defaultValues = { email: 'sofia@devias.io', password: 'Secret1' } satisfies Values;
+const defaultValues = { username: 'admin', password: 'admin' } satisfies Values;
 
 export function SignInForm(): React.JSX.Element {
   const router = useRouter();
-
   const { checkSession } = useUser();
-
   const [showPassword, setShowPassword] = React.useState<boolean>();
 
-  const [isPending, setIsPending] = React.useState<boolean>(false);
+  const [login, { loading: isPending, error: mutationError }] = useMutation(LOGIN_MUTATION);
 
   const {
     control,
@@ -49,34 +65,38 @@ export function SignInForm(): React.JSX.Element {
 
   const onSubmit = React.useCallback(
     async (values: Values): Promise<void> => {
-      setIsPending(true);
+      try {
+        const { data } = await login({
+          variables: {
+            kullaniciAdi: values.username,
+            sifre: values.password,
+          },
+        });
 
-      const { error } = await authClient.signInWithPassword(values);
-
-      if (error) {
-        setError('root', { type: 'server', message: error });
-        setIsPending(false);
-        return;
+        if (data?.girisYap?.token) {
+          localStorage.setItem('authToken', data.girisYap.token);
+          await checkSession?.();
+          router.refresh();
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          setError('root', { type: 'server', message: error.message });
+        } else {
+          setError('root', { type: 'server', message: 'Bilinmeyen bir hata oluştu.' });
+        }
       }
-
-      // Refresh the auth state
-      await checkSession?.();
-
-      // UserProvider, for this case, will not refresh the router
-      // After refresh, GuestGuard will handle the redirect
-      router.refresh();
     },
-    [checkSession, router, setError]
+    [login, checkSession, router, setError]
   );
 
   return (
     <Stack spacing={4}>
       <Stack spacing={1}>
-        <Typography variant="h4">Sign in</Typography>
+        <Typography variant="h4">Giriş Yap</Typography>
         <Typography color="text.secondary" variant="body2">
-          Don&apos;t have an account?{' '}
+          Hesabınız yok mu?{' '}
           <Link component={RouterLink} href={paths.auth.signUp} underline="hover" variant="subtitle2">
-            Sign up
+            Kayıt Ol
           </Link>
         </Typography>
       </Stack>
@@ -84,12 +104,12 @@ export function SignInForm(): React.JSX.Element {
         <Stack spacing={2}>
           <Controller
             control={control}
-            name="email"
+            name="username"
             render={({ field }) => (
-              <FormControl error={Boolean(errors.email)}>
-                <InputLabel>Email address</InputLabel>
-                <OutlinedInput {...field} label="Email address" type="email" />
-                {errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
+              <FormControl error={Boolean(errors.username)}>
+                <InputLabel>Kullanıcı Adı</InputLabel>
+                <OutlinedInput {...field} label="Kullanıcı Adı" />
+                {errors.username ? <FormHelperText>{errors.username.message}</FormHelperText> : null}
               </FormControl>
             )}
           />
@@ -98,7 +118,7 @@ export function SignInForm(): React.JSX.Element {
             name="password"
             render={({ field }) => (
               <FormControl error={Boolean(errors.password)}>
-                <InputLabel>Password</InputLabel>
+                <InputLabel>Parola</InputLabel>
                 <OutlinedInput
                   {...field}
                   endAdornment={
@@ -120,7 +140,7 @@ export function SignInForm(): React.JSX.Element {
                       />
                     )
                   }
-                  label="Password"
+                  label="Parola"
                   type={showPassword ? 'text' : 'password'}
                 />
                 {errors.password ? <FormHelperText>{errors.password.message}</FormHelperText> : null}
@@ -129,25 +149,16 @@ export function SignInForm(): React.JSX.Element {
           />
           <div>
             <Link component={RouterLink} href={paths.auth.resetPassword} variant="subtitle2">
-              Forgot password?
+              Parolanızı mı unuttunuz?
             </Link>
           </div>
           {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
+          {mutationError ? <Alert color="error">{mutationError.message}</Alert> : null}
           <Button disabled={isPending} type="submit" variant="contained">
-            Sign in
+            Giriş Yap
           </Button>
         </Stack>
       </form>
-      <Alert color="warning">
-        Use{' '}
-        <Typography component="span" sx={{ fontWeight: 700 }} variant="inherit">
-          sofia@devias.io
-        </Typography>{' '}
-        with password{' '}
-        <Typography component="span" sx={{ fontWeight: 700 }} variant="inherit">
-          Secret1
-        </Typography>
-      </Alert>
     </Stack>
   );
 }

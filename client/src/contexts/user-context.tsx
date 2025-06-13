@@ -1,16 +1,27 @@
+// Konum: client/src/contexts/user-context.tsx
 'use client';
 
 import * as React from 'react';
+import { useLazyQuery, gql } from '@apollo/client';
 
-import type { User } from '@/types/user';
-import { authClient } from '@/lib/auth/client';
-import { logger } from '@/lib/default-logger';
+export interface Role {
+  id: string;
+  rolAdi: string;
+}
+
+export interface User {
+  id: string;
+  kullaniciAdi: string;
+  email: string;
+  roller: Role[];
+}
 
 export interface UserContextValue {
   user: User | null;
   error: string | null;
   isLoading: boolean;
-  checkSession?: () => Promise<void>;
+  checkSession: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 export const UserContext = React.createContext<UserContextValue | undefined>(undefined);
@@ -19,39 +30,64 @@ export interface UserProviderProps {
   children: React.ReactNode;
 }
 
+const GET_CURRENT_USER = gql`
+  query Me {
+    me {
+      id
+      kullaniciAdi
+      email
+      roller {
+        id
+        rolAdi
+      }
+    }
+  }
+`;
+
 export function UserProvider({ children }: UserProviderProps): React.JSX.Element {
-  const [state, setState] = React.useState<{ user: User | null; error: string | null; isLoading: boolean }>({
-    user: null,
-    error: null,
-    isLoading: true,
+  const [user, setUser] = React.useState<User | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const [fetchUser, { loading, client }] = useLazyQuery(GET_CURRENT_USER, {
+    fetchPolicy: 'network-only',
+    onCompleted: (data) => {
+      setUser(data.me);
+      setError(null);
+    },
+    onError: (error) => {
+      localStorage.removeItem('authToken');
+      setUser(null);
+      setError(error.message);
+      console.error("Session check failed:", error.message);
+    },
   });
+  
+  const isLoading = loading || (user === null && !!localStorage.getItem('authToken'));
 
   const checkSession = React.useCallback(async (): Promise<void> => {
-    try {
-      const { data, error } = await authClient.getUser();
-
-      if (error) {
-        logger.error(error);
-        setState((prev) => ({ ...prev, user: null, error: 'Something went wrong', isLoading: false }));
-        return;
-      }
-
-      setState((prev) => ({ ...prev, user: data ?? null, error: null, isLoading: false }));
-    } catch (error) {
-      logger.error(error);
-      setState((prev) => ({ ...prev, user: null, error: 'Something went wrong', isLoading: false }));
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      await fetchUser();
+    } else {
+      setUser(null);
     }
-  }, []);
+  }, [fetchUser]);
+
+  const signOut = React.useCallback(async (): Promise<void> => {
+    localStorage.removeItem('authToken');
+    setUser(null);
+    if (client) {
+      await client.resetStore();
+    }
+  }, [client]);
 
   React.useEffect(() => {
-    checkSession().catch((error) => {
-      logger.error(error);
-      // noop
+    checkSession().catch((err) => {
+      console.error(err);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Expected
-  }, []);
+  }, [checkSession]);
 
-  return <UserContext.Provider value={{ ...state, checkSession }}>{children}</UserContext.Provider>;
+  return <UserContext.Provider value={{ user, error, isLoading, checkSession, signOut }}>{children}</UserContext.Provider>;
 }
 
 export const UserConsumer = UserContext.Consumer;

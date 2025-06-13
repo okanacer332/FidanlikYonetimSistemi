@@ -1,7 +1,7 @@
+// Konum: server/src/graphql/resolvers.js
+
 const jwt = require('jsonwebtoken');
-// ==================== DÜZELTİLEN SATIR AŞAĞIDA ====================
-const bcrypt = require('bcryptjs'); // Hatalı olan 'bcryptjs' metni, require ile düzeltildi.
-// =================================================================
+const bcrypt = require('bcryptjs');
 const Kullanici = require('../models/Kullanici');
 const Fidan = require('../models/Fidan');
 const Role = require('../models/Role');
@@ -9,6 +9,29 @@ const Permission = require('../models/Permission');
 
 const resolvers = {
   Query: {
+    me: async (_, __, { req }) => {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return null;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      if (!token) {
+        return null;
+      }
+
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || 'varsayilan_gizli_anahtar'
+        );
+        const kullanici = await Kullanici.findById(decoded.id).populate('roller');
+        return kullanici;
+      } catch (err) {
+        console.error('Geçersiz token:', err.message);
+        return null;
+      }
+    },
     kullanicilar: async () => {
       return await Kullanici.find({}).populate('roller');
     },
@@ -27,16 +50,16 @@ const resolvers = {
         {
           $group: {
             _id: null,
-            toplamStok: { $sum: '$stokMiktari' }
-          }
-        }
+            toplamStok: { $sum: '$stokMiktari' },
+          },
+        },
       ]);
       const toplamStokAdedi = stokToplami.length > 0 ? stokToplami[0].toplamStok : 0;
       return {
         toplamFidanCesidi,
-        toplamStokAdedi
+        toplamStokAdedi,
       };
-    }
+    },
   },
 
   Mutation: {
@@ -46,7 +69,7 @@ const resolvers = {
         kullaniciAdi,
         email,
         sifre: hashedPassword,
-        roller
+        roller,
       });
       await yeniKullanici.save();
       return await Kullanici.findById(yeniKullanici.id).populate('roller');
@@ -55,7 +78,7 @@ const resolvers = {
     rolOlustur: async (_, { rolAdi, izinler }) => {
       const yeniRol = new Role({
         rolAdi,
-        izinler
+        izinler,
       });
       await yeniRol.save();
       return await Role.findById(yeniRol.id).populate('izinler');
@@ -64,7 +87,7 @@ const resolvers = {
     izinOlustur: async (_, { izinAdi, aciklama }) => {
       const yeniIzin = new Permission({
         izinAdi,
-        aciklama
+        aciklama,
       });
       await yeniIzin.save();
       return yeniIzin;
