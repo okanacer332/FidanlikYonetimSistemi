@@ -7,30 +7,20 @@ const Fidan = require('../models/Fidan');
 const Role = require('../models/Role');
 const Permission = require('../models/Permission');
 
+function ensureAdmin(user) {
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+  const hasRole = user.roller.some(r => r.rolAdi === 'Yönetici');
+  if (!hasRole) {
+    throw new Error('Yetki yok');
+  }
+}
+
 const resolvers = {
   Query: {
-    me: async (_, __, { req }) => {
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        return null;
-      }
-
-      const token = authHeader.split('Bearer ')[1];
-      if (!token) {
-        return null;
-      }
-
-      try {
-        const decoded = jwt.verify(
-          token,
-          process.env.JWT_SECRET || 'varsayilan_gizli_anahtar'
-        );
-        const kullanici = await Kullanici.findById(decoded.id).populate('roller');
-        return kullanici;
-      } catch (err) {
-        console.error('Geçersiz token:', err.message);
-        return null;
-      }
+    me: async (_, __, { user }) => {
+      return user || null;
     },
     kullanicilar: async () => {
       return await Kullanici.find({}).populate('roller');
@@ -63,7 +53,8 @@ const resolvers = {
   },
 
   Mutation: {
-    kullaniciOlustur: async (_, { kullaniciAdi, email, sifre, roller }) => {
+    kullaniciOlustur: async (_, { kullaniciAdi, email, sifre, roller }, { user }) => {
+      ensureAdmin(user);
       const hashedPassword = await bcrypt.hash(sifre, 10);
       const yeniKullanici = new Kullanici({
         kullaniciAdi,
@@ -75,7 +66,8 @@ const resolvers = {
       return await Kullanici.findById(yeniKullanici.id).populate('roller');
     },
 
-    rolOlustur: async (_, { rolAdi, izinler }) => {
+    rolOlustur: async (_, { rolAdi, izinler }, { user }) => {
+      ensureAdmin(user);
       const yeniRol = new Role({
         rolAdi,
         izinler,
@@ -84,7 +76,8 @@ const resolvers = {
       return await Role.findById(yeniRol.id).populate('izinler');
     },
 
-    izinOlustur: async (_, { izinAdi, aciklama }) => {
+    izinOlustur: async (_, { izinAdi, aciklama }, { user }) => {
+      ensureAdmin(user);
       const yeniIzin = new Permission({
         izinAdi,
         aciklama,
@@ -93,17 +86,20 @@ const resolvers = {
       return yeniIzin;
     },
 
-    fidanEkle: async (_, args) => {
+    fidanEkle: async (_, args, { user }) => {
+      ensureAdmin(user);
       const yeniFidan = new Fidan(args);
       await yeniFidan.save();
       return yeniFidan;
     },
 
-    fidanGuncelle: async (_, { id, ...updates }) => {
+    fidanGuncelle: async (_, { id, ...updates }, { user }) => {
+      ensureAdmin(user);
       return await Fidan.findByIdAndUpdate(id, updates, { new: true });
     },
-    
-    fidanSil: async (_, { id }) => {
+
+    fidanSil: async (_, { id }, { user }) => {
+      ensureAdmin(user);
       const silinenFidan = await Fidan.findByIdAndDelete(id);
       return silinenFidan ? true : false;
     },

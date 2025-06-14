@@ -19,10 +19,15 @@ const startServer = async () => {
   const app = express();
   app.use(cors());
 
+  const { getUserFromReq } = require('./utils/auth');
+
   const server = new ApolloServer({
     typeDefs,
     resolvers,
-    context: ({ req }) => ({ req })
+    context: async ({ req }) => {
+      const user = await getUserFromReq(req);
+      return { req, user };
+    }
   });
 
   await server.start();
