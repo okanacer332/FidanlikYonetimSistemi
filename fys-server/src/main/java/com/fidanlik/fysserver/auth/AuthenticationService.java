@@ -6,8 +6,8 @@ import com.fidanlik.fysserver.config.security.JwtService;
 import com.fidanlik.fysserver.model.User;
 import com.fidanlik.fysserver.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,16 +15,21 @@ import org.springframework.stereotype.Service;
 public class AuthenticationService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager; // AuthenticationManager'ı enjekte et
 
     public LoginResponse login(LoginRequest request) {
-        var user = userRepository.findByUsernameAndTenantId(request.getUsername(), request.getTenantId())
-                .orElseThrow(() -> new BadCredentialsException("Hatalı kullanıcı adı veya şifre."));
+        // Spring Security'nin kimlik doğrulama mekanizmasını kullan
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Hatalı kullanıcı adı veya şifre.");
-        }
+        // Kullanıcıyı veritabanından tekrar al (rolleriyle birlikte)
+        var user = userRepository.findByUsernameAndTenantId(request.getUsername(), request.getTenantId())
+                .orElseThrow(() -> new IllegalStateException("Kimlik doğrulama sonrası kullanıcı bulunamadı."));
 
         var jwtToken = jwtService.generateToken(user);
         return LoginResponse.builder().token(jwtToken).build();

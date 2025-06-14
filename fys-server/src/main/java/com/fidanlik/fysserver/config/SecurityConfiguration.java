@@ -22,7 +22,8 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // GraphQL ve kimlik doğrulama uç noktalarına herkesin erişimine izin ver
+                        .requestMatchers("/api/v1/auth/**", "/graphql").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

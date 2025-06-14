@@ -1,5 +1,6 @@
 package com.fidanlik.fysserver.config.security;
 
+import com.fidanlik.fysserver.repository.RoleRepository;
 import com.fidanlik.fysserver.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -8,13 +9,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority; // <-- EKLENDİ
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set; // <-- EKLENDİ
 import java.util.stream.Collectors;
 
 @Component
@@ -23,9 +29,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -38,13 +48,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (username != null && tenantId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             userRepository.findByUsernameAndTenantId(username, tenantId).ifPresent(user -> {
+
+                // --- DÜZELTİLMİŞ BÖLÜM ---
+                Set<GrantedAuthority> authorities;
+                if (user.getRoleIds() != null) {
+                    authorities = user.getRoleIds().stream()
+                            .map(roleId -> roleRepository.findById(roleId).orElse(null))
+                            .filter(Objects::nonNull)
+                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
+                            .collect(Collectors.toSet());
+                } else {
+                    authorities = Collections.emptySet();
+                }
+
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
                         user.getUsername(),
                         user.getPassword(),
-                        user.getRoles().stream()
-                                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
-                                .collect(Collectors.toSet())
+                        authorities
                 );
+                // --- DÜZELTMENİN SONU ---
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

@@ -2,8 +2,8 @@ package com.fidanlik.fysserver.model;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.util.Set;
 
 @Data @Document(collection = "users")
@@ -12,6 +12,9 @@ public class User {
     @Indexed(unique = true) private String username;
     @Indexed(unique = true) private String email;
     private String password;
-    @DBRef private Set<Role> roles;
+
+    // @DBRef kaldırıldı ve alan ismi değiştirildi
+    private Set<String> roleIds;
+
     private String tenantId;
 }
