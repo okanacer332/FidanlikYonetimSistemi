@@ -36,6 +36,7 @@ export function AdminGuard({ children }: AdminGuardProps): React.JSX.Element | n
     const hasAdminRole = user.roller?.some((role) => role.rolAdi === 'Yönetici');
 
     if (!hasAdminRole) {
+
       logger.debug('[AdminGuard]: User is not admin, redirecting to dashboard');
       router.replace(paths.dashboard.overview);
       return;
