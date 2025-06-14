@@ -18,27 +18,10 @@ import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
 import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import { useMutation, gql } from '@apollo/client';
 
 import { paths } from '@/paths';
 import { useUser } from '@/hooks/use-user';
-
-const LOGIN_MUTATION = gql`
-  mutation GirisYap($kullaniciAdi: String!, $sifre: String!) {
-    girisYap(kullaniciAdi: $kullaniciAdi, sifre: $sifre) {
-      token
-      kullanici {
-        id
-        kullaniciAdi
-        email
-        roller {
-          id
-          rolAdi
-        }
-      }
-    }
-  }
-`;
+import { authClient } from '@/lib/auth/client';
 
 const schema = zod.object({
   username: zod.string().min(1, { message: 'Kullanıcı adı gereklidir' }),
@@ -53,8 +36,8 @@ export function SignInForm(): React.JSX.Element {
   const router = useRouter();
   const { checkSession } = useUser();
   const [showPassword, setShowPassword] = React.useState<boolean>();
-
-  const [login, { loading: isPending, error: mutationError }] = useMutation(LOGIN_MUTATION);
+  const [isPending, setIsPending] = React.useState<boolean>(false);
+  const [loginError, setLoginError] = React.useState<string | null>(null);
 
   const {
     control,
@@ -65,28 +48,41 @@ export function SignInForm(): React.JSX.Element {
 
   const onSubmit = React.useCallback(
     async (values: Values): Promise<void> => {
+      setIsPending(true);
+      setLoginError(null);
+
       try {
-        const { data } = await login({
-          variables: {
-            kullaniciAdi: values.username,
-            sifre: values.password,
-          },
+        const { data, error: authError } = await authClient.signInWithPassword({
+          username: values.username,
+          password: values.password,
         });
 
-        if (data?.girisYap?.token) {
-          localStorage.setItem('authToken', data.girisYap.token);
+        if (authError) {
+          setError('root', { type: 'server', message: authError });
+          setLoginError(authError);
+          return;
+        }
+
+        if (data?.token) {
           await checkSession?.();
           router.refresh();
+        } else {
+          setError('root', { type: 'server', message: 'Beklenmedik bir giriş hatası oluştu.' });
+          setLoginError('Beklenmedik bir giriş hatası oluştu.');
         }
       } catch (error) {
         if (error instanceof Error) {
           setError('root', { type: 'server', message: error.message });
+          setLoginError(error.message);
         } else {
           setError('root', { type: 'server', message: 'Bilinmeyen bir hata oluştu.' });
+          setLoginError('Bilinmeyen bir hata oluştu.');
         }
+      } finally {
+        setIsPending(false);
       }
     },
-    [login, checkSession, router, setError]
+    [checkSession, router, setError]
   );
 
   return (
@@ -153,7 +149,7 @@ export function SignInForm(): React.JSX.Element {
             </Link>
           </div>
           {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
-          {mutationError ? <Alert color="error">{mutationError.message}</Alert> : null}
+          {loginError ? <Alert color="error">{loginError}</Alert> : null}
           <Button disabled={isPending} type="submit" variant="contained">
             Giriş Yap
           </Button>

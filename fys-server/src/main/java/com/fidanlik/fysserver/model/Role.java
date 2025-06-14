@@ -10,5 +10,5 @@ public class Role {
     @Id private String id;
     private String name;
     @DBRef private Set<Permission> permissions;
-    private String tenantId;
+    private String tenantId; // Yeni eklendi
 }

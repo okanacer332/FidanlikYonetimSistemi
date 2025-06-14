@@ -8,5 +8,5 @@ public class Permission {
     @Id private String id;
     private String name;
     private String description;
-    private String tenantId;
+    private String tenantId; // Yeni eklendi
 }

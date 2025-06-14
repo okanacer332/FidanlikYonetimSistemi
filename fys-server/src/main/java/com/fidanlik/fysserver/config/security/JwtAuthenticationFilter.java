@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority; // <-- EKLENDİ
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Objects;
-import java.util.Set; // <-- EKLENDİ
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -44,12 +44,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String jwt = authHeader.substring(7);
         final String username = jwtService.extractUsername(jwt);
-        final String tenantId = jwtService.extractTenantId(jwt);
+        final String tenantId = jwtService.extractTenantId(jwt); // tenantId'yi token'dan çıkar
 
         if (username != null && tenantId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             userRepository.findByUsernameAndTenantId(username, tenantId).ifPresent(user -> {
 
-                // --- DÜZELTİLMİŞ BÖLÜM ---
                 Set<GrantedAuthority> authorities;
                 if (user.getRoleIds() != null) {
                     authorities = user.getRoleIds().stream()
@@ -61,16 +60,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authorities = Collections.emptySet();
                 }
 
+                // UserDetails nesnesini oluştururken, tenantId bilgisini bir CustomUserDetails sınıfı kullanarak
+                // veya SecurityContextHolder.getContext().setAuthentication(authToken); satırında
+                // authToken'e özel bir principal nesnesi ekleyerek taşıyabiliriz.
+                // Şimdilik UserDetails'i olduğu gibi bırakıp tenantId'yi doğrudan filter'da kullanacağız.
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
                         user.getUsername(),
                         user.getPassword(),
                         authorities
                 );
-                // --- DÜZELTMENİN SONU ---
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities()
+                            // Principal olarak User objesinin tamamını veya tenantId'yi içeren özel bir obje kullanabiliriz
+                            user, // Buraya User objesini koyarak Controller'da user.getTenantId() ile erişebiliriz.
+                            null,
+                            userDetails.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);

@@ -2,18 +2,21 @@
 'use client';
 
 import * as React from 'react';
-import { useLazyQuery, gql } from '@apollo/client';
+import { authClient } from '@/lib/auth/client';
 
+// Frontend'deki User ve Role interface'lerini backend'deki BackendUser ve Role modellerine göre güncelleyelim.
 export interface Role {
   id: string;
-  rolAdi: string;
+  name: string; // Backend'deki Role modelinde 'name' alanı var
+  description?: string;
 }
 
-export interface User {
+export interface User { // Frontend'de kullanılacak User tipi
   id: string;
-  kullaniciAdi: string;
+  kullaniciAdi: string; // Backend'den gelen 'username' alanına karşılık geliyor
   email: string;
-  roller: Role[];
+  roles?: Role[]; // Backend'den gelen 'roles' alanına karşılık geliyor
+  tenantId?: string; // Backend'den gelen 'tenantId' alanına karşılık geliyor
 }
 
 export interface UserContextValue {
@@ -30,56 +33,58 @@ export interface UserProviderProps {
   children: React.ReactNode;
 }
 
-const GET_CURRENT_USER = gql`
-  query Me {
-    me {
-      id
-      kullaniciAdi
-      email
-      roller {
-        id
-        rolAdi
-      }
-    }
-  }
-`;
-
 export function UserProvider({ children }: UserProviderProps): React.JSX.Element {
   const [user, setUser] = React.useState<User | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-
-  const [fetchUser, { loading, client }] = useLazyQuery(GET_CURRENT_USER, {
-    fetchPolicy: 'network-only',
-    onCompleted: (data) => {
-      setUser(data.me);
-      setError(null);
-    },
-    onError: (error) => {
-      localStorage.removeItem('authToken');
-      setUser(null);
-      setError(error.message);
-      console.error("Session check failed:", error.message);
-    },
-  });
-  
-  const isLoading = loading || (user === null && !!localStorage.getItem('authToken'));
+  const [isLoading, setIsLoading] = React.useState<boolean>(true); // Başlangıçta true olarak ayarlandı
 
   const checkSession = React.useCallback(async (): Promise<void> => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      await fetchUser();
-    } else {
+    setIsLoading(true);
+    try {
+      const { data, error: authError } = await authClient.getUser();
+      if (authError) {
+        setError(authError);
+        setUser(null);
+        console.error("Session check failed:", authError);
+      } else {
+        if (data) {
+          // Backend'den gelen BackendUser tipini frontend'deki User tipine dönüştür
+          const formattedUser: User = {
+            id: data.id,
+            kullaniciAdi: data.username,
+            email: data.email,
+            roles: data.roles || [], // Eğer roles yoksa boş array ata
+            tenantId: data.tenantId,
+          };
+          setUser(formattedUser);
+          setError(null);
+        } else {
+          setUser(null);
+          setError(null); // Kullanıcı yoksa hata mesajı da olmaz
+        }
+      }
+    } catch (err) {
+      setError('Bilinmeyen bir oturum kontrol hatası oluştu.');
       setUser(null);
+      console.error("Unknown session check error:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [fetchUser]);
+  }, []);
 
   const signOut = React.useCallback(async (): Promise<void> => {
-    localStorage.removeItem('authToken');
-    setUser(null);
-    if (client) {
-      await client.resetStore();
+    setIsLoading(true);
+    try {
+      await authClient.signOut();
+      setUser(null);
+      setError(null);
+    } catch (err) {
+      setError('Çıkış yaparken bir hata oluştu.');
+      console.error("Sign out error:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [client]);
+  }, []);
 
   React.useEffect(() => {
     checkSession().catch((err) => {

@@ -7,7 +7,7 @@ import '@/styles/global.css';
 import { UserProvider } from '@/contexts/user-context';
 import { LocalizationProvider } from '@/components/core/localization-provider';
 import { ThemeProvider } from '@/components/core/theme-provider/theme-provider';
-import { CustomApolloProvider } from '@/components/core/apollo-provider';
+// CustomApolloProvider import'u kaldırıldı
 
 export const viewport = { width: 'device-width', initialScale: 1 } satisfies Viewport;
 
@@ -19,13 +19,12 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <html lang="en">
       <body>
-        <CustomApolloProvider>
-          <LocalizationProvider>
-            <UserProvider>
-              <ThemeProvider>{children}</ThemeProvider>
-            </UserProvider>
-          </LocalizationProvider>
-        </CustomApolloProvider>
+        {/* CustomApolloProvider kullanımı kaldırıldı */}
+        <LocalizationProvider>
+          <UserProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </UserProvider>
+        </LocalizationProvider>
       </body>
     </html>
   );
