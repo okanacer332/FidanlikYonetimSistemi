@@ -5,7 +5,7 @@ import * as React from 'react';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Checkbox from '@mui/material/Checkbox';
+// import Checkbox from '@mui/material/Checkbox'; // Checkbox'ı kaldırdık
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -17,7 +17,8 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { useSelection } from '@/hooks/use-selection';
-import type { User, Role } from '@/types/user'; // User ve Role interfacelerini types/user.ts'ten import et
+import type { User, Role } from '@/types/user';
+import { useUser } from '@/hooks/use-user';
 
 function noop(): void {
   // do nothing
@@ -41,13 +42,18 @@ export function UsersTable({
   onRowsPerPageChange = noop,
 }: UsersTableProps): React.JSX.Element {
   const rowIds = React.useMemo(() => {
+    // Checkbox kaldırıldığı için useSelection'a da gerek kalmayabilir,
+    // ancak başka bir yerde kullanılıyorsa kalsın. Şimdilik props'tan kaldırmıyorum.
     return rows.map((user) => user.id);
   }, [rows]);
 
-  const { selectAll, deselectAll, selectOne, deselectOne, selected } = useSelection(rowIds);
+  const { selectAll, deselectAll, selectOne, deselectOne, selected } = useSelection(rowIds); // Kullanılmasa da kalabilir
+  const { user: currentUser } = useUser();
 
-  const selectedSome = (selected?.size ?? 0) > 0 && (selected?.size ?? 0) < rows.length;
-  const selectedAll = rows.length > 0 && selected?.size === rows.length;
+  // const selectedSome = (selected?.size ?? 0) > 0 && (selected?.size ?? 0) < rows.length; // Kullanım dışı
+  // const selectedAll = rows.length > 0 && selected?.size === rows.length; // Kullanım dışı
+
+  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
 
   return (
     <Card>
@@ -55,7 +61,8 @@ export function UsersTable({
         <Table sx={{ minWidth: '800px' }}>
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
+              {/* Checkbox sütununu kaldırdık */}
+              {/* <TableCell padding="checkbox">
                 <Checkbox
                   checked={selectedAll}
                   indeterminate={selectedSome}
@@ -67,35 +74,40 @@ export function UsersTable({
                     }
                   }}
                 />
-              </TableCell>
+              </TableCell> */}
               <TableCell>Kullanıcı Adı</TableCell>
               <TableCell>E-posta</TableCell>
               <TableCell>Roller</TableCell>
-              {/* Tenant ID sütununu kaldırdık */}
               <TableCell>İşlemler</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => {
-              // 'okan' kullanıcısını belirliyoruz
               const isOkanUser = row.username === 'okan';
-              const isSelected = selected?.has(row.id);
+              // const isSelected = selected?.has(row.id); // Kullanım dışı
+
+              // Butonun etkinliğini belirleme
+              const canEditOrDelete = (isCurrentUserAdmin && !isOkanUser) || (!isCurrentUserAdmin && currentUser?.id === row.id);
+
+              // Silik ton için stil koşulu
+              const isDimmed = !canEditOrDelete; // Eğer düzenleme yapılamıyorsa silik olsun
 
               return (
                 <TableRow
                   hover
                   key={row.id}
-                  selected={isSelected}
-                  // 'okan' kullanıcısı için özel stil
+                  // selected={isSelected} // Kullanım dışı
                   sx={{
-                    ...(isOkanUser && {
-                      backgroundColor: 'action.hover', // Hafif farklı arkaplan
-                      pointerEvents: 'none', // Satıra tıklama ve hover etkileşimlerini devre dışı bırak
-                      opacity: 0.7, // Biraz daha silik görünmesini sağla
+                    // Okan kullanıcısı ve Admin ise özel stil (satırı soluklaştırma)
+                    ...(isOkanUser && isCurrentUserAdmin && {
+                      backgroundColor: 'action.hover',
+                      pointerEvents: 'none',
+                      opacity: 0.7,
                     }),
                   }}
                 >
-                  <TableCell padding="checkbox">
+                  {/* Checkbox hücresini kaldırdık */}
+                  {/* <TableCell padding="checkbox">
                     <Checkbox
                       checked={isSelected}
                       onChange={(event) => {
@@ -105,30 +117,38 @@ export function UsersTable({
                           deselectOne(row.id);
                         }
                       }}
-                      disabled={isOkanUser} // 'okan' kullanıcısını seçilemez yap
+                      disabled={isOkanUser}
                     />
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
                       <Avatar>{row.username.charAt(0).toUpperCase()}</Avatar>
-                      <Typography variant="subtitle2" sx={{ ...(isOkanUser && { color: 'text.disabled' }) }}>{row.username}</Typography>
+                      {/* Kullanıcı adı için silik ton */}
+                      <Typography variant="subtitle2" sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>{row.username}</Typography>
                     </Stack>
                   </TableCell>
-                  <TableCell sx={{ ...(isOkanUser && { color: 'text.disabled' }) }}>
+                  {/* E-posta için silik ton */}
+                  <TableCell sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>
                     {row.email}
                   </TableCell>
-                  <TableCell sx={{ ...(isOkanUser && { color: 'text.disabled' }) }}>
-                    {isOkanUser ? (
-                      <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>-</Typography> // 'okan' için "-" göster
+                  {/* Roller için silik ton */}
+                  <TableCell sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>
+                    {isOkanUser && isCurrentUserAdmin ? (
+                      <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Yönetici (Sistem)</Typography>
                     ) : (
                       row.roles && row.roles.length > 0
                         ? row.roles.map((role) => role.name).join(', ')
                         : 'Rol Yok'
                     )}
                   </TableCell>
-                  {/* Tenant ID hücremizi kaldırdık */}
                   <TableCell>
-                    <Button variant="outlined" size="small" disabled={isOkanUser}>Düzenle</Button>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={!canEditOrDelete}
+                    >
+                        Düzenle
+                    </Button>
                   </TableCell>
                 </TableRow>
               );

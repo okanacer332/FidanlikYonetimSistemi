@@ -10,7 +10,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
 import { UsersTable, User as TableUser } from '@/components/dashboard/user/users-table';
-import { UserCreateForm } from '@/components/dashboard/user/user-create-form.tsx'; // <<-- Burayı kontrol edin
+import { UserCreateForm } from '@/components/dashboard/user/user-create-form.tsx';
 import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
@@ -22,7 +22,7 @@ export default function Page(): React.JSX.Element {
   const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
   const [totalUsers, setTotalUsers] = React.useState<number>(0);
 
-  const [isCreateFormOpen, setIsCreateFormOpen] = React.useState<boolean>(false); // Modal state'i
+  const [isCreateFormOpen, setIsCreateFormOpen] = React.useState<boolean>(false);
 
   const fetchUsers = React.useCallback(async () => {
     if (!currentUser || !currentUser.tenantId) {
@@ -99,6 +99,9 @@ export default function Page(): React.JSX.Element {
     return users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   }, [users, page, rowsPerPage]);
 
+  // Yeni: Sadece adminler için Yeni Kullanıcı Ekle butonu
+  const canCreateUser = currentUser?.roles?.some(role => role.name === 'Yönetici');
+
   return (
     <Stack spacing={3}>
       <Stack direction="row" spacing={3}>
@@ -106,13 +109,15 @@ export default function Page(): React.JSX.Element {
           <Typography variant="h4">Kullanıcı Yönetimi</Typography>
         </Stack>
         <div>
-          <Button
-            startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
-            variant="contained"
-            onClick={handleOpenCreateForm}
-          >
-            Yeni Kullanıcı Ekle
-          </Button>
+          {canCreateUser && ( // Sadece adminler için butonu göster
+            <Button
+              startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
+              variant="contained"
+              onClick={handleOpenCreateForm}
+            >
+              Yeni Kullanıcı Ekle
+            </Button>
+          )}
         </div>
       </Stack>
       {loading ? (
@@ -133,11 +138,14 @@ export default function Page(): React.JSX.Element {
         />
       )}
 
-      <UserCreateForm
-        open={isCreateFormOpen}
-        onClose={handleCloseCreateForm}
-        onSuccess={handleUserCreated}
-      />
+      {/* Formun da sadece adminler için açıldığından emin olalım, buton zaten kontrol ediyor ama ekstra güvenlik */}
+      {canCreateUser && (
+        <UserCreateForm
+          open={isCreateFormOpen}
+          onClose={handleCloseCreateForm}
+          onSuccess={handleUserCreated}
+        />
+      )}
     </Stack>
   );
 }
