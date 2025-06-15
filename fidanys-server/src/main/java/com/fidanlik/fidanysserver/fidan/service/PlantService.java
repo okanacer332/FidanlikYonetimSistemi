@@ -1,0 +1,158 @@
+package com.fidanlik.fidanysserver.fidan.service;
+
+import com.fidanlik.fidanysserver.fidan.model.*; // Yeni paket yolu
+import com.fidanlik.fidanysserver.fidan.repository.*; // Yeni paket yolu
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class PlantService {
+
+    private final PlantRepository plantRepository;
+    private final PlantTypeRepository plantTypeRepository;
+    private final PlantVarietyRepository plantVarietyRepository;
+    private final RootstockRepository rootstockRepository;
+    private final PlantSizeRepository plantSizeRepository;
+    private final PlantAgeRepository plantAgeRepository;
+    // private final LandRepository landRepository; // İleride stok için kullanılacak
+
+    // Fidan Kimliği Oluşturma
+    public Plant createPlant(Plant plant, String tenantId) {
+        // 1. Tüm referans ID'lerinin geçerliliğini ve tenant'a ait olup olmadığını kontrol et
+        validateAndSetPlantReferences(plant, tenantId);
+
+        // 2. Aynı tenant içinde aynı kombinasyonda (Fidan Kimliği) var mı kontrol et
+        if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndTenantId(
+                plant.getPlantTypeId(), plant.getPlantVarietyId(), plant.getRootstockId(),
+                plant.getPlantSizeId(), plant.getPlantAgeId(), tenantId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu fidan kimliği bu şirkette zaten mevcut.");
+        }
+
+        plant.setTenantId(tenantId);
+        return plantRepository.save(plant);
+    }
+
+    // Tüm Fidan Kimliklerini Listeleme (Tenant bazında)
+    public List<Plant> getAllPlantsByTenant(String tenantId) {
+        List<Plant> plants = plantRepository.findAllByTenantId(tenantId);
+        // DBRef ile otomatik doldurulan alanlar için ek kontrol veya manuel doldurma
+        // Spring Data MongoDB @DBRef ile çoğu zaman otomatik doldurur, ancak emin olmak için:
+        plants.forEach(plant -> {
+            plantTypeRepository.findById(plant.getPlantTypeId()).ifPresent(plant::setPlantType);
+            plantVarietyRepository.findById(plant.getPlantVarietyId()).ifPresent(plant::setPlantVariety);
+            rootstockRepository.findById(plant.getRootstockId()).ifPresent(plant::setRootstock);
+            plantSizeRepository.findById(plant.getPlantSizeId()).ifPresent(plant::setPlantSize);
+            plantAgeRepository.findById(plant.getPlantAgeId()).ifPresent(plant::setPlantAge);
+        });
+        return plants;
+    }
+
+    // Fidan Kimliği Güncelleme
+    public Plant updatePlant(String id, Plant plant, String tenantId) {
+        Optional<Plant> existingPlantOptional = plantRepository.findById(id);
+        if (existingPlantOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Güncellenecek fidan kimliği bulunamadı.");
+        }
+        Plant existingPlant = existingPlantOptional.get();
+
+        // Tenant kontrolü
+        if (!existingPlant.getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Başka bir şirketin fidan kimliğini güncellemeye yetkiniz yok.");
+        }
+
+        // Referans ID'lerini ve geçerliliklerini kontrol et
+        // Buradaki plant objesi, request body'den gelen yeni değerleri temsil ediyor.
+        validateAndSetPlantReferences(plant, tenantId);
+
+
+        // Kombinasyon değiştiyse benzersizlik kontrolü (güncellenen objenin kendisi hariç)
+        if (!existingPlant.getPlantTypeId().equals(plant.getPlantTypeId()) ||
+                !existingPlant.getPlantVarietyId().equals(plant.getPlantVarietyId()) ||
+                !existingPlant.getRootstockId().equals(plant.getRootstockId()) ||
+                !existingPlant.getPlantSizeId().equals(plant.getPlantSizeId()) ||
+                !existingPlant.getPlantAgeId().equals(plant.getPlantAgeId())) {
+
+            if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndTenantId(
+                    plant.getPlantTypeId(), plant.getPlantVarietyId(), plant.getRootstockId(),
+                    plant.getPlantSizeId(), plant.getPlantAgeId(), tenantId).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu fidan kimliği kombinasyonu bu şirkette zaten mevcut.");
+            }
+        }
+
+        // Güncel ID'leri ve DBRef'leri existingPlant objesine ata
+        existingPlant.setPlantTypeId(plant.getPlantTypeId());
+        existingPlant.setPlantVarietyId(plant.getPlantVarietyId());
+        existingPlant.setRootstockId(plant.getRootstockId());
+        existingPlant.setPlantSizeId(plant.getPlantSizeId());
+        existingPlant.setPlantAgeId(plant.getPlantAgeId());
+
+        // DBRef'leri de güncelle
+        existingPlant.setPlantType(plant.getPlantType());
+        existingPlant.setPlantVariety(plant.getPlantVariety());
+        existingPlant.setRootstock(plant.getRootstock());
+        existingPlant.setPlantSize(plant.getPlantSize());
+        existingPlant.setPlantAge(plant.getPlantAge());
+
+        return plantRepository.save(existingPlant);
+    }
+
+    // Fidan Kimliği Silme
+    public void deletePlant(String id, String tenantId) {
+        Optional<Plant> existingPlantOptional = plantRepository.findById(id);
+        if (existingPlantOptional.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Silinecek fidan kimliği bulunamadı.");
+        }
+        Plant existingPlant = existingPlantOptional.get();
+
+        // Tenant kontrolü
+        if (!existingPlant.getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Başka bir şirketin fidan kimliğini silmeye yetkiniz yok.");
+        }
+
+        plantRepository.delete(existingPlant);
+    }
+
+    // Yardımcı metod: Fidan referanslarını doğrular ve set eder
+    private void validateAndSetPlantReferences(Plant plant, String tenantId) {
+        // PlantType
+        Optional<PlantType> plantTypeOptional = plantTypeRepository.findById(plant.getPlantTypeId());
+        if (plantTypeOptional.isEmpty() || !plantTypeOptional.get().getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait fidan türü.");
+        }
+        plant.setPlantType(plantTypeOptional.get());
+
+        // PlantVariety
+        Optional<PlantVariety> plantVarietyOptional = plantVarietyRepository.findById(plant.getPlantVarietyId());
+        if (plantVarietyOptional.isEmpty() || !plantVarietyOptional.get().getTenantId().equals(tenantId) || !plantVarietyOptional.get().getPlantTypeId().equals(plant.getPlantTypeId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait fidan çeşidi, veya tür ile uyuşmuyor.");
+        }
+        plant.setPlantVariety(plantVarietyOptional.get());
+
+        // Rootstock
+        Optional<Rootstock> rootstockOptional = rootstockRepository.findById(plant.getRootstockId());
+        if (rootstockOptional.isEmpty() || !rootstockOptional.get().getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait anaç.");
+        }
+        plant.setRootstock(rootstockOptional.get());
+
+        // PlantSize
+        Optional<PlantSize> plantSizeOptional = plantSizeRepository.findById(plant.getPlantSizeId());
+        if (plantSizeOptional.isEmpty() || !plantSizeOptional.get().getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait fidan boyu.");
+        }
+        plant.setPlantSize(plantSizeOptional.get());
+
+        // PlantAge
+        Optional<PlantAge> plantAgeOptional = plantAgeRepository.findById(plant.getPlantAgeId());
+        if (plantAgeOptional.isEmpty() || !plantAgeOptional.get().getTenantId().equals(tenantId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait fidan yaşı.");
+        }
+        plant.setPlantAge(plantAgeOptional.get());
+    }
+}
