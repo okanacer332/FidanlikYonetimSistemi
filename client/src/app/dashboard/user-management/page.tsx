@@ -11,6 +11,7 @@ import Alert from '@mui/material/Alert';
 
 import { UsersTable, User as TableUser } from '@/components/dashboard/user/users-table';
 import { UserCreateForm } from '@/components/dashboard/user/user-create-form.tsx';
+import { UserEditForm } from '@/components/dashboard/user/user-edit-form.tsx'; // Yeni import
 import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
@@ -23,6 +24,9 @@ export default function Page(): React.JSX.Element {
   const [totalUsers, setTotalUsers] = React.useState<number>(0);
 
   const [isCreateFormOpen, setIsCreateFormOpen] = React.useState<boolean>(false);
+  const [isEditFormOpen, setIsEditFormOpen] = React.useState<boolean>(false); // Yeni: Düzenleme modalı state'i
+  const [selectedUserToEdit, setSelectedUserToEdit] = React.useState<TableUser | null>(null); // Yeni: Düzenlenecek kullanıcı state'i
+
 
   const fetchUsers = React.useCallback(async () => {
     if (!currentUser || !currentUser.tenantId) {
@@ -92,14 +96,30 @@ export default function Page(): React.JSX.Element {
   }, []);
 
   const handleUserCreated = React.useCallback(() => {
-    fetchUsers(); // Yeni kullanıcı eklendiğinde listeyi yenile
+    fetchUsers();
+    setIsCreateFormOpen(false); // Yeni kullanıcı eklenince formu kapat
+  }, [fetchUsers]);
+
+  // Yeni: Düzenleme modalı açma/kapama ve kullanıcı seçme
+  const handleOpenEditForm = React.useCallback((user: TableUser) => {
+    setSelectedUserToEdit(user);
+    setIsEditFormOpen(true);
+  }, []);
+
+  const handleCloseEditForm = React.useCallback(() => {
+    setIsEditFormOpen(false);
+    setSelectedUserToEdit(null); // Seçili kullanıcıyı temizle
+  }, []);
+
+  const handleUserUpdated = React.useCallback(() => {
+    fetchUsers(); // Kullanıcı güncellendiğinde listeyi yenile
+    setIsEditFormOpen(false); // Düzenleme formu kapat
   }, [fetchUsers]);
 
   const paginatedUsers = React.useMemo(() => {
     return users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   }, [users, page, rowsPerPage]);
 
-  // Yeni: Sadece adminler için Yeni Kullanıcı Ekle butonu
   const canCreateUser = currentUser?.roles?.some(role => role.name === 'Yönetici');
 
   return (
@@ -109,7 +129,7 @@ export default function Page(): React.JSX.Element {
           <Typography variant="h4">Kullanıcı Yönetimi</Typography>
         </Stack>
         <div>
-          {canCreateUser && ( // Sadece adminler için butonu göster
+          {canCreateUser && (
             <Button
               startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
               variant="contained"
@@ -135,10 +155,10 @@ export default function Page(): React.JSX.Element {
           rowsPerPage={rowsPerPage}
           onPageChange={handlePageChange}
           onRowsPerPageChange={handleRowsPerPageChange}
+          onEditUser={handleOpenEditForm} // Yeni prop
         />
       )}
 
-      {/* Formun da sadece adminler için açıldığından emin olalım, buton zaten kontrol ediyor ama ekstra güvenlik */}
       {canCreateUser && (
         <UserCreateForm
           open={isCreateFormOpen}
@@ -146,6 +166,14 @@ export default function Page(): React.JSX.Element {
           onSuccess={handleUserCreated}
         />
       )}
+
+      {/* Yeni: Kullanıcı Düzenleme Formu */}
+      <UserEditForm
+        open={isEditFormOpen}
+        onClose={handleCloseEditForm}
+        onSuccess={handleUserUpdated}
+        user={selectedUserToEdit}
+      />
     </Stack>
   );
 }
