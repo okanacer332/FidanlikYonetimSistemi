@@ -30,7 +30,8 @@ interface UsersTableProps {
   rowsPerPage?: number;
   onPageChange?: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onEditUser: (user: User) => void; // Yeni prop: Düzenleme butonu için callback
+  onEditUser: (user: User) => void;
+  onDeleteUser: (userId: string) => void; // Yeni prop: Silme butonu için callback
 }
 
 export function UsersTable({
@@ -40,7 +41,8 @@ export function UsersTable({
   rowsPerPage = 0,
   onPageChange = noop,
   onRowsPerPageChange = noop,
-  onEditUser, // Yeni prop'u aldık
+  onEditUser,
+  onDeleteUser, // Yeni prop'u aldık
 }: UsersTableProps): React.JSX.Element {
   const rowIds = React.useMemo(() => {
     return rows.map((user) => user.id);
@@ -66,8 +68,14 @@ export function UsersTable({
           <TableBody>
             {rows.map((row) => {
               const isOkanUser = row.username === 'okan';
-              const canEditOrDelete = (isCurrentUserAdmin && !isOkanUser) || (!isCurrentUserAdmin && currentUser?.id === row.id);
-              const isDimmed = !canEditOrDelete;
+
+              // Admin: Okan değilse veya Kendi ise ( Okan Admin ise ve Okan değilse ) veya ( Okan Admin değilse ve kendi ise )
+              const canEdit = (isCurrentUserAdmin && !isOkanUser) || (!isCurrentUserAdmin && currentUser?.id === row.id);
+
+              // Sadece Adminler silebilir ve Okan kendini silemez
+              const canDelete = isCurrentUserAdmin && !isOkanUser;
+
+              const isDimmed = !canEdit && !canDelete; // Hem düzenleme hem silme yapılamıyorsa silik olsun
 
               return (
                 <TableRow
@@ -100,14 +108,26 @@ export function UsersTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        disabled={!canEditOrDelete}
-                        onClick={() => onEditUser(row)} // Tıklanınca onEditUser callback'ini tetikle
-                    >
-                        Düzenle
-                    </Button>
+                    <Stack direction="row" spacing={1}> {/* Butonları yan yana koymak için Stack ekledik */}
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            disabled={!canEdit}
+                            onClick={() => onEditUser(row)}
+                        >
+                            Düzenle
+                        </Button>
+                        {canDelete && ( // Sadece silme yetkisi varsa butonu göster
+                            <Button
+                                variant="outlined"
+                                color="error" // Kırmızı renk
+                                size="small"
+                                onClick={() => onDeleteUser(row.id)} // Tıklanınca silme callback'ini tetikle
+                            >
+                                Sil
+                            </Button>
+                        )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               );

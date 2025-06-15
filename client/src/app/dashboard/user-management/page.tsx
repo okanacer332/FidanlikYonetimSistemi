@@ -8,10 +8,15 @@ import Typography from '@mui/material/Typography';
 import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog'; // Dialog importu
+import DialogTitle from '@mui/material/DialogTitle'; // DialogTitle importu
+import DialogContent from '@mui/material/DialogContent'; // DialogContent importu
+import DialogContentText from '@mui/material/DialogContentText'; // DialogContentText importu
+import DialogActions from '@mui/material/DialogActions'; // DialogActions importu
 
 import { UsersTable, User as TableUser } from '@/components/dashboard/user/users-table';
 import { UserCreateForm } from '@/components/dashboard/user/user-create-form.tsx';
-import { UserEditForm } from '@/components/dashboard/user/user-edit-form.tsx'; // Yeni import
+import { UserEditForm } from '@/components/dashboard/user/user-edit-form.tsx';
 import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
@@ -24,9 +29,11 @@ export default function Page(): React.JSX.Element {
   const [totalUsers, setTotalUsers] = React.useState<number>(0);
 
   const [isCreateFormOpen, setIsCreateFormOpen] = React.useState<boolean>(false);
-  const [isEditFormOpen, setIsEditFormOpen] = React.useState<boolean>(false); // Yeni: Düzenleme modalı state'i
-  const [selectedUserToEdit, setSelectedUserToEdit] = React.useState<TableUser | null>(null); // Yeni: Düzenlenecek kullanıcı state'i
+  const [isEditFormOpen, setIsEditFormOpen] = React.useState<boolean>(false);
+  const [selectedUserToEdit, setSelectedUserToEdit] = React.useState<TableUser | null>(null);
 
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = React.useState<boolean>(false); // Yeni: Silme onayı modalı state'i
+  const [userToDeleteId, setUserToDeleteId] = React.useState<string | null>(null); // Yeni: Silinecek kullanıcı ID'si
 
   const fetchUsers = React.useCallback(async () => {
     if (!currentUser || !currentUser.tenantId) {
@@ -97,10 +104,9 @@ export default function Page(): React.JSX.Element {
 
   const handleUserCreated = React.useCallback(() => {
     fetchUsers();
-    setIsCreateFormOpen(false); // Yeni kullanıcı eklenince formu kapat
+    setIsCreateFormOpen(false);
   }, [fetchUsers]);
 
-  // Yeni: Düzenleme modalı açma/kapama ve kullanıcı seçme
   const handleOpenEditForm = React.useCallback((user: TableUser) => {
     setSelectedUserToEdit(user);
     setIsEditFormOpen(true);
@@ -108,13 +114,66 @@ export default function Page(): React.JSX.Element {
 
   const handleCloseEditForm = React.useCallback(() => {
     setIsEditFormOpen(false);
-    setSelectedUserToEdit(null); // Seçili kullanıcıyı temizle
+    setSelectedUserToEdit(null);
   }, []);
 
   const handleUserUpdated = React.useCallback(() => {
-    fetchUsers(); // Kullanıcı güncellendiğinde listeyi yenile
-    setIsEditFormOpen(false); // Düzenleme formu kapat
+    fetchUsers();
+    setIsEditFormOpen(false);
   }, [fetchUsers]);
+
+  // Yeni: Silme onayı işlevselliği
+  const handleOpenConfirmDelete = React.useCallback((userId: string) => {
+    setUserToDeleteId(userId);
+    setIsConfirmDeleteOpen(true);
+  }, []);
+
+  const handleCloseConfirmDelete = React.useCallback(() => {
+    setIsConfirmDeleteOpen(false);
+    setUserToDeleteId(null);
+  }, []);
+
+  const handleDeleteUser = React.useCallback(async () => {
+    if (!userToDeleteId) {
+      return;
+    }
+
+    // Backend'e DELETE isteği gönder
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setError('Oturum tokenı bulunamadı.');
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${userToDeleteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // Hata yanıtını işleyin
+        const errorData = await response.json(); // Hata mesajı JSON olarak gelmeli
+        if (response.status === 403) {
+            setError('Bu kullanıcıyı silmeye yetkiniz yok.');
+        } else if (response.status === 404) {
+            setError('Silinecek kullanıcı bulunamadı.');
+        } else {
+            setError(errorData.message || 'Kullanıcı silinirken bir hata oluştu.');
+        }
+        return;
+      }
+
+      fetchUsers(); // Başarılı silme sonrası listeyi yenile
+      handleCloseConfirmDelete(); // Onay modalını kapat
+      setError(null); // Başarılı işlemde hata mesajını temizle
+    } catch (err) {
+      console.error('Kullanıcı silme hatası:', err);
+      setError('Kullanıcı silinirken bir ağ hatası oluştu.');
+    }
+  }, [userToDeleteId, fetchUsers, handleCloseConfirmDelete]);
 
   const paginatedUsers = React.useMemo(() => {
     return users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -155,7 +214,8 @@ export default function Page(): React.JSX.Element {
           rowsPerPage={rowsPerPage}
           onPageChange={handlePageChange}
           onRowsPerPageChange={handleRowsPerPageChange}
-          onEditUser={handleOpenEditForm} // Yeni prop
+          onEditUser={handleOpenEditForm}
+          onDeleteUser={handleOpenConfirmDelete} // Yeni prop'u bağladık
         />
       )}
 
@@ -167,13 +227,35 @@ export default function Page(): React.JSX.Element {
         />
       )}
 
-      {/* Yeni: Kullanıcı Düzenleme Formu */}
       <UserEditForm
         open={isEditFormOpen}
         onClose={handleCloseEditForm}
         onSuccess={handleUserUpdated}
         user={selectedUserToEdit}
       />
+
+      {/* Yeni: Silme Onayı Modalı */}
+      <Dialog
+        open={isConfirmDeleteOpen}
+        onClose={handleCloseConfirmDelete}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Kullanıcıyı Silmek İstediğinize Emin Misiniz?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Bu işlem geri alınamaz. Seçilen kullanıcı kalıcı olarak silinecektir.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirmDelete}>İptal</Button>
+          <Button onClick={handleDeleteUser} color="error" autoFocus>
+            Sil
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

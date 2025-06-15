@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fidanlik.fysserver.controller.dto.UserCreateRequest;
-import com.fidanlik.fysserver.controller.dto.UserUpdateRequest; // Yeni DTO importu
+import com.fidanlik.fysserver.controller.dto.UserUpdateRequest;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -37,7 +37,6 @@ public class UserController {
             return ResponseEntity.ok(null);
         }
 
-        // Principal olarak User objesini set ettiğimiz için doğrudan cast yapabiliriz.
         User authenticatedUserPrincipal = (User) authentication.getPrincipal();
         String username = authenticatedUserPrincipal.getUsername();
         String tenantId = authenticatedUserPrincipal.getTenantId();
@@ -140,8 +139,89 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
-    @PutMapping("/{id}") // Yeni: Kullanıcı güncelleme metodu
+    @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest userUpdateRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User authenticatedUser = (User) authentication.getPrincipal();
+        String currentTenantId = authenticatedUser.getTenantId();
+
+        if (currentTenantId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Optional<User> userOptional = userRepository.findById(id);
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        User userToUpdate = userOptional.get();
+
+        if (!userToUpdate.getTenantId().equals(currentTenantId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        boolean isOkanAdmin = authenticatedUser.getUsername().equals("okan");
+        if (isOkanAdmin && userToUpdate.getUsername().equals("okan")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        boolean isCurrentUserAdmin = authenticatedUser.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("Yönetici"));
+
+        if (!isCurrentUserAdmin && !authenticatedUser.getId().equals(userToUpdate.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (userUpdateRequest.getUsername() != null && !userUpdateRequest.getUsername().equals(userToUpdate.getUsername())) {
+            if (userRepository.findByUsernameAndTenantId(userUpdateRequest.getUsername(), currentTenantId).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+            }
+            userToUpdate.setUsername(userUpdateRequest.getUsername());
+        }
+        if (userUpdateRequest.getEmail() != null && !userUpdateRequest.getEmail().equals(userToUpdate.getEmail())) {
+            if (userRepository.findByEmailAndTenantId(userUpdateRequest.getEmail(), currentTenantId).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+            }
+            userToUpdate.setEmail(userUpdateRequest.getEmail());
+        }
+
+        if (userUpdateRequest.getPassword() != null && userUpdateRequest.getPassword().isPresent() && !userUpdateRequest.getPassword().get().isEmpty()) {
+            String newHashedPassword = passwordEncoder.encode(userUpdateRequest.getPassword().get());
+            userToUpdate.setPassword(newHashedPassword);
+        }
+
+        if (!isCurrentUserAdmin && userUpdateRequest.getRoleIds() != null && !userUpdateRequest.getRoleIds().equals(userToUpdate.getRoleIds())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        if (isCurrentUserAdmin && userUpdateRequest.getRoleIds() != null) {
+            Set<String> validRoleIds = userUpdateRequest.getRoleIds().stream()
+                    .filter(roleId -> roleRepository.findById(roleId)
+                            .map(r -> r.getTenantId().equals(currentTenantId))
+                            .orElse(false))
+                    .collect(Collectors.toSet());
+            userToUpdate.setRoleIds(validRoleIds);
+        }
+
+        User updatedUser = userRepository.save(userToUpdate);
+
+        if (updatedUser.getRoleIds() != null && !updatedUser.getRoleIds().isEmpty()) {
+            Set<Role> roles = updatedUser.getRoleIds().stream()
+                    .map(roleRepository::findById)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toSet());
+            updatedUser.setRoles(roles);
+        }
+
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @DeleteMapping("/{id}") // Yeni: Kullanıcı silme metodu
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
@@ -155,85 +235,35 @@ public class UserController {
             return ResponseEntity.badRequest().build(); // TenantId yoksa hata
         }
 
-        // 1. Güncellenecek kullanıcıyı kendi tenant'ı içinde bul
+        // 1. Silinecek kullanıcıyı kendi tenant'ı içinde bul
         Optional<User> userOptional = userRepository.findById(id);
         if (userOptional.isEmpty()) {
             return ResponseEntity.notFound().build(); // 404 Not Found
         }
-        User userToUpdate = userOptional.get();
+        User userToDelete = userOptional.get();
 
         // Kullanıcının kendi tenant'ına ait olup olmadığını kontrol et
-        if (!userToUpdate.getTenantId().equals(currentTenantId)) {
-            // Farklı bir tenant'ın kullanıcısını düzenlemeye çalışmak
+        if (!userToDelete.getTenantId().equals(currentTenantId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden
         }
 
         // 2. Yetkilendirme Kontrolü
-        // a. Sistem yöneticisi (okan) kendi hesabını düzenleyemez
-        boolean isOkanAdmin = authenticatedUser.getUsername().equals("okan");
-        if (isOkanAdmin && userToUpdate.getUsername().equals("okan")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden - Okan kendini düzenleyemez
-        }
-
-        // b. Diğer kullanıcılar sadece kendi hesaplarını düzenleyebilir
-        // authenticatedUser.getRoles() metodu artık null dönmeyecek, JwtAuthenticationFilter'da dolduruluyor.
+        // a. Sadece Admin (Yönetici rolüne sahip) kullanıcılar silebilir
         boolean isCurrentUserAdmin = authenticatedUser.getRoles().stream()
                 .anyMatch(role -> role.getName().equals("Yönetici"));
 
-        if (!isCurrentUserAdmin && !authenticatedUser.getId().equals(userToUpdate.getId())) {
-            // Yönetici olmayan bir kullanıcı, kendi dışındaki bir kullanıcıyı düzenlemeye çalışıyor
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden
+        if (!isCurrentUserAdmin) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden - Admin değilse silemez
         }
 
-        // 3. Güncellenecek verileri DTO'dan al
-        // Kullanıcı adı ve e-posta çakışmalarını kontrol et (mevcut kullanıcı hariç)
-        if (userUpdateRequest.getUsername() != null && !userUpdateRequest.getUsername().equals(userToUpdate.getUsername())) {
-            if (userRepository.findByUsernameAndTenantId(userUpdateRequest.getUsername(), currentTenantId).isPresent()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(null); // 409 Conflict
-            }
-            userToUpdate.setUsername(userUpdateRequest.getUsername());
-        }
-        if (userUpdateRequest.getEmail() != null && !userUpdateRequest.getEmail().equals(userToUpdate.getEmail())) {
-            if (userRepository.findByEmailAndTenantId(userUpdateRequest.getEmail(), currentTenantId).isPresent()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(null); // 409 Conflict
-            }
-            userToUpdate.setEmail(userUpdateRequest.getEmail());
+        // b. Admin (okan) kendi hesabını silemez
+        if (authenticatedUser.getUsername().equals("okan") && userToDelete.getUsername().equals("okan")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // 403 Forbidden - Okan kendini silemez
         }
 
-        // Parola güncellenecekse hash'le
-        // Null kontrolünü userUpdateRequest.getPassword() üzerinde yapıyoruz
-        if (userUpdateRequest.getPassword() != null && userUpdateRequest.getPassword().isPresent() && !userUpdateRequest.getPassword().get().isEmpty()) {
-            String newHashedPassword = passwordEncoder.encode(userUpdateRequest.getPassword().get());
-            userToUpdate.setPassword(newHashedPassword);
-        }
+        // 3. Kullanıcıyı sil
+        userRepository.delete(userToDelete);
 
-        // Rolleri güncelle (Sadece Admin yetkili kullanıcıların rol değiştirmesine izin verilmeli)
-        if (!isCurrentUserAdmin && userUpdateRequest.getRoleIds() != null && !userUpdateRequest.getRoleIds().equals(userToUpdate.getRoleIds())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null); // Yetkisiz rol değiştirme
-        }
-        // Admin ise rolleri güncelle
-        if (isCurrentUserAdmin && userUpdateRequest.getRoleIds() != null) {
-            Set<String> validRoleIds = userUpdateRequest.getRoleIds().stream()
-                    .filter(roleId -> roleRepository.findById(roleId)
-                            .map(r -> r.getTenantId().equals(currentTenantId))
-                            .orElse(false))
-                    .collect(Collectors.toSet());
-            userToUpdate.setRoleIds(validRoleIds);
-        }
-
-
-        User updatedUser = userRepository.save(userToUpdate);
-
-        // Kaydedilen kullanıcının rollerini doldurup geri döndür
-        if (updatedUser.getRoleIds() != null && !updatedUser.getRoleIds().isEmpty()) {
-            Set<Role> roles = updatedUser.getRoleIds().stream()
-                    .map(roleRepository::findById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toSet());
-            updatedUser.setRoles(roles);
-        }
-
-        return ResponseEntity.ok(updatedUser); // 200 OK
+        return ResponseEntity.noContent().build(); // 204 No Content (Başarılı silme)
     }
 }
