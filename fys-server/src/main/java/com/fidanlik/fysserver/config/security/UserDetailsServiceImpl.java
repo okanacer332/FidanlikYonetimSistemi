@@ -4,7 +4,7 @@ import com.fidanlik.fysserver.model.User;
 import com.fidanlik.fysserver.repository.RoleRepository;
 import com.fidanlik.fysserver.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.GrantedAuthority; // <-- EKLENDİ
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,22 +13,30 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.Objects;
-import java.util.Set; // <-- EKLENDİ
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class UserDetailsServiceImpl implements UserDetailsService, TenantAwareUserDetailsService { // TenantAwareUserDetailsService'i implement ettik
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameAndTenantId(username, "684dafb326785d716526d38d") // Örnek tenantId
-                .orElseThrow(() -> new UsernameNotFoundException("Kullanıcı bulunamadı: " + username));
+        // Bu metod standart UserDetailsService arayüzünden gelir ve tenantId alamaz.
+        // Bu yüzden burada genel bir hata fırlatabiliriz veya varsayılan bir tenantId ile deneme yapabiliriz.
+        // Ancak bu multi-tenant uygulamalar için ideal değildir.
+        // AuthenticationProvider'ımız loadUserByUsernameAndTenantId metodumuzu çağıracak.
+        throw new UnsupportedOperationException("Tenant ID olmadan kullanıcı doğrulama desteklenmiyor. Lütfen TenantAwareAuthenticationProvider kullanın.");
+    }
 
-        // --- DÜZELTİLMİŞ BÖLÜM ---
+    @Override
+    public UserDetails loadUserByUsernameAndTenantId(String username, String tenantId) throws UsernameNotFoundException {
+        User user = userRepository.findByUsernameAndTenantId(username, tenantId)
+                .orElseThrow(() -> new UsernameNotFoundException("Kullanıcı bulunamadı veya yanlış şirket kimliği: " + username));
+
         Set<GrantedAuthority> authorities;
         if (user.getRoleIds() != null) {
             authorities = user.getRoleIds().stream()
@@ -45,6 +53,5 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 user.getPassword(),
                 authorities
         );
-        // --- DÜZELTMENİN SONU ---
     }
 }

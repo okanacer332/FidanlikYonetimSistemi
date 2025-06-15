@@ -17,46 +17,47 @@ export interface BackendUser {
   tenantId: string; // Backend'den gelen 'tenantId' alanı
 }
 
-// Tenant ID'yi dinamik olarak subdomain'den alacak bir fonksiyon
-function getTenantIdFromHostname(): string | null {
+// Tenant adını dinamik olarak hostname'den alacak bir fonksiyon
+function getTenantNameFromHostname(): string | null {
   if (typeof window === 'undefined') {
     return null; // Sunucu tarafında çalışıyorsa
   }
   const hostname = window.location.hostname;
-  // hostname "okan.fidanys.com" ise "okan"ı, "www.fidanys.com" ise null/varsayılanı döndürmeli
-  // Local development için "localhost" veya IP adresi durumu da ele alınmalı
+  // hostname "okan.fidanys.com" ise "okan.fidanys.com"u, "www.fidanys.com" veya "localhost" ise varsayılanı döndürmeli
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    // Geliştirme ortamında sabit bir tenantId dönebiliriz veya bir seçim mekanizması ekleyebiliriz.
-    // Şimdilik seed ettiğiniz tenantId'yi kullanalım.
-    return '684dafb326785d716526d38d'; // <-- Seed ettiğiniz tenantId
+    // Geliştirme ortamında varsayılan tenant adını döndürelim.
+    // Backend'de DataInitializer tarafından oluşturulan tenant adı ile eşleşmeli.
+    // DataInitializer'da 'okan.fidanys.com' olarak tanımlanmış.
+    return 'okan.fidanys.com'; // Backend'deki tenant ismi
   }
 
-  // Örneğin: okan.fidanys.com -> okan
+  // Örneğin: okan.fidanys.com -> okan.fidanys.com
+  // Bu kısım production ortamında subdomain'den tenant adını çıkarmak için daha sofistike olabilir.
+  // Şimdilik hostname'in tamamını veya ilgili kısmını tenant adı olarak alalım.
+  // Basitlik adına, eğer subdomain tabanlı bir yapıdaysak ve tenant adı subdomain ise:
   const parts = hostname.split('.');
-  if (parts.length >= 2) {
-    // İlk parça subdomain ise (örn. "okan") ve bu bir "www" değilse
+  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys' && parts[parts.length - 1] === 'com') {
     if (parts[0] !== 'www' && parts[0] !== 'client') { // "client" da Next.js'in hostunda olabilir
-      // Burada aslında subdomain'in kendisi tenantId değil, subdomain'den tenant'ı lookup yapmalıyız.
-      // Ancak basitlik adına şimdilik direkt subdomain'in bir parçası olduğunu varsayabiliriz.
-      // Ya da, backend'de subdomain'e karşılık gelen tenantId'yi dönecek bir endpoint olur.
-      // Şimdilik, subdomain'in tenant'ın adı olduğunu ve backend'in bu adı bir tenantId'ye çevirebildiğini varsayalım.
-      // VEYA daha basit: login request'inde tenantName'i göndeririz, backend o name'i ID'ye çevirir.
-      // Bu senaryoda ise, seed ettiğiniz tenant'ın `name` alanı `okan.fidanys.com` olduğu için, onu kullanabiliriz.
-      return parts[0] + '.' + parts[1] + '.' + parts[2]; // fidanys.com için parts[0], parts[1], parts[2]
-                                                       // okan.fidanys.com için okan.fidanys.com döndürür
+      return hostname; // Örn: "okan.fidanys.com"
     }
   }
-  return null; // TenantId bulunamazsa
+  // Eğer özel bir subdomain yoksa veya başka bir senaryo ise null döndürebiliriz
+  // veya varsayılan bir tenant adı atayabiliriz.
+  // Bu senaryoda login request'e 'tenantName'i eklediğimiz için null döndürmek daha güvenli olabilir.
+  // Backend'e null giderse, backend'in varsayılan tenantı varsa onu kullanabilir.
+  return null;
 }
 
 
 class AuthClient {
   async signInWithPassword(params: { username: string; password: string }): Promise<{ error?: string; data?: { token: string; user: BackendUser } }> {
     const { username, password } = params;
-    const tenantId = getTenantIdFromHostname(); // Dinamik tenantId
+    const tenantName = getTenantNameFromHostname(); // Dinamik tenant adı
 
-    if (!tenantId) {
-      return { error: 'Şirket kimliği (tenant ID) belirlenemedi.' };
+    if (!tenantName) {
+      // Eğer tenant adı belirlenemezse, kullanıcıya bir hata gösterin veya varsayılanı kullanın
+      // Bu durumda frontend'in subdomain'e veya varsayılan bir tenant adını ayarlamasına bağlıdır.
+      return { error: 'Şirket adı (tenant name) belirlenemedi. Lütfen doğru adresi kullandığınızdan emin olun.' };
     }
 
     try {
@@ -65,10 +66,11 @@ class AuthClient {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, tenantId }), // tenantId'yi gönder
+        // Backend'e tenantId yerine tenantName gönderiyoruz
+        body: JSON.stringify({ username, password, tenantName }),
       });
 
-      const data = await response.json();
+      const data = await response.json(); // Bu satır 'Unexpected end of JSON input' hatasını verebilir
 
       if (!response.ok) {
         return { error: data.message || 'Kimlik doğrulama başarısız oldu.' };
@@ -77,6 +79,9 @@ class AuthClient {
       const token = data.token;
       localStorage.setItem('authToken', token);
 
+      // Kullanıcı bilgilerini çekerken tenantName veya tenantId'ye ihtiyacımız olacak.
+      // JWT token içinde tenantId olduğu için, getUser() fonksiyonu bunu kullanabilir.
+      // Ya da, backend'in /users/me endpoint'i de tenantName veya tenantId header bekleyebilir.
       const userResponse = await this.getUser();
       if (userResponse.error || !userResponse.data) {
         localStorage.removeItem('authToken');
@@ -87,20 +92,20 @@ class AuthClient {
 
     } catch (err) {
       console.error('Sign-in error:', err);
+      // 'Unexpected end of JSON input' hatasını daha açıklayıcı hale getirelim
+      if (err instanceof SyntaxError && err.message.includes('JSON input')) {
+          return { error: 'Sunucudan geçersiz bir yanıt alındı. Lütfen sunucu loglarını kontrol edin.' };
+      }
       return { error: 'Ağ hatası veya sunucuya erişilemiyor.' };
     }
   }
 
   async getUser(): Promise<{ data?: BackendUser | null; error?: string }> {
     const token = localStorage.getItem('authToken');
-    const tenantId = getTenantIdFromHostname(); // Dinamik tenantId
+    // Tenant adı artık doğrudan getUser için gerekli değil, JWT içinde tenantId var.
 
     if (!token) {
       return { data: null };
-    }
-
-    if (!tenantId) {
-        return { error: 'Şirket kimliği (tenant ID) belirlenemedi.' };
     }
 
     try {
@@ -109,7 +114,8 @@ class AuthClient {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'X-Tenant-Id': tenantId, // Başka bir seçenek: tenantId'yi özel bir header olarak göndermek
+          // 'X-Tenant-Id' header'ını kaldırdık veya yoruma aldık.
+          // JwtAuthenticationFilter, token'dan tenantId'yi zaten okuyup SecurityContext'e yerleştiriyor.
         },
       });
 

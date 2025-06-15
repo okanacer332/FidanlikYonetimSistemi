@@ -1,5 +1,6 @@
 package com.fidanlik.fysserver.config.security;
 
+import com.fidanlik.fysserver.model.User;
 import com.fidanlik.fysserver.repository.RoleRepository;
 import com.fidanlik.fysserver.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -8,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken; // Bu yerine TenantAuthenticationToken kullanacağız
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,10 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authorities = Collections.emptySet();
                 }
 
-                // UserDetails nesnesini oluştururken, tenantId bilgisini bir CustomUserDetails sınıfı kullanarak
-                // veya SecurityContextHolder.getContext().setAuthentication(authToken); satırında
-                // authToken'e özel bir principal nesnesi ekleyerek taşıyabiliriz.
-                // Şimdilik UserDetails'i olduğu gibi bırakıp tenantId'yi doğrudan filter'da kullanacağız.
+                // JwtService.isTokenValid() metodu UserDetails objesini bekliyor.
+                // Burada UserDetails'i oluşturup token geçerliliğini kontrol edelim.
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
                         user.getUsername(),
                         user.getPassword(),
@@ -71,11 +70,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            // Principal olarak User objesinin tamamını veya tenantId'yi içeren özel bir obje kullanabiliriz
-                            user, // Buraya User objesini koyarak Controller'da user.getTenantId() ile erişebiliriz.
-                            null,
-                            userDetails.getAuthorities()
+                    // TenantAuthenticationToken kullanarak User objesini principal olarak set et
+                    TenantAuthenticationToken authToken = new TenantAuthenticationToken(
+                            user, // Principal olarak User objesini koyuyoruz
+                            null, // Credentials'a gerek yok çünkü zaten JWT ile doğrulandı
+                            userDetails.getAuthorities(),
+                            user.getTenantId() // tenantId'yi de token'a ekliyoruz
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
