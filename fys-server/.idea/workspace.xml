@@ -5,11 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c4eb7a8-7dbf-4311-a22b-98a88a603689" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/controller/MasterDataController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/dto/MasterDataDTO.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/dashboard/layout/config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/dashboard/layout/config.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/paths.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/paths.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/SecurityConfiguration.java" beforeDir="false" afterPath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/SecurityConfiguration.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantTypeController.java" beforeDir="false" afterPath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantTypeController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/service/PlantTypeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/../fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/service/PlantTypeService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

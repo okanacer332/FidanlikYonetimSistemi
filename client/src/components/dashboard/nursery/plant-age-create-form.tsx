@@ -1,5 +1,4 @@
 'use client';
-
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Button from '@mui/material/Button';
@@ -15,52 +14,40 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { PlantTypeCreate } from '@/types/nursery';
+import type { PlantAgeCreate } from '@/types/nursery';
 
-const schema = zod.object({
-  name: zod.string().min(2, { message: 'Fidan türü adı en az 2 karakter olmalıdır.' }),
-});
+const schema = zod.object({ name: zod.string().min(1, { message: 'Fidan yaşı adı gereklidir.' }) });
 
-interface PlantTypeCreateFormProps {
+interface PlantAgeCreateFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function PlantTypeCreateForm({ open, onClose, onSuccess }: PlantTypeCreateFormProps): React.JSX.Element {
+export function PlantAgeCreateForm({ open, onClose, onSuccess }: PlantAgeCreateFormProps): React.JSX.Element {
   const [formError, setFormError] = React.useState<string | null>(null);
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlantTypeCreate>({
+  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlantAgeCreate>({
     resolver: zodResolver(schema),
     defaultValues: { name: '' },
   });
 
-  React.useEffect(() => {
-    if (!open) {
-      reset();
-      setFormError(null);
-    }
-  }, [open, reset]);
+  React.useEffect(() => { if (!open) { reset(); setFormError(null); } }, [open, reset]);
 
-  const onSubmit = React.useCallback(async (values: PlantTypeCreate): Promise<void> => {
+  const onSubmit = React.useCallback(async (values: PlantAgeCreate): Promise<void> => {
     setFormError(null);
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum tokenı bulunamadı.');
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plant-types`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plant-ages`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(values),
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess(); // Başarılı olduğunda ana formu bilgilendir.
+      onSuccess();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }
@@ -68,21 +55,17 @@ export function PlantTypeCreateForm({ open, onClose, onSuccess }: PlantTypeCreat
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Yeni Fidan Türü Ekle</DialogTitle>
+      <DialogTitle>Yeni Fidan Yaşı Ekle</DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <Controller
-                name="name"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth error={Boolean(errors.name)}>
-                    <InputLabel required>Tür Adı</InputLabel>
-                    <OutlinedInput {...field} label="Tür Adı" />
-                    {errors.name && <FormHelperText>{errors.name.message}</FormHelperText>}
-                  </FormControl>
-                )}
-              />
+              <Controller name="name" control={control} render={({ field }) => (
+                <FormControl fullWidth error={Boolean(errors.name)}>
+                  <InputLabel required>Fidan Yaşı</InputLabel>
+                  <OutlinedInput {...field} label="Fidan Yaşı" />
+                  {errors.name && <FormHelperText>{errors.name.message}</FormHelperText>}
+                </FormControl>
+              )} />
               {formError && <Alert severity="error">{formError}</Alert>}
             </Stack>
         </DialogContent>

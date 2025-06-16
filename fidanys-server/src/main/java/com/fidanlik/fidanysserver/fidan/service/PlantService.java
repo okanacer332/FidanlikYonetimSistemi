@@ -20,6 +20,7 @@ public class PlantService {
     private final RootstockRepository rootstockRepository;
     private final PlantSizeRepository plantSizeRepository;
     private final PlantAgeRepository plantAgeRepository;
+
     // private final LandRepository landRepository; // İleride stok için kullanılacak
 
     // Fidan Kimliği Oluşturma

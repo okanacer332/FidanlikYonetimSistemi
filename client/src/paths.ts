@@ -10,15 +10,7 @@ export const paths = {
     integrations: '/dashboard/integrations',
     settings: '/dashboard/settings',
     userManagement: '/dashboard/user-management',
-    // --- YENİ EKLENEN KISIM ---
-    nurseryDefinitions: {
-      list: '/dashboard/nursery-definitions',
-      plantTypes: '/dashboard/nursery-definitions/plant-types',
-      // Diğerlerini daha sonra ekleyeceğiz:
-      // plantVarieties: '/dashboard/nursery-definitions/plant-varieties',
-      // rootstocks: '/dashboard/nursery-definitions/rootstocks', 
-    },
-    // -------------------------
+    plants: '/dashboard/plants',
   },
   errors: { notFound: '/errors/not-found' },
 } as const;
