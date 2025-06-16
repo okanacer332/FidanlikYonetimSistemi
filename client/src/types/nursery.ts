@@ -1,6 +1,15 @@
+// client/src/types/nursery.ts
 // Bu dosya, fidanlık yönetimi ile ilgili tüm frontend tiplerini içerecektir.
 
 // --- Ana Veri Tipleri ---
+
+// Land modeli eklendi
+export interface Land {
+  id: string;
+  name: string;
+  location: string;
+  tenantId: string;
+}
 
 export interface PlantType {
   id: string;
@@ -68,6 +77,7 @@ export interface MasterData {
     rootstocks: Rootstock[];
     plantSizes: PlantSize[];
     plantAges: PlantAge[];
+    lands: Land[]; // Yeni eklendi
 }
 
 // Ana "Fidan Kimliği" (Plant) nesnesi
@@ -78,6 +88,7 @@ export interface Plant {
     rootstock: Rootstock;
     plantSize: PlantSize;
     plantAge: PlantAge;
+    land: Land; // Yeni eklendi
     tenantId: string;
 }
 
@@ -88,4 +99,5 @@ export interface PlantCreateFormValues {
     rootstockId: string;
     plantSizeId: string;
     plantAgeId: string;
+    landId: string; // Yeni eklendi
 }

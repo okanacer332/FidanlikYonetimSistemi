@@ -1,4 +1,4 @@
-// Yeni konum: src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantController.java
+// fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
 import com.fidanlik.fidanysserver.fidan.model.Plant; // Yeni paket yolu

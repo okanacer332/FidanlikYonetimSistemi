@@ -21,6 +21,7 @@ public class MasterDataController {
     private final RootstockService rootstockService;
     private final PlantSizeService plantSizeService;
     private final PlantAgeService plantAgeService;
+    private final LandService landService; // Yeni eklendi
 
     @GetMapping
     public ResponseEntity<MasterDataDTO> getAllMasterData(Authentication authentication) {
@@ -33,6 +34,7 @@ public class MasterDataController {
                 .rootstocks(rootstockService.getAllRootstocksByTenant(tenantId))
                 .plantSizes(plantSizeService.getAllPlantSizesByTenant(tenantId))
                 .plantAges(plantAgeService.getAllPlantAgesByTenant(tenantId))
+                .lands(landService.getAllLandsByTenant(tenantId)) // Yeni eklendi
                 .build();
 
         return ResponseEntity.ok(masterData);

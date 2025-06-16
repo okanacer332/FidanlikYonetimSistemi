@@ -15,4 +15,5 @@ public class MasterDataDTO {
     private List<Rootstock> rootstocks;
     private List<PlantSize> plantSizes;
     private List<PlantAge> plantAges;
+    private List<Land> lands; // Yeni eklendi
 }

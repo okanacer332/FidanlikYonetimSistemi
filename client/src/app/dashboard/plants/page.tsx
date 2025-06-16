@@ -1,3 +1,4 @@
+// client/src/app/dashboard/plants/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -10,10 +11,13 @@ import Alert from '@mui/material/Alert';
 
 import { PlantsTable } from '@/components/dashboard/nursery/plants-table';
 import { PlantCreateForm } from '@/components/dashboard/nursery/plant-create-form';
+import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form'; // Yeni: PlantEditForm importu
 import type { Plant } from '@/types/nursery';
 
 export default function Page(): React.JSX.Element {
     const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
+    const [isEditModalOpen, setEditModalOpen] = React.useState(false); // Yeni: Düzenleme modalı state'i
+    const [selectedPlantToEdit, setSelectedPlantToEdit] = React.useState<Plant | null>(null); // Yeni: Düzenlenecek fidan
     const [plants, setPlants] = React.useState<Plant[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -46,10 +50,47 @@ export default function Page(): React.JSX.Element {
         fetchPlants();
     }, [fetchPlants]);
 
-    const handleSuccess = () => {
+    const handleCreateSuccess = () => {
         setCreateModalOpen(false);
         fetchPlants();
     };
+
+    const handleEditClick = (plant: Plant) => {
+        setSelectedPlantToEdit(plant);
+        setEditModalOpen(true);
+    };
+
+    const handleEditSuccess = () => {
+        setEditModalOpen(false);
+        setSelectedPlantToEdit(null);
+        fetchPlants();
+    };
+
+    const handleEditClose = () => {
+        setEditModalOpen(false);
+        setSelectedPlantToEdit(null);
+    };
+
+    const handleDeletePlant = React.useCallback(async (plantId: string) => {
+        try {
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error('Oturum bulunamadı.');
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants/${plantId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Fidan kimliği silinemedi.');
+            }
+            fetchPlants(); // Silme sonrası listeyi yenile
+        } catch (err) {
+            console.error('Fidan kimliği silme hatası:', err);
+            throw err; // Hatanın PlantsTable'a yayılmasını sağla
+        }
+    }, [fetchPlants]);
 
     return (
         <Stack spacing={3}>
@@ -74,10 +115,17 @@ export default function Page(): React.JSX.Element {
             <PlantCreateForm 
                 open={isCreateModalOpen} 
                 onClose={() => setCreateModalOpen(false)}
-                onSuccess={handleSuccess}
+                onSuccess={handleCreateSuccess}
             /> 
 
-            {loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : <PlantsTable rows={plants} />}
+            <PlantEditForm
+                open={isEditModalOpen}
+                onClose={handleEditClose}
+                onSuccess={handleEditSuccess}
+                plant={selectedPlantToEdit}
+            />
+
+            {loading ? <CircularProgress /> : error ? <Alert severity="error">{error}</Alert> : <PlantsTable rows={plants} onEdit={handleEditClick} onDelete={handleDeletePlant} />}
         </Stack>
     );
 }
