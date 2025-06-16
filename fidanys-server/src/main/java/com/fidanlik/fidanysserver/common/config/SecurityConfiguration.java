@@ -1,14 +1,15 @@
-// Yeni konum: src/main/java/com/fidanlik/fidanysserver/common/config/SecurityConfiguration.java
 package com.fidanlik.fidanysserver.common.config;
 
-import com.fidanlik.fidanysserver.common.security.JwtAuthenticationFilter; // Yeni paket yolu
-import com.fidanlik.fidanysserver.common.security.JwtAuthenticationEntryPoint; // Yeni paket yolu
-import com.fidanlik.fidanysserver.common.security.CustomAccessDeniedHandler; // Yeni paket yolu
+import com.fidanlik.fidanysserver.common.security.JwtAuthenticationFilter;
+import com.fidanlik.fidanysserver.common.security.JwtAuthenticationEntryPoint;
+import com.fidanlik.fidanysserver.common.security.CustomAccessDeniedHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // YENİ IMPORT
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -30,11 +31,14 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                // CSRF korumasını devre dışı bırakmanın modern yolu
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/graphql").permitAll()
+                        // Diğer tüm istekler kimlik doğrulaması gerektirir
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
