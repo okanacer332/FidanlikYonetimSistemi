@@ -34,98 +34,98 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Sadece veritabanı boşsa seed et
-        if (tenantRepository.count() == 0 && userRepository.count() == 0 && roleRepository.count() == 0 && permissionRepository.count() == 0) {
+        if (tenantRepository.count() == 0 && userRepository.count() == 0 && roleRepository.count() == 0 && permissionRepository.count() == 0) { // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             System.out.println("Veritabanı boş, başlangıç verileri seed ediliyor...");
 
             // 1. Tenant Oluştur (Her şirketi temsil eden bir tenant)
             Tenant okanTechTenant = new Tenant();
-            okanTechTenant.setName("okan.fidanys.com");
-            okanTechTenant.setActive(true);
-            okanTechTenant = tenantRepository.save(okanTechTenant);
-            String okanTechTenantId = okanTechTenant.getId();
+            okanTechTenant.setName("okan.fidanys.com"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            okanTechTenant.setActive(true); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            okanTechTenant = tenantRepository.save(okanTechTenant); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            String okanTechTenantId = okanTechTenant.getId(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             System.out.println("Tenant oluşturuldu: " + okanTechTenant.getName() + " (ID: " + okanTechTenantId + ")");
 
 
             // 2. İzinleri Oluştur (Tenant'a özel veya genel olabilir)
-            Permission tumYetkiler = new Permission();
-            tumYetkiler.setName("TUM_YETKILER");
-            tumYetkiler.setDescription("Sistemdeki tüm yetkileri kapsar.");
-            tumYetkiler.setTenantId(okanTechTenantId);
-            tumYetkiler = permissionRepository.save(tumYetkiler);
+            Permission tumYetkiler = new Permission(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            tumYetkiler.setName("TUM_YETKILER"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            tumYetkiler.setDescription("Sistemdeki tüm yetkileri kapsar."); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            tumYetkiler.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            tumYetkiler = permissionRepository.save(tumYetkiler); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
-            Permission kullaniciYonetimi = new Permission();
-            kullaniciYonetimi.setName("KULLANICI_YONETIMI");
-            kullaniciYonetimi.setDescription("Kullanıcıları yönetme yetkisi.");
-            kullaniciYonetimi.setTenantId(okanTechTenantId);
-            kullaniciYonetimi = permissionRepository.save(kullaniciYonetimi);
+            Permission kullaniciYonetimi = new Permission(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            kullaniciYonetimi.setName("KULLANICI_YONETIMI"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            kullaniciYonetimi.setDescription("Kullanıcıları yönetme yetkisi."); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            kullaniciYonetimi.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            kullaniciYonetimi = permissionRepository.save(kullaniciYonetimi); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
-            Permission fidanEkle = new Permission();
-            fidanEkle.setName("FIDAN_EKLE");
-            fidanEkle.setDescription("Yeni fidan ekleme yetkisi.");
-            fidanEkle.setTenantId(okanTechTenantId);
-            fidanEkle = permissionRepository.save(fidanEkle);
+            Permission fidanEkle = new Permission(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            fidanEkle.setName("FIDAN_EKLE"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            fidanEkle.setDescription("Yeni fidan ekleme yetkisi."); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            fidanEkle.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            fidanEkle = permissionRepository.save(fidanEkle); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
             System.out.println("İzinler oluşturuldu.");
 
             // 3. Rolleri Oluştur (Tenant'a özel)
-            Role adminRol = new Role();
-            adminRol.setName("Yönetici");
-            adminRol.setTenantId(okanTechTenantId);
-            adminRol.setPermissions(new HashSet<>(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle))); // Tüm yetkiler
-            adminRol = roleRepository.save(adminRol);
+            Role adminRol = new Role(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            adminRol.setName("Yönetici"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            adminRol.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            adminRol.setPermissions(new HashSet<>(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle))); // Tüm yetkiler // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            adminRol = roleRepository.save(adminRol); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
-            Role satisPersoneliRol = new Role();
-            satisPersoneliRol.setName("Satış Personeli");
-            satisPersoneliRol.setTenantId(okanTechTenantId);
+            Role satisPersoneliRol = new Role(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            satisPersoneliRol.setName("Satış Personeli"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            satisPersoneliRol.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             // Sadece fidan ekleme izni olsun şimdilik
-            satisPersoneliRol.setPermissions(new HashSet<>(Collections.singletonList(fidanEkle)));
-            satisPersoneliRol = roleRepository.save(satisPersoneliRol);
+            satisPersoneliRol.setPermissions(new HashSet<>(Collections.singletonList(fidanEkle))); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            satisPersoneliRol = roleRepository.save(satisPersoneliRol); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
-            Role depoSorumlusuRol = new Role();
-            depoSorumlusuRol.setName("Depo Sorumlusu");
-            depoSorumlusuRol.setTenantId(okanTechTenantId);
-            depoSorumlusuRol.setPermissions(Collections.emptySet()); // Şimdilik boş yetkiler
-            depoSorumlusuRol = roleRepository.save(depoSorumlusuRol);
+            Role depoSorumlusuRol = new Role(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            depoSorumlusuRol.setName("Depo Sorumlusu"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            depoSorumlusuRol.setTenantId(okanTechTenantId); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            depoSorumlusuRol.setPermissions(Collections.emptySet()); // Şimdilik boş yetkiler // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            depoSorumlusuRol = roleRepository.save(depoSorumlusuRol); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 
             System.out.println("Roller oluşturuldu.");
 
             // 4. Kullanıcıları Oluştur (Tenant'a özel)
-            // Yönetici kullanıcı (okan)
+            // Yönetici kullanıcı (admin)
             User adminUser = new User();
-            adminUser.setUsername("okan");
-            adminUser.setEmail("okan@fidanys.com");
-            adminUser.setPassword(passwordEncoder.encode("admin123")); // Şifre hash'leniyor
+            adminUser.setUsername("admin");
+            adminUser.setEmail("admin@fidanys.com");
+            adminUser.setPassword(passwordEncoder.encode("admin")); // Şifre hash'leniyor
             adminUser.setTenantId(okanTechTenantId);
             adminUser.setRoleIds(new HashSet<>(Collections.singletonList(adminRol.getId())));
             userRepository.save(adminUser);
-            System.out.println("Yönetici kullanıcı oluşturuldu: okan");
+            System.out.println("Yönetici kullanıcı oluşturuldu: admin");
 
             // Satış Personeli örneği
             User satisUser = new User();
-            satisUser.setUsername("satis1");
-            satisUser.setEmail("satis1@fidanys.com");
-            satisUser.setPassword(passwordEncoder.encode("satis123"));
+            satisUser.setUsername("satis");
+            satisUser.setEmail("satis@fidanys.com");
+            satisUser.setPassword(passwordEncoder.encode("satis"));
             satisUser.setTenantId(okanTechTenantId);
             satisUser.setRoleIds(new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
             userRepository.save(satisUser);
-            System.out.println("Satış Personeli kullanıcı oluşturuldu: satis1");
+            System.out.println("Satış Personeli kullanıcı oluşturuldu: satis");
 
             // Depo Sorumlusu örneği
             User depoUser = new User();
-            depoUser.setUsername("depo1");
-            depoUser.setEmail("depo1@fidanys.com");
-            depoUser.setPassword(passwordEncoder.encode("depo123"));
+            depoUser.setUsername("depo");
+            depoUser.setEmail("depo@fidanys.com");
+            depoUser.setPassword(passwordEncoder.encode("depo"));
             depoUser.setTenantId(okanTechTenantId);
             depoUser.setRoleIds(new HashSet<>(Collections.singletonList(depoSorumlusuRol.getId())));
             userRepository.save(depoUser);
-            System.out.println("Depo Sorumlusu kullanıcı oluşturuldu: depo1");
+            System.out.println("Depo Sorumlusu kullanıcı oluşturuldu: depo");
 
             System.out.println("-----------------------------------------------------------------");
             System.out.println("Veritabanı başarıyla sıfırlandı ve seed edildi.");
-            System.out.println("Kullanıcılar: okan/admin123, satis1/satis123, depo1/depo123 (Tenant: okan.fidanys.com)");
+            System.out.println("Kullanıcılar: admin/admin, satis/satis, depo/depo (Tenant: okan.fidanys.com)");
             System.out.println("-----------------------------------------------------------------");
-        } else {
-            System.out.println("Veritabanı dolu, seed işlemi atlandı.");
+        } else { // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            System.out.println("Veritabanı dolu, seed işlemi atlandı."); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
         }
     }
 }
