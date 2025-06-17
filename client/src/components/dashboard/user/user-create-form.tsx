@@ -14,8 +14,8 @@ import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
+import Select, { type SelectChangeEvent } from '@mui/material/Select'; // SelectChangeEvent'i doğrudan import et
 import OutlinedInput from '@mui/material/OutlinedInput';
-import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
@@ -186,12 +186,13 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
               name="roleIds"
               control={control}
               render={({ field }) => {
-                // Değerin her zaman bir dizi olduğundan emin oluyoruz.
+                // value prop'u için string[] olmasını garanti et
                 const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
                 return (
                   <FormControl fullWidth error={Boolean(errors.roleIds)}>
                     <InputLabel>Roller</InputLabel>
-                    <Select
+                    {/* Select bileşeninin generic tipini açıkça belirtiyoruz */}
+                    <Select<string[]>
                       multiple
                       label="Roller"
                       disabled={loadingRoles || roles.length === 0}
@@ -199,8 +200,8 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                       name={field.name}
                       onBlur={field.onBlur}
                       ref={field.ref}
-                      onChange={(event: SelectChangeEvent<string[]>) => {
-                        field.onChange(event.target.value);
+                      onChange={(event: SelectChangeEvent<string[]>) => { // event tipini SelectChangeEvent<string[]> olarak belirt
+                        field.onChange(event.target.value); // React Hook Form'a string[] gönder
                         setIsSelectOpen(false);
                       }}
                       renderValue={(selected) => (selected as string[]).map((id) => roles.find((r) => r.id === id)?.name).join(', ')}

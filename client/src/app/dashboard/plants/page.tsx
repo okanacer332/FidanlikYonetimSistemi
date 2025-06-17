@@ -9,10 +9,10 @@ import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
-import { PlantsTable } from '@/components/dashboard/nursery/plants-table';
-import { PlantCreateForm } from '@/components/dashboard/nursery/plant-create-form';
-import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form'; // Yeni: PlantEditForm importu
 import type { Plant } from '@/types/nursery';
+import { PlantCreateForm } from '@/components/dashboard/nursery/plant-create-form';
+import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form';
+import { PlantsTable } from '@/components/dashboard/nursery/plants-table';
 
 export default function Page(): React.JSX.Element {
     const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);

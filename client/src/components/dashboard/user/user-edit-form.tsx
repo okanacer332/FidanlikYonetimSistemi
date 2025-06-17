@@ -12,7 +12,7 @@ import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select'; // SelectChangeEvent'i doğrudan import et
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
@@ -245,7 +245,8 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
                 return (
                   <FormControl fullWidth error={Boolean(errors.roleIds)}>
                     <InputLabel>Roller</InputLabel>
-                    <Select
+                    {/* Select bileşeninin generic tipini açıkça belirtiyoruz */}
+                    <Select<string[]>
                       // field objesinin name, onBlur, ref prop'larını Select bileşenine yay
                       name={field.name}
                       onBlur={field.onBlur}
@@ -259,7 +260,7 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
                       onClose={() => setIsSelectOpen(false)}
                       onOpen={() => setIsSelectOpen(true)}
                       // onChange handler'ını Select bileşeninin beklediği gibi açıkça tanımlıyoruz
-                      onChange={(event: SelectChangeEvent<string[]>) => {
+                      onChange={(event: SelectChangeEvent<string[]>) => { // event tipini SelectChangeEvent<string[]> olarak belirt
                         field.onChange(event.target.value); // React Hook Form'a string[] gönder
                         setIsSelectOpen(false);
                       }}
