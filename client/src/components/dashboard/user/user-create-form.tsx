@@ -185,43 +185,47 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
             <Controller
               name="roleIds"
               control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.roleIds)}>
-                  <InputLabel>Roller</InputLabel>
-                  <Select
-                    multiple
-                    label="Roller"
-                    disabled={loadingRoles || roles.length === 0}
-                    value={field.value} // DÜZELTME: || [] kaldırıldı, defaultValues zaten [] olarak ayarlı.
-                    name={field.name}
-                    onBlur={field.onBlur}
-                    ref={field.ref}
-                    onChange={(event: SelectChangeEvent<string[]>) => {
-                      field.onChange(event.target.value);
-                      setIsSelectOpen(false);
-                    }}
-                    renderValue={(selected) => (selected as string[]).map((id) => roles.find((r) => r.id === id)?.name).join(', ')}
-                    open={isSelectOpen}
-                    onClose={() => setIsSelectOpen(false)}
-                    onOpen={() => setIsSelectOpen(true)}
-                  >
-                    {loadingRoles ? (
-                      <MenuItem disabled>
-                        <CircularProgress size={20} /> Yükleniyor...
-                      </MenuItem>
-                    ) : roles.length === 0 ? (
-                      <MenuItem disabled>Rol bulunamadı.</MenuItem>
-                    ) : (
-                      roles.map((role) => (
-                        <MenuItem key={role.id} value={role.id}>
-                          {role.name}
+              render={({ field }) => {
+                // Değerin her zaman bir dizi olduğundan emin oluyoruz.
+                const selectedValue = field.value || [];
+                return (
+                  <FormControl fullWidth error={Boolean(errors.roleIds)}>
+                    <InputLabel>Roller</InputLabel>
+                    <Select
+                      multiple
+                      label="Roller"
+                      disabled={loadingRoles || roles.length === 0}
+                      value={selectedValue}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      onChange={(event: SelectChangeEvent<string[]>) => {
+                        field.onChange(event.target.value);
+                        setIsSelectOpen(false);
+                      }}
+                      renderValue={(selected) => (selected as string[]).map((id) => roles.find((r) => r.id === id)?.name).join(', ')}
+                      open={isSelectOpen}
+                      onClose={() => setIsSelectOpen(false)}
+                      onOpen={() => setIsSelectOpen(true)}
+                    >
+                      {loadingRoles ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} /> Yükleniyor...
                         </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                  {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
-                </FormControl>
-              )}
+                      ) : roles.length === 0 ? (
+                        <MenuItem disabled>Rol bulunamadı.</MenuItem>
+                      ) : (
+                        roles.map((role) => (
+                          <MenuItem key={role.id} value={role.id}>
+                            {role.name}
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                    {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
+                  </FormControl>
+                );
+              }}
             />
             {formError && <Alert severity="error">{formError}</Alert>}
           </Stack>
