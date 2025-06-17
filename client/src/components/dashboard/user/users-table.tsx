@@ -23,7 +23,7 @@ function noop(): void {
   // do nothing
 }
 
-interface UsersTableProps {
+export interface UsersTableProps {
   count?: number;
   page?: number;
   rows?: User[];
