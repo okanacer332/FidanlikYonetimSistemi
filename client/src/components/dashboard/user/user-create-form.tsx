@@ -138,17 +138,40 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
           }),
         });
 
-        const data = await response.json();
-
+        // --- Hata Yanıtı İşleme Değişikliği Başlangıcı ---
         if (!response.ok) {
+          let errorMessage = 'Kullanıcı oluşturulurken bir hata oluştu.';
+          try {
+            // Yanıtın Content-Type başlığını kontrol et, JSON ise parse etmeye çalış
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+              const errorData = await response.json();
+              errorMessage = errorData.message || errorMessage;
+            } else {
+              // JSON olmayan veya boş yanıtlar için statusText kullan
+              errorMessage = response.statusText || errorMessage;
+            }
+          } catch (jsonParseError) {
+            // JSON ayrıştırma hatası durumunda (örneğin boş yanıt gövdesi)
+            console.error("Hata yanıtı JSON ayrıştırma hatası:", jsonParseError);
+            errorMessage = response.statusText || 'Beklenmedik sunucu yanıtı.';
+          }
+
           if (response.status === 409) {
             setFormError('Bu kullanıcı adı veya e-posta zaten kullanılıyor.');
+          } else if (response.status === 401 || response.status === 403) {
+            setFormError('Bu işlemi yapmaya yetkiniz yok veya oturumunuz sona ermiş.');
           } else {
-            setFormError(data.message || 'Kullanıcı oluşturulurken bir hata oluştu.');
+            setFormError(errorMessage);
           }
           return;
         }
+        // --- Hata Yanıtı İşleme Değişikliği Sonu ---
+        
+        // Başarılı yanıtı JSON olarak ayrıştır
+        const data = await response.json();
 
+        // Başarılı olursa formu sıfırla ve callback'i çağır
         reset();
         onSuccess();
         onClose();
@@ -166,9 +189,9 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
-      <DialogContent dividers sx={{ p: 3 }}> {/* content kısmına daha fazla padding ve divider ekledik */}
+      <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Stack spacing={3} sx={{ mt: 1 }}> {/* inputlar arası boşluğu artırdık */}
+          <Stack spacing={2} sx={{ mt: 2 }}>
             <Controller
               name="username"
               control={control}
@@ -213,14 +236,14 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                     multiple
                     label="Roller"
                     disabled={loadingRoles || roles.length === 0}
-                    value={field.value as string[] || []} // Tipi açıkça belirttik
+                    value={field.value || []}
                     renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
                     open={isSelectOpen}
                     onClose={() => setIsSelectOpen(false)}
                     onOpen={() => setIsSelectOpen(true)}
                     onChange={(event: SelectChangeEvent<string[]>) => {
                       field.onChange(event);
-                      setIsSelectOpen(false);
+                      setIsSelectOpen(false); // Seçim yapıldıktan sonra dropdown'ı manuel olarak kapat
                     }}
                   >
                     {loadingRoles ? (
@@ -241,13 +264,13 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                 </FormControl>
               )}
             />
-            {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>} {/* Hata mesajının üst boşluğunu artırdık */}
+            {formError && <Alert severity="error">{formError}</Alert>}
           </Stack>
         </form>
       </DialogContent>
-      <DialogActions sx={{ p: '16px 24px' }}> {/* Action butonlarının paddingini düzenledik */}
+      <DialogActions>
         <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
-        <Button type="submit" variant="contained" disabled={isSubmitting}>
+        <Button onClick={handleSubmit(onSubmit)} variant="contained" disabled={isSubmitting}>
           {isSubmitting ? <CircularProgress size={24} /> : 'Oluştur'}
         </Button>
       </DialogActions>
