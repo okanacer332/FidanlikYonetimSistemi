@@ -38,7 +38,7 @@ interface UserCreateFormProps {
 }
 
 export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps): React.JSX.Element {
-  const { user: currentUser } = useUser(); // 401 hatasını engellemek için tekrar eklendi.
+  const { user: currentUser } = useUser();
   const [loadingRoles, setLoadingRoles] = React.useState<boolean>(true);
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -89,7 +89,6 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
       }
     };
 
-    // Form açıldığında rolleri çek ve kapanırken formu temizle
     if (open) {
       fetchRoles();
     } else {
@@ -190,7 +189,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                     multiple
                     label="Roller"
                     disabled={loadingRoles || roles.length === 0}
-                    value={field.value}
+                    value={field.value || []} // DÜZELTME: Burası artık her zaman bir dizi olacak.
                     name={field.name}
                     onBlur={field.onBlur}
                     ref={field.ref}
