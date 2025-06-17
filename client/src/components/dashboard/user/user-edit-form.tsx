@@ -117,10 +117,10 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
     // Console logları hata ayıklama için bırakılabilir, testten sonra kaldırılabilir
     console.log('UserEditForm useEffect triggered. Current user prop in useEffect:', user);
     if (user) {
-      console.log('User object in useEffect is defined. user.username:', user.username); // Düzeltildi
+      console.log('User object in useEffect is defined. user.username:', user.username);
       reset({
         id: user.id,
-        username: user.username, // Düzeltme: user.kullaniciAdi yerine user.username
+        username: user.username,
         email: user.email,
         password: '',
         roleIds: user.roles?.map(role => role.id) || [],
@@ -174,7 +174,7 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
           } else if (response.status === 403) {
             setFormError('Bu işlemi yapmaya yetkiniz yok.');
           } else if (response.status === 404) {
-            setFormError('Kullanıcı bulunamadı.');
+            setFormError('Güncellenecek kullanıcı bulunamadı.');
           }
           else {
             setFormError(data.message || 'Kullanıcı güncellenirken bir hata oluştu.');
@@ -238,41 +238,50 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
             <Controller
               name="roleIds"
               control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.roleIds)}>
-                  <InputLabel>Roller</InputLabel>
-                  <Select
-                    {...field}
-                    multiple
-                    label="Roller"
-                    disabled={loadingRoles || roles.length === 0}
-                    value={field.value || []}
-                    renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
-                    open={isSelectOpen}
-                    onClose={() => setIsSelectOpen(false)}
-                    onOpen={() => setIsSelectOpen(true)}
-                    onChange={(event: SelectChangeEvent<string[]>) => {
-                      field.onChange(event);
-                      setIsSelectOpen(false);
-                    }}
-                  >
-                    {loadingRoles ? (
-                      <MenuItem disabled>
-                        <CircularProgress size={20} /> Yükleniyor...
-                      </MenuItem>
-                    ) : roles.length === 0 ? (
-                      <MenuItem disabled>Rol bulunamadı.</MenuItem>
-                    ) : (
-                      roles.map((role) => (
-                        <MenuItem key={role.id} value={role.id}>
-                          {role.name}
+              render={({ field }) => {
+                // value prop'u için string[] olmasını garanti et
+                const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
+
+                return (
+                  <FormControl fullWidth error={Boolean(errors.roleIds)}>
+                    <InputLabel>Roller</InputLabel>
+                    <Select
+                      // field objesinin name, onBlur, ref prop'larını Select bileşenine yay
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      multiple
+                      label="Roller"
+                      disabled={loadingRoles || roles.length === 0}
+                      value={selectedValue} // Doğru tipleme ile value prop'u
+                      renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
+                      open={isSelectOpen}
+                      onClose={() => setIsSelectOpen(false)}
+                      onOpen={() => setIsSelectOpen(true)}
+                      // onChange handler'ını Select bileşeninin beklediği gibi açıkça tanımlıyoruz
+                      onChange={(event: SelectChangeEvent<string[]>) => {
+                        field.onChange(event.target.value); // React Hook Form'a string[] gönder
+                        setIsSelectOpen(false);
+                      }}
+                    >
+                      {loadingRoles ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} /> Yükleniyor...
                         </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                  {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
-                </FormControl>
-              )}
+                      ) : roles.length === 0 ? (
+                        <MenuItem disabled>Rol bulunamadı.</MenuItem>
+                      ) : (
+                        roles.map((role) => (
+                          <MenuItem key={role.id} value={role.id}>
+                            {role.name}
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                    {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
+                  </FormControl>
+                );
+              }}
             />
             {formError && <Alert severity="error">{formError}</Alert>}
           </Stack>
