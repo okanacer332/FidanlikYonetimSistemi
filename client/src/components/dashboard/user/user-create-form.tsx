@@ -231,7 +231,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
               render={({ field }) => (
                 <FormControl fullWidth error={Boolean(errors.roleIds)}>
                   <InputLabel>Roller</InputLabel>
-                  <Select
+                  <Select<string[]> // Select bileşenini string dizisi alacak şekilde tiplendiriyoruz
                     {...field}
                     multiple
                     label="Roller"
@@ -242,7 +242,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                     onClose={() => setIsSelectOpen(false)}
                     onOpen={() => setIsSelectOpen(true)}
                     onChange={(event: SelectChangeEvent<string[]>) => {
-                      field.onChange(event);
+                      field.onChange(event.target.value); // event.target.value'u doğrudan field.onChange'e gönderiyoruz
                       setIsSelectOpen(false); // Seçim yapıldıktan sonra dropdown'ı manuel olarak kapat
                     }}
                   >
