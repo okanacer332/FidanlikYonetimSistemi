@@ -58,9 +58,11 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
   // Rolleri backend'den çekme efekti
   React.useEffect(() => {
     const fetchRoles = async () => {
+      if (!open) return;
+      
       setLoadingRoles(true);
       setFormError(null);
-
+      
       try {
         const token = localStorage.getItem('authToken');
         if (!token) {
@@ -68,16 +70,14 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
         }
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/roles`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'Roller alınırken bir sunucu hatası oluştu.' }));
           throw new Error(errorData.message || 'Roller alınamadı.');
         }
-
+        
         const data: Role[] = await response.json();
         setRoles(data);
       } catch (err) {
@@ -89,12 +89,15 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
       }
     };
 
-    if (open) {
-      fetchRoles();
-    } else {
-      reset({ username: '', email: '', password: '', roleIds: [] });
-      setFormError(null);
-    }
+    fetchRoles();
+
+    // Form kapandığında state'i sıfırla
+    return () => {
+      if (!open) {
+        reset({ username: '', email: '', password: '', roleIds: [] });
+        setFormError(null);
+      }
+    };
   }, [open, reset]);
 
   // Form gönderim fonksiyonu
@@ -189,7 +192,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                     multiple
                     label="Roller"
                     disabled={loadingRoles || roles.length === 0}
-                    value={field.value || []} // DÜZELTME: Burası artık her zaman bir dizi olacak.
+                    value={field.value} // DÜZELTME: || [] kaldırıldı, defaultValues zaten [] olarak ayarlı.
                     name={field.name}
                     onBlur={field.onBlur}
                     ref={field.ref}
@@ -197,7 +200,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                       field.onChange(event.target.value);
                       setIsSelectOpen(false);
                     }}
-                    renderValue={(selected) => selected.map((id) => roles.find((r) => r.id === id)?.name).join(', ')}
+                    renderValue={(selected) => (selected as string[]).map((id) => roles.find((r) => r.id === id)?.name).join(', ')}
                     open={isSelectOpen}
                     onClose={() => setIsSelectOpen(false)}
                     onOpen={() => setIsSelectOpen(true)}
