@@ -43,6 +43,13 @@ export interface PlantVariety {
   tenantId: string;
 }
 
+export interface Warehouse {
+  id: string;
+  name: string;
+  address: string;
+  tenantId: string;
+}
+
 
 // --- Form Değerleri için Tipler ---
 
@@ -100,4 +107,9 @@ export interface PlantCreateFormValues {
     plantSizeId: string;
     plantAgeId: string;
     landId: string; // Yeni eklendi
+}
+
+export interface WarehouseCreate { // BU ARAYÜZÜ EKLEYELİM
+  name: string;
+  address: string;
 }
