@@ -28,7 +28,7 @@ function getTenantNameFromHostname(): string | null {
     // Geliştirme ortamında varsayılan tenant adını döndürelim.
     // Backend'de DataInitializer tarafından oluşturulan tenant adı ile eşleşmeli.
     // DataInitializer'da 'okan.fidanys.com' olarak tanımlanmış.
-    return 'okan.fidanys.com'; // Backend'deki tenant ismi
+    return 'ata.fidanys.com'; // Backend'deki tenant ismi
   }
 
   // Örneğin: okan.fidanys.com -> okan.fidanys.com
