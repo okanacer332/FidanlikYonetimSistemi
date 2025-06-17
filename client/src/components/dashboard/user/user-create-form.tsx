@@ -138,21 +138,18 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
           }),
         });
 
-        // --- Hata Yanıtı İşleme Değişikliği Başlangıcı ---
+        // Hata Yanıtı İşleme Değişikliği Başlangıcı
         if (!response.ok) {
           let errorMessage = 'Kullanıcı oluşturulurken bir hata oluştu.';
           try {
-            // Yanıtın Content-Type başlığını kontrol et, JSON ise parse etmeye çalış
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.indexOf("application/json") !== -1) {
               const errorData = await response.json();
               errorMessage = errorData.message || errorMessage;
             } else {
-              // JSON olmayan veya boş yanıtlar için statusText kullan
               errorMessage = response.statusText || errorMessage;
             }
           } catch (jsonParseError) {
-            // JSON ayrıştırma hatası durumunda (örneğin boş yanıt gövdesi)
             console.error("Hata yanıtı JSON ayrıştırma hatası:", jsonParseError);
             errorMessage = response.statusText || 'Beklenmedik sunucu yanıtı.';
           }
@@ -166,12 +163,10 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
           }
           return;
         }
-        // --- Hata Yanıtı İşleme Değişikliği Sonu ---
+        // Hata Yanıtı İşleme Değişikliği Sonu
         
-        // Başarılı yanıtı JSON olarak ayrıştır
         const data = await response.json();
 
-        // Başarılı olursa formu sıfırla ve callback'i çağır
         reset();
         onSuccess();
         onClose();
@@ -189,9 +184,9 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
-      <DialogContent>
+      <DialogContent dividers sx={{ p: 3 }}>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Stack spacing={2} sx={{ mt: 2 }}>
+          <Stack spacing={3} sx={{ mt: 1 }}>
             <Controller
               name="username"
               control={control}
@@ -228,49 +223,59 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
             <Controller
               name="roleIds"
               control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.roleIds)}>
-                  <InputLabel>Roller</InputLabel>
-                  <Select<string[]> // Select bileşenini string dizisi alacak şekilde tiplendiriyoruz
-                    {...field}
-                    multiple
-                    label="Roller"
-                    disabled={loadingRoles || roles.length === 0}
-                    value={field.value || []}
-                    renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
-                    open={isSelectOpen}
-                    onClose={() => setIsSelectOpen(false)}
-                    onOpen={() => setIsSelectOpen(true)}
-                    onChange={(event: SelectChangeEvent<string[]>) => {
-                      field.onChange(event.target.value); // event.target.value'u doğrudan field.onChange'e gönderiyoruz
-                      setIsSelectOpen(false); // Seçim yapıldıktan sonra dropdown'ı manuel olarak kapat
-                    }}
-                  >
-                    {loadingRoles ? (
-                      <MenuItem disabled>
-                        <CircularProgress size={20} /> Yükleniyor...
-                      </MenuItem>
-                    ) : roles.length === 0 ? (
-                      <MenuItem disabled>Rol bulunamadı.</MenuItem>
-                    ) : (
-                      roles.map((role) => (
-                        <MenuItem key={role.id} value={role.id}>
-                          {role.name}
+              render={({ field }) => {
+                // `SelectChangeEvent`'ten gelen value'nun tipi Select bileşeni multiple ise `string[]` olmalıdır.
+                // TypeScript'e bu alanı açıkça `string[]` olarak belirtiyoruz.
+                const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
+
+                return (
+                  <FormControl fullWidth error={Boolean(errors.roleIds)}>
+                    <InputLabel>Roller</InputLabel>
+                    <Select
+                      // `field.name`, `field.onBlur`, `field.ref` gibi diğer prop'ları yayıyoruz
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      multiple
+                      label="Roller"
+                      disabled={loadingRoles || roles.length === 0}
+                      value={selectedValue} // value prop'unu doğrudan ve doğru tiple gönder
+                      renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
+                      open={isSelectOpen}
+                      onClose={() => setIsSelectOpen(false)}
+                      onOpen={() => setIsSelectOpen(true)}
+                      // onChange handler'ını Select bileşeninin beklediği gibi açıkça tanımlıyoruz
+                      onChange={(event: SelectChangeEvent<string[]>) => {
+                        field.onChange(event.target.value); // React Hook Form'a string[] gönder
+                        setIsSelectOpen(false);
+                      }}
+                    >
+                      {loadingRoles ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} /> Yükleniyor...
                         </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                  {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
-                </FormControl>
-              )}
+                      ) : roles.length === 0 ? (
+                        <MenuItem disabled>Rol bulunamadı.</MenuItem>
+                      ) : (
+                        roles.map((role) => (
+                          <MenuItem key={role.id} value={role.id}>
+                            {role.name}
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                    {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
+                  </FormControl>
+                );
+              }}
             />
-            {formError && <Alert severity="error">{formError}</Alert>}
+            {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>}
           </Stack>
         </form>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ p: '16px 24px' }}>
         <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
-        <Button onClick={handleSubmit(onSubmit)} variant="contained" disabled={isSubmitting}>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
           {isSubmitting ? <CircularProgress size={24} /> : 'Oluştur'}
         </Button>
       </DialogActions>
