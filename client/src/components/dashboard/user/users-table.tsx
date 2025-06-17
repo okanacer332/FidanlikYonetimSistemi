@@ -23,7 +23,7 @@ function noop(): void {
   // do nothing
 }
 
-export interface UsersTableProps {
+interface UsersTableProps {
   count?: number;
   page?: number;
   rows?: User[];
@@ -108,7 +108,7 @@ export function UsersTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1}> {/* Butonları yan yana koymak için Stack ekledik */}
+                    <Stack direction="row" spacing={1} justifyContent="flex-end"> {/* Butonları yan yana koymak için Stack ekledik */}
                         <Button
                             variant="outlined"
                             size="small"
