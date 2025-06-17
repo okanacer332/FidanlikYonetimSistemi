@@ -12,7 +12,7 @@ import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
-import Select, { SelectChangeEvent } from '@mui/material/Select'; // SelectChangeEvent'i de import edin
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
@@ -44,7 +44,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
 
-  const [isSelectOpen, setIsSelectOpen] = React.useState(false); // Select dropdown'ı manuel kontrol etmek için yeni state
+  const [isSelectOpen, setIsSelectOpen] = React.useState(false);
 
   const {
     control,
@@ -166,9 +166,9 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
-      <DialogContent>
+      <DialogContent dividers sx={{ p: 3 }}> {/* content kısmına daha fazla padding ve divider ekledik */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Stack spacing={2} sx={{ mt: 2 }}>
+          <Stack spacing={3} sx={{ mt: 1 }}> {/* inputlar arası boşluğu artırdık */}
             <Controller
               name="username"
               control={control}
@@ -213,15 +213,14 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                     multiple
                     label="Roller"
                     disabled={loadingRoles || roles.length === 0}
-                    value={field.value || []}
+                    value={field.value as string[] || []} // Tipi açıkça belirttik
                     renderValue={(selected) => (selected as string[]).map(id => roles.find(r => r.id === id)?.name).join(', ')}
-                    // Dropdown'ın açık/kapalı durumunu manuel olarak kontrol ediyoruz
                     open={isSelectOpen}
-                    onClose={() => setIsSelectOpen(false)} // Dışarı tıklayınca kapanır
-                    onOpen={() => setIsSelectOpen(true)}   // Açılınca state'i günceller
+                    onClose={() => setIsSelectOpen(false)}
+                    onOpen={() => setIsSelectOpen(true)}
                     onChange={(event: SelectChangeEvent<string[]>) => {
-                      field.onChange(event); // react-hook-form'un onChange'ini çağır
-                      setIsSelectOpen(false); // Seçim yapıldıktan sonra dropdown'ı manuel olarak kapat
+                      field.onChange(event);
+                      setIsSelectOpen(false);
                     }}
                   >
                     {loadingRoles ? (
@@ -242,13 +241,13 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
                 </FormControl>
               )}
             />
-            {formError && <Alert severity="error">{formError}</Alert>}
+            {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>} {/* Hata mesajının üst boşluğunu artırdık */}
           </Stack>
         </form>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ p: '16px 24px' }}> {/* Action butonlarının paddingini düzenledik */}
         <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
-        <Button onClick={handleSubmit(onSubmit)} variant="contained" disabled={isSubmitting}>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
           {isSubmitting ? <CircularProgress size={24} /> : 'Oluştur'}
         </Button>
       </DialogActions>
