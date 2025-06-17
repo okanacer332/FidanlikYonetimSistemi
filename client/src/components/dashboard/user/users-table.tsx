@@ -16,22 +16,30 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { useSelection } from '@/hooks/use-selection';
-import type { User, Role } from '@/types/user';
+import type { Role } from '@/types/user';
 import { useUser } from '@/hooks/use-user';
 
 function noop(): void {
   // do nothing
 }
 
+export interface User {
+  id: string;
+  username: string; // ARTIK 'kullaniciAdi' YERİNE 'username' KULLANILIYOR
+  email: string;
+  roles?: Role[];
+  tenantId: string;
+}
+
 interface UsersTableProps {
   count?: number;
-  page?: number;
   rows?: User[];
+  page?: number;
   rowsPerPage?: number;
   onPageChange?: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onEditUser: (user: User) => void;
-  onDeleteUser: (userId: string) => void; // Yeni prop: Silme butonu için callback
+  onDeleteUser: (userId: string) => void;
 }
 
 export function UsersTable({
@@ -42,7 +50,7 @@ export function UsersTable({
   onPageChange = noop,
   onRowsPerPageChange = noop,
   onEditUser,
-  onDeleteUser, // Yeni prop'u aldık
+  onDeleteUser,
 }: UsersTableProps): React.JSX.Element {
   const rowIds = React.useMemo(() => {
     return rows.map((user) => user.id);
@@ -67,7 +75,7 @@ export function UsersTable({
           </TableHead>
           <TableBody>
             {rows.map((row) => {
-              const isOkanUser = row.username === 'okan';
+              const isOkanUser = row.username === 'okan'; // BURAYI DA 'username' YAPIN!
 
               // Admin: Okan değilse veya Kendi ise ( Okan Admin ise ve Okan değilse ) veya ( Okan Admin değilse ve kendi ise )
               const canEdit = (isCurrentUserAdmin && !isOkanUser) || (!isCurrentUserAdmin && currentUser?.id === row.id);
@@ -91,8 +99,8 @@ export function UsersTable({
                 >
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
-                      <Avatar>{row.username.charAt(0).toUpperCase()}</Avatar>
-                      <Typography variant="subtitle2" sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>{row.username}</Typography>
+                      <Avatar>{row.username.charAt(0).toUpperCase()}</Avatar> {/* BURAYI DA 'username' YAPIN! */}
+                      <Typography variant="subtitle2" sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>{row.username}</Typography> {/* BURAYI DA 'username' YAPIN! */}
                     </Stack>
                   </TableCell>
                   <TableCell sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>
@@ -108,7 +116,7 @@ export function UsersTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1} justifyContent="flex-end"> {/* Butonları yan yana koymak için Stack ekledik */}
+                    <Stack direction="row" spacing={1}>
                         <Button
                             variant="outlined"
                             size="small"
@@ -117,12 +125,12 @@ export function UsersTable({
                         >
                             Düzenle
                         </Button>
-                        {canDelete && ( // Sadece silme yetkisi varsa butonu göster
+                        {canDelete && (
                             <Button
                                 variant="outlined"
-                                color="error" // Kırmızı renk
+                                color="error"
                                 size="small"
-                                onClick={() => onDeleteUser(row.id)} // Tıklanınca silme callback'ini tetikle
+                                onClick={() => onDeleteUser(row.id)}
                             >
                                 Sil
                             </Button>
