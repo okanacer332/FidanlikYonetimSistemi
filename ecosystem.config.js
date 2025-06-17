@@ -30,7 +30,6 @@ module.exports = {
       env: {
         // Gerekirse buraya sunucu için ortam değişkenleri ekleyebilirsiniz.
         // Örneğin: SPRING_PROFILES_ACTIVE: 'prod'
-        // Ancak sizinki application.properties içinde 'dev' olarak ayarlı.
       },
     },
   ],

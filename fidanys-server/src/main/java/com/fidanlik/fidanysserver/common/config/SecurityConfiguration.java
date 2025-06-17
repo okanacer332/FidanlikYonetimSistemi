@@ -1,3 +1,4 @@
+// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/SecurityConfiguration.java
 package com.fidanlik.fidanysserver.common.config;
 
 import com.fidanlik.fidanysserver.common.security.JwtAuthenticationFilter;
@@ -7,9 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity; // YENİ IMPORT
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // YENİ IMPORT
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -21,6 +23,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // BU SATIRI EKLEYELİM
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
@@ -31,14 +34,12 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF korumasını devre dışı bırakmanın modern yolu
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/graphql").permitAll()
-                        // Diğer tüm istekler kimlik doğrulaması gerektirir
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -57,8 +58,8 @@ public class SecurityConfiguration {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
-                "https://ata.fidanys.xyz", // BUNU EKLEYİN (HTTPS)
-                "http://ata.fidanys.xyz"  // BUNU EKLEYİN (HTTP)
+                "https://ata.fidanys.xyz",
+                "http://ata.fidanys.xyz"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Tenant-Id"));
