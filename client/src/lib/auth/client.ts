@@ -36,7 +36,7 @@ function getTenantNameFromHostname(): string | null {
   // Şimdilik hostname'in tamamını veya ilgili kısmını tenant adı olarak alalım.
   // Basitlik adına, eğer subdomain tabanlı bir yapıdaysak ve tenant adı subdomain ise:
   const parts = hostname.split('.');
-  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys' && parts[parts.length - 1] === 'com') {
+  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys' && parts[parts.length - 1] === 'xyz') {
     if (parts[0] !== 'www' && parts[0] !== 'client') { // "client" da Next.js'in hostunda olabilir
       return hostname; // Örn: "okan.fidanys.com"
     }
