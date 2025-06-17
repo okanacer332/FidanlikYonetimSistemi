@@ -15,8 +15,10 @@ import DialogContentText from '@mui/material/DialogContentText'; // DialogConten
 import DialogActions from '@mui/material/DialogActions'; // DialogActions importu
 
 import { UsersTable, User as TableUser } from '@/components/dashboard/user/users-table';
-import { UserCreateForm } from '@/components/dashboard/user/user-create-form.tsx';
-import { UserEditForm } from '@/components/dashboard/user/user-edit-form.tsx';
+import { UserCreateForm } from '@/components/dashboard/user/user-create-form'; // '.tsx' uzantısı kaldırıldı
+import { UserEditForm } from '@/components/dashboard/user/user-edit-form';   // '.tsx' uzantısı kaldırıldı
+
+
 import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
