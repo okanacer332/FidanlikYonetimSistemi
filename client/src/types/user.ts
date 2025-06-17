@@ -8,7 +8,7 @@ export interface Role {
 
 export interface User { // Frontend'de kullanılacak ana User tipi (BackendUser'dan formatlanmış hali)
   id: string;
-  kullaniciAdi: string; // Backend'den gelen 'username' alanına karşılık geliyor
+  username: string; // Backend'den gelen 'username' alanına karşılık geliyor. Burayı güncelledik.
   email: string;
   roles?: Role[]; // Backend'den gelen 'roles' alanına karşılık geliyor
   tenantId: string; // Backend'den gelen 'tenantId' alanı
