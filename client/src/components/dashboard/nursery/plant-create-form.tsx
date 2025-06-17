@@ -21,12 +21,12 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z as zod } from 'zod';
 
 import type { MasterData, PlantCreateFormValues } from '@/types/nursery';
-import { PlantTypeCreateForm } from './plant-type-create-form';
-import { PlantVarietyCreateForm } from './plant-variety-create-form';
-import { RootstockCreateForm } from './rootstock-create-form';
-import { PlantSizeCreateForm } from './plant-size-create-form';
-import { PlantAgeCreateForm } from './plant-age-create-form';
-import { LandCreateForm } from './land-create-form'; // Yeni eklenen LandCreateForm'u import edin
+import { PlantTypeCreateForm } from './plant-type-create-form'; // .tsx uzantısı kaldırıldı
+import { PlantVarietyCreateForm } from './plant-variety-create-form'; // .tsx uzantısı kaldırıldı
+import { RootstockCreateForm } from './rootstock-create-form'; // .tsx uzantısı kaldırıldı
+import { PlantSizeCreateForm } from './plant-size-create-form'; // .tsx uzantısı kaldırıldı
+import { PlantAgeCreateForm } from './plant-age-create-form'; // .tsx uzantısı kaldırıldı
+import { LandCreateForm } from './land-create-form'; // .tsx uzantısı kaldırıldı
 
 const schema = zod.object({
   plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunludur.'),
@@ -34,7 +34,7 @@ const schema = zod.object({
   rootstockId: zod.string().min(1, 'Anaç seçimi zorunludur.'),
   plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
   plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
-  landId: zod.string().min(1, 'Arazi seçimi zorunludur.'), // Yeni eklendi
+  landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
 });
 
 interface PlantCreateFormProps {
@@ -47,17 +47,17 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
   const [masterData, setMasterData] = React.useState<MasterData | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
-  
+
   const [isPlantTypeModalOpen, setPlantTypeModalOpen] = React.useState(false);
   const [isPlantVarietyModalOpen, setPlantVarietyModalOpen] = React.useState(false);
   const [isRootstockModalOpen, setRootstockModalOpen] = React.useState(false);
   const [isPlantSizeModalOpen, setPlantSizeModalOpen] = React.useState(false);
   const [isPlantAgeModalOpen, setPlantAgeModalOpen] = React.useState(false);
-  const [isLandModalOpen, setLandModalOpen] = React.useState(false); // Yeni: Arazi ekleme modalı state'i
+  const [isLandModalOpen, setLandModalOpen] = React.useState(false);
 
   const { control, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<PlantCreateFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { plantTypeId: '', plantVarietyId: '', rootstockId: '', plantSizeId: '', plantAgeId: '', landId: '' }, // landId eklendi
+    defaultValues: { plantTypeId: '', plantVarietyId: '', rootstockId: '', plantSizeId: '', plantAgeId: '', landId: '' },
   });
 
   const selectedValues = useWatch({ control });
@@ -68,12 +68,12 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum tokenı bulunamadı.');
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/master-data`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Ana veriler yüklenemedi.');
-      
+
       const data = await response.json();
       setMasterData(data);
     } catch (err) {
@@ -96,7 +96,7 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
   React.useEffect(() => { if (open) setValue('rootstockId', ''); }, [selectedValues.plantVarietyId, setValue, open]);
   React.useEffect(() => { if (open) setValue('plantSizeId', ''); }, [selectedValues.rootstockId, setValue, open]);
   React.useEffect(() => { if (open) setValue('plantAgeId', ''); }, [selectedValues.plantSizeId, setValue, open]);
-  React.useEffect(() => { if (open) setValue('landId', ''); }, [selectedValues.plantAgeId, setValue, open]); // Yeni: landId resetleme
+  React.useEffect(() => { if (open) setValue('landId', ''); }, [selectedValues.plantAgeId, setValue, open]);
 
 
   const onSubmit = async (values: PlantCreateFormValues) => {
@@ -147,7 +147,7 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
         render={({ field, fieldState: { error } }) => {
           const { onChange, value } = field;
           const selectedOption = options.find(option => option.id === value) || null;
-          
+
           return (
             <Autocomplete
               fullWidth
@@ -196,20 +196,20 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
                 {selectedValues.plantTypeId && (
                   renderAutocompleteWithAdd('plantVarietyId', 'Fidan Çeşidi', filteredVarieties, () => setPlantVarietyModalOpen(true))
                 )}
-                
+
                 {selectedValues.plantVarietyId && (
                   renderAutocompleteWithAdd('rootstockId', 'Anaç', masterData?.rootstocks, () => setRootstockModalOpen(true))
                 )}
-                
+
                 {selectedValues.rootstockId && (
                   renderAutocompleteWithAdd('plantSizeId', 'Fidan Boyu', masterData?.plantSizes, () => setPlantSizeModalOpen(true))
                 )}
-                
+
                 {selectedValues.plantSizeId && (
                   renderAutocompleteWithAdd('plantAgeId', 'Fidan Yaşı', masterData?.plantAges, () => setPlantAgeModalOpen(true))
                 )}
 
-                {selectedValues.plantAgeId && ( // Yeni: Arazi seçimi alanı
+                {selectedValues.plantAgeId && (
                   renderAutocompleteWithAdd('landId', 'Arazi', masterData?.lands, () => setLandModalOpen(true))
                 )}
               </Stack>
@@ -227,8 +227,8 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
       <RootstockCreateForm open={isRootstockModalOpen} onClose={() => setRootstockModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantSizeCreateForm open={isPlantSizeModalOpen} onClose={() => setPlantSizeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantAgeCreateForm open={isPlantAgeModalOpen} onClose={() => setPlantAgeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
-      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId} />
-      <LandCreateForm open={isLandModalOpen} onClose={() => setLandModalOpen(false)} onSuccess={handleMiniModalSuccess} /> {/* Yeni: LandCreateForm modalı*/}
+      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId || ''} /> {/* BURAYI DA GÜNCELLEDİK! */}
+      <LandCreateForm open={isLandModalOpen} onClose={() => setLandModalOpen(false)} onSuccess={handleMiniModalSuccess} />
     </>
   );
 }
