@@ -187,7 +187,7 @@ export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps
               control={control}
               render={({ field }) => {
                 // Değerin her zaman bir dizi olduğundan emin oluyoruz.
-                const selectedValue = field.value || [];
+                const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
                 return (
                   <FormControl fullWidth error={Boolean(errors.roleIds)}>
                     <InputLabel>Roller</InputLabel>
