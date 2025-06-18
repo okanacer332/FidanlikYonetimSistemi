@@ -30,7 +30,8 @@ const schema = zod.object({
 
 type Values = zod.infer<typeof schema>;
 
-const defaultValues = { username: 'admin', password: 'admin' } satisfies Values;
+// Bu satırı güncelliyoruz: defaultValues artık boş olacak
+const defaultValues = { username: '', password: '' } satisfies Values; // username ve password alanları boşaltıldı
 
 export function SignInForm(): React.JSX.Element {
   const router = useRouter();
@@ -89,12 +90,15 @@ export function SignInForm(): React.JSX.Element {
     <Stack spacing={4}>
       <Stack spacing={1}>
         <Typography variant="h4">Giriş Yap</Typography>
+        {/* "Hesabınız yok mu? Kayıt Ol" bloğu buradan kaldırıldı */}
+        {/*
         <Typography color="text.secondary" variant="body2">
           Hesabınız yok mu?{' '}
           <Link component={RouterLink} href={paths.auth.signUp} underline="hover" variant="subtitle2">
             Kayıt Ol
           </Link>
         </Typography>
+        */}
       </Stack>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack spacing={2}>
@@ -102,7 +106,7 @@ export function SignInForm(): React.JSX.Element {
             control={control}
             name="username"
             render={({ field }) => (
-              <FormControl error={Boolean(errors.username)}>
+              <FormControl fullWidth error={Boolean(errors.username)}>
                 <InputLabel>Kullanıcı Adı</InputLabel>
                 <OutlinedInput {...field} label="Kullanıcı Adı" />
                 {errors.username ? <FormHelperText>{errors.username.message}</FormHelperText> : null}
@@ -113,7 +117,7 @@ export function SignInForm(): React.JSX.Element {
             control={control}
             name="password"
             render={({ field }) => (
-              <FormControl error={Boolean(errors.password)}>
+              <FormControl fullWidth error={Boolean(errors.password)}>
                 <InputLabel>Parola</InputLabel>
                 <OutlinedInput
                   {...field}
