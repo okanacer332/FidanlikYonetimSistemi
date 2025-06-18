@@ -1,3 +1,4 @@
+// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 package com.fidanlik.fidanysserver.common.config;
 
 import com.fidanlik.fidanysserver.role.model.Permission;
@@ -10,7 +11,6 @@ import com.fidanlik.fidanysserver.user.repository.UserRepository;
 import com.fidanlik.fidanysserver.tenant.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,6 @@ import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
-// @Profile("dev")  // <-- DİKKAT: Bu satırı kaldırıyoruz! Artık her ortamda çalışacak.
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -33,7 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        // 1. Ana Tenant'ı bul veya oluştur (Idempotent)
+        // Ana Tenant'ı bul veya oluştur. Bu her zaman olmalı.
         Tenant ataTechTenant = tenantRepository.findByName("ata.fidanys.xyz")
                 .orElseGet(() -> {
                     System.out.println("Ana tenant 'ata.fidanys.xyz' bulunamadı, oluşturuluyor...");
@@ -45,11 +44,12 @@ public class DataInitializer implements CommandLineRunner {
 
         String ataTechTenantId = ataTechTenant.getId();
 
-        // 2. Roller ve izinler daha önce oluşturulmamışsa oluştur (Idempotent)
+        // ANA KONTROL: Eğer bu tenant için roller yoksa, her şeyi sıfırdan oluştur.
         if (roleRepository.findAllByTenantId(ataTechTenantId).isEmpty()) {
-            System.out.println("Bu tenant için roller bulunamadı, başlangıç verileri oluşturuluyor...");
+            System.out.println("Bu tenant için roller bulunamadı, başlangıç verileri (İzinler, Roller, Kullanıcılar) oluşturuluyor...");
 
-            // İzinleri Oluştur
+            // --- İzinleri Oluştur ---
+            permissionRepository.deleteAllByTenantId(ataTechTenantId); // Önce eski izinleri temizle (varsa)
             Permission tumYetkiler = permissionRepository.save(createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", ataTechTenantId));
             Permission kullaniciYonetimi = permissionRepository.save(createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", ataTechTenantId));
             Permission fidanEkle = permissionRepository.save(createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", ataTechTenantId));
@@ -59,7 +59,7 @@ public class DataInitializer implements CommandLineRunner {
             Permission siparisSevkiyat = permissionRepository.save(createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", ataTechTenantId));
             System.out.println("İzinler oluşturuldu.");
 
-            // Rolleri Oluştur
+            // --- Rolleri Oluştur ---
             Role adminRol = new Role();
             adminRol.setName("Yönetici");
             adminRol.setTenantId(ataTechTenantId);
@@ -79,20 +79,18 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(depoSorumlusuRol);
             System.out.println("Roller oluşturuldu.");
 
-            // 3. Varsayılan kullanıcılar yoksa oluştur (Idempotent)
-            System.out.println("Varsayılan kullanıcılar kontrol ediliyor...");
-            if (userRepository.findByUsernameAndTenantId("admin", ataTechTenantId).isEmpty()) {
-                createUser("admin", "admin@fidanys.xyz", "admin", ataTechTenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
-                System.out.println("Kullanıcı oluşturuldu: admin");
-            }
-            if (userRepository.findByUsernameAndTenantId("satis", ataTechTenantId).isEmpty()) {
-                createUser("satis", "satis@fidanys.xyz", "satis", ataTechTenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
-                System.out.println("Kullanıcı oluşturuldu: satis");
-            }
-            if (userRepository.findByUsernameAndTenantId("depo", ataTechTenantId).isEmpty()) {
-                createUser("depo", "depo@fidanys.xyz", "depo", ataTechTenantId, new HashSet<>(Collections.singletonList(depoSorumlusuRol.getId())));
-                System.out.println("Kullanıcı oluşturuldu: depo");
-            }
+            // --- Varsayılan Kullanıcıları Oluştur ve Rollere Bağla ---
+            userRepository.deleteAllByTenantId(ataTechTenantId); // Önce eski kullanıcıları temizle
+
+            createUser("admin", "admin@fidanys.xyz", "admin", ataTechTenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
+            System.out.println("Kullanıcı oluşturuldu: admin");
+
+            createUser("satis", "satis@fidanys.xyz", "satis", ataTechTenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
+            System.out.println("Kullanıcı oluşturuldu: satis");
+
+            createUser("depo", "depo@fidanys.xyz", "depo", ataTechTenantId, new HashSet<>(Collections.singletonList(depoSorumlusuRol.getId())));
+            System.out.println("Kullanıcı oluşturuldu: depo");
+
         } else {
             System.out.println("Bu tenant için roller zaten mevcut, veri oluşturma işlemi atlandı.");
         }
