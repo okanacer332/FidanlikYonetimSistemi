@@ -16,7 +16,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/stock")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELI', 'ROLE_DEPO SORUMLUSU')")
+// DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
+@PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
 public class StockController {
 
     private final StockService stockService;

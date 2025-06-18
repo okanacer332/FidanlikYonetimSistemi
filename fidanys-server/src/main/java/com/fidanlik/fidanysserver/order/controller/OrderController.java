@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PutMapping; // Putmapping için eklendi
-import org.springframework.web.bind.annotation.PathVariable; // Pathvariable için eklendi
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -25,7 +25,8 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELI')")
+    // DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
     public ResponseEntity<Order> createOrder(@RequestBody OrderCreateRequest request, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         Order createdOrder = orderService.createOrder(request, authenticatedUser.getId(), authenticatedUser.getTenantId());
@@ -33,7 +34,8 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/status/{newStatus}")
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU', 'ROLE_SATIŞ PERSONELI')")
+    // DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU', 'ROLE_SATIŞ PERSONELİ')")
     public ResponseEntity<Order> updateOrderStatus(@PathVariable String id, @PathVariable Order.OrderStatus newStatus, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         Order updatedOrder = orderService.updateOrderStatus(id, newStatus, authenticatedUser.getId(), authenticatedUser.getTenantId());

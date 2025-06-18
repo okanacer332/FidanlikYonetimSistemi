@@ -1,4 +1,4 @@
-// GÜNCELLENEN DOSYA YOLU: client/src/components/dashboard/warehouse/warehouses-table.tsx
+// Dosya Yolu: client/src/components/dashboard/warehouse/warehouses-table.tsx
 'use client';
 
 import * as React from 'react';
@@ -7,8 +7,9 @@ import type { Warehouse } from '@/types/nursery';
 
 interface WarehousesTableProps {
   rows?: Warehouse[];
-  onEdit: (warehouse: Warehouse) => void;
-  onDelete: (warehouseId: string) => void;
+  // DÜZELTME: Props'ları opsiyonel yaptık.
+  onEdit?: (warehouse: Warehouse) => void;
+  onDelete?: (warehouseId: string) => void;
 }
 
 export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTableProps): React.JSX.Element {
@@ -40,14 +41,18 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
                 <TableCell>{row.address}</TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={1} justifyContent="flex-end">
-                    {/* --- DEĞİŞİKLİK BURADA --- */}
-                    <Button variant="outlined" size="small" onClick={() => onEdit(row)}>
-                      Düzenle
-                    </Button>
-                    <Button variant="outlined" size="small" color="error" onClick={() => onDelete(row.id)}>
-                      Sil
-                    </Button>
-                     {/* --- DEĞİŞİKLİK SONU --- */}
+                    {/* DÜZELTME: Buton sadece onEdit prop'u varsa gösterilecek */}
+                    {onEdit && (
+                      <Button variant="outlined" size="small" onClick={() => onEdit(row)}>
+                        Düzenle
+                      </Button>
+                    )}
+                    {/* DÜZELTME: Buton sadece onDelete prop'u varsa gösterilecek */}
+                    {onDelete && (
+                      <Button variant="outlined" size="small" color="error" onClick={() => onDelete(row.id)}>
+                        Sil
+                      </Button>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>

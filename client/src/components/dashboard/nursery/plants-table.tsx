@@ -1,38 +1,23 @@
-// client/src/components/dashboard/nursery/plants-table.tsx
+// Dosya Yolu: client/src/components/dashboard/nursery/plants-table.tsx
 'use client';
 
 import * as React from 'react';
-import Card from '@mui/material/Card';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
-import Chip from '@mui/material/Chip';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogActions from '@mui/material/DialogActions';
-import Alert from '@mui/material/Alert';
+import {
+  Box, Card, Table, TableBody, TableCell, TableHead, TableRow,
+  Button, Stack, Chip, Typography, Dialog, DialogTitle,
+  DialogContent, DialogContentText, DialogActions, Alert
+} from '@mui/material';
 
 import type { Plant } from '@/types/nursery';
-import { useUser } from '@/hooks/use-user';
 
 interface PlantsTableProps {
   rows?: Plant[];
+  // DÜZELTME: Props'ları opsiyonel yaptık.
   onEdit?: (plant: Plant) => void;
-  onDelete?: (plantId: string) => void; // plantId alacak şekilde güncellendi
+  onDelete?: (plantId: string) => void;
 }
 
 export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): React.JSX.Element {
-  const { user: currentUser } = useUser();
-  const isUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
-
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = React.useState<boolean>(false);
   const [plantToDeleteId, setPlantToDeleteId] = React.useState<string | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
@@ -40,13 +25,13 @@ export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): 
   const handleDeleteClick = (plantId: string) => {
     setPlantToDeleteId(plantId);
     setIsConfirmDeleteOpen(true);
-    setDeleteError(null); // Clear previous errors
+    setDeleteError(null);
   };
 
   const handleConfirmDelete = async () => {
     if (plantToDeleteId && onDelete) {
       try {
-        await onDelete(plantToDeleteId); // Callback'i çağır
+        await onDelete(plantToDeleteId);
         setIsConfirmDeleteOpen(false);
         setPlantToDeleteId(null);
       } catch (err) {
@@ -69,6 +54,9 @@ export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): 
     );
   }
 
+  // DÜZELTME: "İşlemler" sütununun gösterilip gösterilmeyeceğini kontrol edelim.
+  const showActionsColumn = onEdit || onDelete;
+
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
@@ -81,7 +69,8 @@ export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): 
               <TableCell>Boy</TableCell>
               <TableCell>Yaş</TableCell>
               <TableCell>Arazi</TableCell>
-              {isUserAdmin && <TableCell align="right">İşlemler</TableCell>}
+              {/* DÜZELTME: Sütun sadece yetki varsa gösterilecek */}
+              {showActionsColumn && <TableCell align="right">İşlemler</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -97,26 +86,29 @@ export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): 
                   <Chip label={row.plantAge?.name || 'N/A'} size="small" variant="outlined" />
                 </TableCell>
                 <TableCell>{row.land?.name || 'N/A'}</TableCell>
-                {isUserAdmin && (
+                {/* DÜZELTME: Hücre ve butonlar sadece yetki varsa gösterilecek */}
+                {showActionsColumn && (
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => onEdit?.(row)}
-                        disabled={!onEdit}
-                      >
-                        Düzenle
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => handleDeleteClick(row.id)} // Silme butonu
-                        disabled={!onDelete}
-                      >
-                        Sil
-                      </Button>
+                      {onEdit && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => onEdit(row)}
+                        >
+                          Düzenle
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDeleteClick(row.id)}
+                        >
+                          Sil
+                        </Button>
+                      )}
                     </Stack>
                   </TableCell>
                 )}
@@ -126,18 +118,16 @@ export function PlantsTable({ rows = [], onEdit, onDelete }: PlantsTableProps): 
         </Table>
       </Box>
 
-      {/* Silme Onayı Modalı */}
       <Dialog
         open={isConfirmDeleteOpen}
         onClose={handleCloseDeleteConfirm}
         aria-labelledby="confirm-delete-title"
-        aria-describedby="confirm-delete-description"
       >
         <DialogTitle id="confirm-delete-title">
-          {"Fidan Kimliğini Silmek İstediğinize Emin Misiniz?"}
+          Fidan Kimliğini Silmek İstediğinize Emin Misiniz?
         </DialogTitle>
         <DialogContent>
-          <DialogContentText id="confirm-delete-description">
+          <DialogContentText>
             Bu işlem geri alınamaz. Seçilen fidan kimliği kalıcı olarak silinecektir.
           </DialogContentText>
           {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{deleteError}</Alert>}

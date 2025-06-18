@@ -1,16 +1,15 @@
-// fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantController.java
+// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
-import com.fidanlik.fidanysserver.fidan.model.Plant; // Yeni paket yolu
-import com.fidanlik.fidanysserver.fidan.service.PlantService; // Yeni service importu
-import com.fidanlik.fidanysserver.user.model.User; // Yeni paket yolu
+import com.fidanlik.fidanysserver.fidan.model.Plant;
+import com.fidanlik.fidanysserver.fidan.service.PlantService;
+import com.fidanlik.fidanysserver.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -19,80 +18,44 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PlantController {
 
-    private final PlantService plantService; // Repository yerine Service enjekte ettik
+    private final PlantService plantService;
 
-    // Yeni Fidan Kimliği Ekleme
     @PostMapping
-    public ResponseEntity<Plant> createPlant(@RequestBody Plant plant) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    // EKLENDİ: Yetkilendirme kuralı eklendi. Yönetici ve Satış Personeli oluşturabilir.
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
+    public ResponseEntity<Plant> createPlant(@RequestBody Plant plant, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
-
-        if (tenantId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // İş mantığını Service'e devrediyoruz
         Plant savedPlant = plantService.createPlant(plant, tenantId);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedPlant);
     }
 
-    // Tüm Fidan Kimliklerini Listeleme (Tenant bazında)
     @GetMapping
-    public ResponseEntity<List<Plant>> getAllPlantsByTenant() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    // EKLENDİ: Yetkilendirme kuralı eklendi. Tüm yetkili roller listeleyebilir.
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    public ResponseEntity<List<Plant>> getAllPlantsByTenant(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
-
-        if (tenantId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // İş mantığını Service'e devrediyoruz
         List<Plant> plants = plantService.getAllPlantsByTenant(tenantId);
         return ResponseEntity.ok(plants);
     }
 
-    // Fidan Kimliği Güncelleme
     @PutMapping("/{id}")
-    public ResponseEntity<Plant> updatePlant(@PathVariable String id, @RequestBody Plant plant) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    // EKLENDİ: Yetkilendirme kuralı eklendi. Sadece yönetici güncelleyebilir.
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    public ResponseEntity<Plant> updatePlant(@PathVariable String id, @RequestBody Plant plant, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
-
-        if (tenantId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // İş mantığını Service'e devrediyoruz
         Plant updatedPlant = plantService.updatePlant(id, plant, tenantId);
         return ResponseEntity.ok(updatedPlant);
     }
 
-    // Fidan Kimliği Silme
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePlant(@PathVariable String id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    // EKLENDİ: Yetkilendirme kuralı eklendi. Sadece yönetici silebilir.
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    public ResponseEntity<Void> deletePlant(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
-
-        if (tenantId == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // İş mantığını Service'e devrediyoruz
         plantService.deletePlant(id, tenantId);
         return ResponseEntity.noContent().build();
     }

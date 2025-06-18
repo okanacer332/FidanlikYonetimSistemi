@@ -29,7 +29,8 @@ public class WarehouseController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELI', 'ROLE_DEPO SORUMLUSU')")
+    // DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
     public ResponseEntity<List<Warehouse>> getAllWarehouses(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         List<Warehouse> warehouses = warehouseService.getAllWarehousesByTenant(authenticatedUser.getTenantId());
