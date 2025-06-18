@@ -15,7 +15,7 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip'; // Tooltip importu eklendi
+import Tooltip from '@mui/material/Tooltip';
 import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
 import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
@@ -88,32 +88,33 @@ export function SignInForm(): React.JSX.Element {
   );
 
   return (
-    <Stack spacing={1}> {/* Genel spacing'i 2'den 1'e düşürdük */}
+    <Stack spacing={1}>
       {/* Küçük ekranlar için logo */}
       <Box sx={{
-          display: { xs: 'flex', lg: 'none' },
-          justifyContent: 'center',
-          mb: 0.5, // Alt boşluğu 1'den 0.5'e düşürdük
+          // md ve üzeri ekranlarda gizle, aksi takdirde flex (görünür)
+          display: { md: 'none' },
+          justifyContent: 'center', // Logoyu yatayda ortala
+          mb: { xs: 2, sm: 3 }, // Telefon (xs) ve tablet (sm) ekranları için alt boşluk
       }}>
           <Box
             component="img"
             alt="FidanFYS Logo"
             src="/assets/acrtech-fidanfys-logo.png"
             sx={{
-              height: '150px', // Yüksekliği 120px'den 150px'e çıkardık
+              height: { xs: '100px', sm: '120px' }, // Telefon (xs) ve tablet (sm) için yükseklik
               width: 'auto',
-              maxWidth: '400px', // Maksimum genişliği 350px'den 400px'e çıkardık
+              maxWidth: { xs: '250px', sm: '350px' }, // Telefon (xs) ve tablet (sm) için maksimum genişlik
             }}
           />
       </Box>
 
-      <Stack spacing={0.5}> {/* Başlık ve parola unutuldu arasındaki boşluğu azaltıyoruz */}
-        <Typography variant="h4" sx={{ mb: 0.5 }}> {/* Typography'nin alt boşluğunu azaltıyoruz */}
+      <Stack spacing={0.5}>
+        <Typography variant="h4" sx={{ mb: 0.5 }}>
             Giriş Yap
         </Typography>
       </Stack>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack spacing={1}> {/* Form içindeki elemanlar arası boşluğu 1.5'ten 1'e düşürdük */}
+        <Stack spacing={1}>
           <Controller
             control={control}
             name="username"
@@ -160,9 +161,8 @@ export function SignInForm(): React.JSX.Element {
             )}
           />
           <div>
-            {/* Link bileşenini kaldırıp Typography ve Tooltip kullanıyoruz */}
             <Tooltip title="Lütfen AcrTech Ceo Okan Acer'i arayın (0 536 248 7703)" placement="top">
-              <Typography variant="subtitle2" sx={{ cursor: 'default' }}> {/* Cursor'ı default yapıyoruz */}
+              <Typography variant="subtitle2" sx={{ cursor: 'default' }}>
                 Parolanızı mı unuttunuz?
               </Typography>
             </Tooltip>

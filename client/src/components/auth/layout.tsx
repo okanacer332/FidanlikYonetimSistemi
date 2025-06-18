@@ -18,32 +18,42 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <Box
       sx={{
-        display: { xs: 'flex', lg: 'grid' },
+        display: 'grid', // Flex yerine doğrudan grid kullanıyoruz
         gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-        minHeight: '100vh',
-        overflow: 'hidden',
+        minHeight: '100vh', // Sayfanın tüm dikey yüksekliğini kaplamasını sağlar
+        overflow: 'hidden', // Taşan içeriği gizler, kaydırma çubuklarını engeller
       }}
     >
       {/* Sol taraf içeriği (giriş formu) */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}>
-        {/* Sol üstte boşluk bırakan alan */}
-        <Box sx={{ p: 3, pt: { xs: 0, lg: 4 }, pb: { xs: 0, lg: 4 } }}>
-          {/* İçerik yok (logo artık sign-in-form içinde) */}
-        </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: '1 1 auto',
+          // Telefon ve tablet ekranlarında üstteki boşluğu azaltalım
+          pt: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de daha az padding-top
+          pb: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de daha az padding-bottom
+          px: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de yatay padding
+          alignItems: 'center', // İçeriği dikeyde ortalamak için
+          justifyContent: 'center', // İçeriği yatayda ortalamak için
+        }}
+      >
+        {/* Boş üst logo alanı (artık sign-in-form içinde) */}
+        {/* Burada ekstra bir Box bırakmaya gerek yok, padding yukarıdaki Box'tan kontrol ediliyor */}
 
         {/* Ana form içeriği bölümü */}
-        <Box sx={{ alignItems: 'center', display: 'flex', flex: '1 1 auto', justifyContent: 'center', p: { xs: 1, lg: 3 } }}> {/* Küçük ekranlarda (xs) p: 1 yaparak daha az boşluk bırakıyoruz */}
-          <Box sx={{ maxWidth: '450px', width: '100%' }}>{children}</Box>
+        <Box sx={{ maxWidth: '450px', width: '100%' }}>
+            {children}
         </Box>
       </Box>
 
       {/* Sağ taraf içeriği (arka plan görseli) */}
       <Box
         sx={{
+          // Sadece büyük ekranlarda (lg ve üzeri) göster
           display: { xs: 'none', lg: 'flex' },
           alignItems: 'center',
           justifyContent: 'center',
-          flex: '1 1 auto',
           background: 'url(/assets/acrtech-fidanfys-logo.png) no-repeat center center',
           backgroundSize: 'cover',
           backgroundColor: '#090E23',
