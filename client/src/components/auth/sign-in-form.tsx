@@ -14,6 +14,8 @@ import Link from '@mui/material/Link';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip'; // Tooltip importu eklendi
 import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
 import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
@@ -30,8 +32,7 @@ const schema = zod.object({
 
 type Values = zod.infer<typeof schema>;
 
-// Bu satırı güncelliyoruz: defaultValues artık boş olacak
-const defaultValues = { username: '', password: '' } satisfies Values; // username ve password alanları boşaltıldı
+const defaultValues = { username: '', password: '' } satisfies Values;
 
 export function SignInForm(): React.JSX.Element {
   const router = useRouter();
@@ -87,21 +88,32 @@ export function SignInForm(): React.JSX.Element {
   );
 
   return (
-    <Stack spacing={4}>
-      <Stack spacing={1}>
-        <Typography variant="h4">Giriş Yap</Typography>
-        {/* "Hesabınız yok mu? Kayıt Ol" bloğu buradan kaldırıldı */}
-        {/*
-        <Typography color="text.secondary" variant="body2">
-          Hesabınız yok mu?{' '}
-          <Link component={RouterLink} href={paths.auth.signUp} underline="hover" variant="subtitle2">
-            Kayıt Ol
-          </Link>
+    <Stack spacing={1}> {/* Genel spacing'i 2'den 1'e düşürdük */}
+      {/* Küçük ekranlar için logo */}
+      <Box sx={{
+          display: { xs: 'flex', lg: 'none' },
+          justifyContent: 'center',
+          mb: 0.5, // Alt boşluğu 1'den 0.5'e düşürdük
+      }}>
+          <Box
+            component="img"
+            alt="FidanFYS Logo"
+            src="/assets/acrtech-fidanfys-logo.png"
+            sx={{
+              height: '150px', // Yüksekliği 120px'den 150px'e çıkardık
+              width: 'auto',
+              maxWidth: '400px', // Maksimum genişliği 350px'den 400px'e çıkardık
+            }}
+          />
+      </Box>
+
+      <Stack spacing={0.5}> {/* Başlık ve parola unutuldu arasındaki boşluğu azaltıyoruz */}
+        <Typography variant="h4" sx={{ mb: 0.5 }}> {/* Typography'nin alt boşluğunu azaltıyoruz */}
+            Giriş Yap
         </Typography>
-        */}
       </Stack>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack spacing={2}>
+        <Stack spacing={1}> {/* Form içindeki elemanlar arası boşluğu 1.5'ten 1'e düşürdük */}
           <Controller
             control={control}
             name="username"
@@ -148,9 +160,12 @@ export function SignInForm(): React.JSX.Element {
             )}
           />
           <div>
-            <Link component={RouterLink} href={paths.auth.resetPassword} variant="subtitle2">
-              Parolanızı mı unuttunuz?
-            </Link>
+            {/* Link bileşenini kaldırıp Typography ve Tooltip kullanıyoruz */}
+            <Tooltip title="Lütfen AcrTech Ceo Okan Acer'i arayın (0 536 248 7703)" placement="top">
+              <Typography variant="subtitle2" sx={{ cursor: 'default' }}> {/* Cursor'ı default yapıyoruz */}
+                Parolanızı mı unuttunuz?
+              </Typography>
+            </Tooltip>
           </div>
           {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
           {loginError ? <Alert color="error">{loginError}</Alert> : null}
