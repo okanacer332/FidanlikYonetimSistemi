@@ -18,10 +18,10 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <Box
       sx={{
-        display: 'grid', // Flex yerine doğrudan grid kullanıyoruz
+        display: 'grid',
         gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
-        minHeight: '100vh', // Sayfanın tüm dikey yüksekliğini kaplamasını sağlar
-        overflow: 'hidden', // Taşan içeriği gizler, kaydırma çubuklarını engeller
+        minHeight: '100vh',
+        overflow: 'hidden',
       }}
     >
       {/* Sol taraf içeriği (giriş formu) */}
@@ -30,38 +30,32 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           display: 'flex',
           flexDirection: 'column',
           flex: '1 1 auto',
-          // Telefon ve tablet ekranlarında üstteki boşluğu azaltalım
-          pt: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de daha az padding-top
-          pb: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de daha az padding-bottom
-          px: { xs: 2, sm: 3, lg: 0 }, // xs ve sm'de yatay padding
-          alignItems: 'center', // İçeriği dikeyde ortalamak için
-          justifyContent: 'center', // İçeriği yatayda ortalamak için
+          pt: { xs: 2, sm: 3, lg: 0 },
+          pb: { xs: 2, sm: 3, lg: 0 },
+          px: { xs: 2, sm: 3, lg: 0 },
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {/* Boş üst logo alanı (artık sign-in-form içinde) */}
-        {/* Burada ekstra bir Box bırakmaya gerek yok, padding yukarıdaki Box'tan kontrol ediliyor */}
-
-        {/* Ana form içeriği bölümü */}
         <Box sx={{ maxWidth: '450px', width: '100%' }}>
             {children}
         </Box>
       </Box>
 
-      {/* Sağ taraf içeriği (arka plan görseli) */}
+      {/* Sağ taraf içeriği (arka plan görseli) - Yalnızca büyük ekranlarda görünür olacak */}
       <Box
         sx={{
-          // Sadece büyük ekranlarda (lg ve üzeri) göster
-          display: { xs: 'none', lg: 'flex' },
+          display: { xs: 'none', lg: 'flex' }, // Bu kısım değiştirilmedi, çünkü buradaki logo büyük ekrana ait.
           alignItems: 'center',
           justifyContent: 'center',
           background: 'url(/assets/acrtech-fidanfys-logo.png) no-repeat center center',
           backgroundSize: 'cover',
           backgroundColor: '#090E23',
-          color: 'var(--mui-palette-common-white)',
           p: 0,
         }}
       >
         {/* Bu alanda herhangi bir metin veya ekstra logo yok. Arka plan görseli tüm alanı kaplıyor. */}
+        {/* Önceden burada bulunan <DynamicLogo /> kaldırıldı */}
       </Box>
     </Box>
   );

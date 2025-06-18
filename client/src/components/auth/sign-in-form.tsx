@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import RouterLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Alert from '@mui/material/Alert';
@@ -10,12 +9,10 @@ import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
-import Link from '@mui/material/Link';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
 import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
@@ -37,7 +34,7 @@ const defaultValues = { username: '', password: '' } satisfies Values;
 export function SignInForm(): React.JSX.Element {
   const router = useRouter();
   const { checkSession } = useUser();
-  const [showPassword, setShowPassword] = React.useState<boolean>();
+  const [showPassword, setShowPassword] = React.useState<boolean>(false);
   const [isPending, setIsPending] = React.useState<boolean>(false);
   const [loginError, setLoginError] = React.useState<string | null>(null);
 
@@ -88,33 +85,37 @@ export function SignInForm(): React.JSX.Element {
   );
 
   return (
-    <Stack spacing={1}>
+    <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ width: '100%' }}>
       {/* Küçük ekranlar için logo */}
       <Box sx={{
-          // md ve üzeri ekranlarda gizle, aksi takdirde flex (görünür)
-          display: { md: 'none' },
-          justifyContent: 'center', // Logoyu yatayda ortala
-          mb: { xs: 2, sm: 3 }, // Telefon (xs) ve tablet (sm) ekranları için alt boşluk
+          display: { xs: 'flex', lg: 'none' }, // LG (büyük) ekranlarda gizle, XS (küçük) ekranlarda göster
+          width: '100%',
+          justifyContent: 'center',
+          alignItems: 'center',
+          pt: { xs: 2, sm: 3 },
+          pb: { xs: 0, sm: 0 },
       }}>
           <Box
             component="img"
             alt="FidanFYS Logo"
             src="/assets/acrtech-fidanfys-logo.png"
             sx={{
-              height: { xs: '100px', sm: '120px' }, // Telefon (xs) ve tablet (sm) için yükseklik
+              height: { xs: '120px', sm: '150px' },
               width: 'auto',
-              maxWidth: { xs: '250px', sm: '350px' }, // Telefon (xs) ve tablet (sm) için maksimum genişlik
+              maxWidth: { xs: '80%', sm: '70%' },
+              objectFit: 'contain',
             }}
           />
       </Box>
 
-      <Stack spacing={0.5}>
-        <Typography variant="h4" sx={{ mb: 0.5 }}>
-            Giriş Yap
-        </Typography>
-      </Stack>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack spacing={1}>
+      {/* Başlık */}
+      <Typography variant="h5" sx={{ mt: { xs: 0, sm: 0 }, mb: { xs: 1, sm: 2 } }}>
+          Giriş Yap
+      </Typography>
+
+      {/* Giriş Formu */}
+      <form onSubmit={handleSubmit(onSubmit)} style={{ width: '100%' }}>
+        <Stack spacing={2}>
           <Controller
             control={control}
             name="username"
@@ -160,15 +161,12 @@ export function SignInForm(): React.JSX.Element {
               </FormControl>
             )}
           />
-          <div>
-            <Tooltip title="Lütfen AcrTech Ceo Okan Acer'i arayın (0 536 248 7703)" placement="top">
-              <Typography variant="subtitle2" sx={{ cursor: 'default' }}>
-                Parolanızı mı unuttunuz?
-              </Typography>
-            </Tooltip>
-          </div>
+          
+          {/* Hata Mesajları */}
           {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
           {loginError ? <Alert color="error">{loginError}</Alert> : null}
+          
+          {/* Giriş Butonu */}
           <Button disabled={isPending} type="submit" variant="contained">
             Giriş Yap
           </Button>
