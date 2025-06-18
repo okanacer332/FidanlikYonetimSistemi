@@ -9,6 +9,11 @@ import {
 
 import type { Customer } from '@/types/nursery';
 
+// DÜZELTME: noop (hiçbir şey yapmayan) fonksiyon eklendi.
+function noop(): void {
+  // do nothing
+}
+
 interface CustomersTableProps {
   count?: number;
   page?: number;
@@ -16,7 +21,6 @@ interface CustomersTableProps {
   rowsPerPage?: number;
   onPageChange?: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  // DÜZELTME: Props'ları opsiyonel yaptık. Fonksiyon gönderilmezse butonlar render edilmeyecek.
   onEdit?: (customer: Customer) => void;
   onDelete?: (customerId: string) => void;
 }
@@ -26,8 +30,9 @@ export function CustomersTable({
   page = 0,
   rows = [],
   rowsPerPage = 0,
-  onPageChange,
-  onRowsPerPageChange,
+  // DÜZELTME: onPageChange ve onRowsPerPageChange için varsayılan noop fonksiyonları atandı.
+  onPageChange = noop,
+  onRowsPerPageChange = noop,
   onEdit,
   onDelete,
 }: CustomersTableProps): React.JSX.Element {
@@ -60,13 +65,11 @@ export function CustomersTable({
                 <TableCell>{row.address}</TableCell>
                 <TableCell align="right">
                   <Stack direction="row" spacing={1} justifyContent="flex-end">
-                    {/* DÜZELTME: Buton sadece onEdit prop'u varsa gösterilecek */}
                     {onEdit && (
                       <Button variant="outlined" size="small" onClick={() => onEdit(row)}>
                         Düzenle
                       </Button>
                     )}
-                    {/* DÜZELTME: Buton sadece onDelete prop'u varsa gösterilecek */}
                     {onDelete && (
                       <Button variant="outlined" size="small" color="error" onClick={() => onDelete(row.id)}>
                         Sil

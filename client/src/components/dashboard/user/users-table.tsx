@@ -1,4 +1,4 @@
-// client/src/components/dashboard/user/users-table.tsx
+// Dosya Yolu: client/src/components/dashboard/user/users-table.tsx
 'use client';
 
 import * as React from 'react';
@@ -15,17 +15,17 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import { useSelection } from '@/hooks/use-selection';
 import type { Role } from '@/types/user';
 import { useUser } from '@/hooks/use-user';
 
+// DÜZELTME: noop (hiçbir şey yapmayan) fonksiyon eklendi.
 function noop(): void {
   // do nothing
 }
 
 export interface User {
   id: string;
-  username: string; // ARTIK 'kullaniciAdi' YERİNE 'username' KULLANILIYOR
+  username: string;
   email: string;
   roles?: Role[];
   tenantId: string;
@@ -38,8 +38,8 @@ interface UsersTableProps {
   rowsPerPage?: number;
   onPageChange?: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onEditUser: (user: User) => void;
-  onDeleteUser: (userId: string) => void;
+  onEditUser?: (user: User) => void;
+  onDeleteUser?: (userId: string) => void;
 }
 
 export function UsersTable({
@@ -47,18 +47,14 @@ export function UsersTable({
   rows = [],
   page = 0,
   rowsPerPage = 0,
+  // DÜZELTME: onPageChange ve onRowsPerPageChange için varsayılan noop fonksiyonları atandı.
   onPageChange = noop,
   onRowsPerPageChange = noop,
   onEditUser,
   onDeleteUser,
 }: UsersTableProps): React.JSX.Element {
-  const rowIds = React.useMemo(() => {
-    return rows.map((user) => user.id);
-  }, [rows]);
-
-  const { selectAll, deselectAll, selectOne, deselectOne, selected } = useSelection(rowIds);
+  
   const { user: currentUser } = useUser();
-
   const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
 
   return (
@@ -75,15 +71,9 @@ export function UsersTable({
           </TableHead>
           <TableBody>
             {rows.map((row) => {
-              const isOkanUser = row.username === 'okan'; // BURAYI DA 'username' YAPIN!
-
-              // Admin: Okan değilse veya Kendi ise ( Okan Admin ise ve Okan değilse ) veya ( Okan Admin değilse ve kendi ise )
+              const isOkanUser = row.username === 'okan';
               const canEdit = (isCurrentUserAdmin && !isOkanUser) || (!isCurrentUserAdmin && currentUser?.id === row.id);
-
-              // Sadece Adminler silebilir ve Okan kendini silemez
               const canDelete = isCurrentUserAdmin && !isOkanUser;
-
-              const isDimmed = !canEdit && !canDelete; // Hem düzenleme hem silme yapılamıyorsa silik olsun
 
               return (
                 <TableRow
@@ -99,14 +89,12 @@ export function UsersTable({
                 >
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
-                      <Avatar>{row.username.charAt(0).toUpperCase()}</Avatar> {/* BURAYI DA 'username' YAPIN! */}
-                      <Typography variant="subtitle2" sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>{row.username}</Typography> {/* BURAYI DA 'username' YAPIN! */}
+                      <Avatar>{row.username.charAt(0).toUpperCase()}</Avatar>
+                      <Typography variant="subtitle2">{row.username}</Typography>
                     </Stack>
                   </TableCell>
-                  <TableCell sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>
-                    {row.email}
-                  </TableCell>
-                  <TableCell sx={{ ...(isDimmed && { color: 'text.disabled' }) }}>
+                  <TableCell>{row.email}</TableCell>
+                  <TableCell>
                     {isOkanUser && isCurrentUserAdmin ? (
                       <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>Yönetici (Sistem)</Typography>
                     ) : (
@@ -117,15 +105,16 @@ export function UsersTable({
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            disabled={!canEdit}
-                            onClick={() => onEditUser(row)}
-                        >
-                            Düzenle
-                        </Button>
-                        {canDelete && (
+                        {onEditUser && canEdit && (
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => onEditUser(row)}
+                            >
+                                Düzenle
+                            </Button>
+                        )}
+                        {onDeleteUser && canDelete && (
                             <Button
                                 variant="outlined"
                                 color="error"
