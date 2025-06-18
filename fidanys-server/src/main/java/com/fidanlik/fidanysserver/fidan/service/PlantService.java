@@ -161,10 +161,10 @@ public class PlantService {
         plant.setPlantAge(plantAgeOptional.get());
 
         // Land - Yeni eklendi
-        Optional<Land> landOptional = landRepository.findById(plant.getLandId()); // landRepository'yi kullan
+        Optional<Land> landOptional = landRepository.findById(plant.getLandId());
         if (landOptional.isEmpty() || !landOptional.get().getTenantId().equals(tenantId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait arazi.");
         }
-        plant.setLand(landOptional.get()); // Land objesini set et
+        plant.setLand(landOptional.get());
     }
 }

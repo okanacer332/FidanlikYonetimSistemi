@@ -5,7 +5,8 @@ import { paths } from '@/paths';
 export const navItems = [
   { key: 'overview', title: 'Genel Bakış', href: paths.dashboard.overview, icon: 'chart-pie' },
   { key: 'plants', title: 'Fidan Kimlikleri', href: paths.dashboard.plants, icon: 'tree-evergreen' },
-  { key: 'warehouses', title: 'Depo Yönetimi', href: paths.dashboard.warehouses, icon: 'buildings' }, // BU SATIRI EKLEYELİM
+  { key: 'warehouses', title: 'Depo Yönetimi', href: paths.dashboard.warehouses, icon: 'buildings' },
+  { key: 'suppliers', title: 'Tedarikçiler', href: paths.dashboard.suppliers, icon: 'users' }, // BU SATIR EKLENDİ (users ikonu geçici olabilir, daha uygun bir ikon seçilebilir)
   { key: 'customers', title: 'Müşteriler', href: paths.dashboard.customers, icon: 'users' },
   { key: 'user-management', title: 'Kullanıcı Yönetimi', href: paths.dashboard.userManagement, icon: 'users' },
   { key: 'integrations', title: 'Entegrasyonlar', href: paths.dashboard.integrations, icon: 'plugs-connected' },

@@ -37,6 +37,7 @@ const schema = zod.object({
   plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
   plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
   landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
+  // Fiyat alanları kaldırıldı.
 });
 
 interface PlantEditFormProps {
@@ -271,7 +272,7 @@ export function PlantEditForm({ open, onClose, onSuccess, plant }: PlantEditForm
       <RootstockCreateForm open={isRootstockModalOpen} onClose={() => setRootstockModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantSizeCreateForm open={isPlantSizeModalOpen} onClose={() => setPlantSizeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantAgeCreateForm open={isPlantAgeModalOpen} onClose={() => setPlantAgeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
-      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId || ''} /> {/* BURAYI GÜNCELLEDİK! */}
+      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId || ''} />
       <LandCreateForm open={isLandModalOpen} onClose={() => setLandModalOpen(false)} onSuccess={handleMiniModalSuccess} />
     </>
   );

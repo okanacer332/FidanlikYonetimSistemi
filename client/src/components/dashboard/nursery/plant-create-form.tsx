@@ -35,6 +35,7 @@ const schema = zod.object({
   plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
   plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
   landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
+  // Fiyat alanları kaldırıldı.
 });
 
 interface PlantCreateFormProps {

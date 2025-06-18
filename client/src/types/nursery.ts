@@ -50,6 +50,17 @@ export interface Warehouse {
   tenantId: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  tenantId: string;
+}
+
+
 
 // --- Form Değerleri için Tipler ---
 
@@ -97,6 +108,9 @@ export interface Plant {
     plantAge: PlantAge;
     land: Land; // Yeni eklendi
     tenantId: string;
+    // purchasePrice: number; // KALDIRILDI
+    // retailPrice: number;   // KALDIRILDI
+    // wholesalePrice: number; // KALDIRILDI
 }
 
 // Fidan Kimliği oluşturma formu için veri tipi
@@ -107,9 +121,20 @@ export interface PlantCreateFormValues {
     plantSizeId: string;
     plantAgeId: string;
     landId: string; // Yeni eklendi
+    // purchasePrice: number; // KALDIRILDI
+    // retailPrice: number;   // KALDIRILDI
+    // wholesalePrice: number; // KALDIRILDI
 }
 
 export interface WarehouseCreate { // BU ARAYÜZÜ EKLEYELİM
   name: string;
+  address: string;
+}
+
+export interface SupplierCreate {
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
   address: string;
 }

@@ -10,7 +10,8 @@ export const paths = {
     settings: '/dashboard/settings',
     userManagement: '/dashboard/user-management',
     plants: '/dashboard/plants',
-    warehouses: '/dashboard/warehouses', // BU SATIRI EKLEYELİM
+    warehouses: '/dashboard/warehouses',
+    suppliers: '/dashboard/suppliers', // BU SATIR EKLENDİ
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

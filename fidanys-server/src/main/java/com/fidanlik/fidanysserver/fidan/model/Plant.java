@@ -40,4 +40,5 @@ public class Plant {
     private Land land; // Yeni eklendi
 
     private String tenantId;
+
 }
