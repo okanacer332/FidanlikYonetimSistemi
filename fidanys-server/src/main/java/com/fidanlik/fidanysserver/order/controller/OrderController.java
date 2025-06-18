@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping; // Putmapping için eklendi
+import org.springframework.web.bind.annotation.PathVariable; // Pathvariable için eklendi
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -28,5 +30,13 @@ public class OrderController {
         User authenticatedUser = (User) authentication.getPrincipal();
         Order createdOrder = orderService.createOrder(request, authenticatedUser.getId(), authenticatedUser.getTenantId());
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+    }
+
+    @PutMapping("/{id}/status/{newStatus}")
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU', 'ROLE_SATIŞ PERSONELI')")
+    public ResponseEntity<Order> updateOrderStatus(@PathVariable String id, @PathVariable Order.OrderStatus newStatus, Authentication authentication) {
+        User authenticatedUser = (User) authentication.getPrincipal();
+        Order updatedOrder = orderService.updateOrderStatus(id, newStatus, authenticatedUser.getId(), authenticatedUser.getTenantId());
+        return ResponseEntity.ok(updatedOrder);
     }
 }

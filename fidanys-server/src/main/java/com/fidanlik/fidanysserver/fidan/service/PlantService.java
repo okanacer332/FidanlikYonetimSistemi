@@ -21,7 +21,7 @@ public class PlantService {
     private final RootstockRepository rootstockRepository;
     private final PlantSizeRepository plantSizeRepository;
     private final PlantAgeRepository plantAgeRepository;
-    private final LandRepository landRepository; // Yeni eklendi
+    private final LandRepository landRepository;
 
 
     // Fidan Kimliği Oluşturma
@@ -30,9 +30,9 @@ public class PlantService {
         validateAndSetPlantReferences(plant, tenantId);
 
         // 2. Aynı tenant içinde aynı kombinasyonda (Fidan Kimliği) var mı kontrol et
-        if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndLandIdAndTenantId( // 'LandId' eklendi
+        if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndLandIdAndTenantId(
                 plant.getPlantTypeId(), plant.getPlantVarietyId(), plant.getRootstockId(),
-                plant.getPlantSizeId(), plant.getPlantAgeId(), plant.getLandId(), tenantId).isPresent()) { // 'plant.getLandId()' eklendi
+                plant.getPlantSizeId(), plant.getPlantAgeId(), plant.getLandId(), tenantId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu fidan kimliği bu şirkette zaten mevcut.");
         }
 
@@ -50,7 +50,7 @@ public class PlantService {
             rootstockRepository.findById(plant.getRootstockId()).ifPresent(plant::setRootstock);
             plantSizeRepository.findById(plant.getPlantSizeId()).ifPresent(plant::setPlantSize);
             plantAgeRepository.findById(plant.getPlantAgeId()).ifPresent(plant::setPlantAge);
-            landRepository.findById(plant.getLandId()).ifPresent(plant::setLand); // Yeni eklendi
+            landRepository.findById(plant.getLandId()).ifPresent(plant::setLand);
         });
         return plants;
     }
@@ -78,11 +78,11 @@ public class PlantService {
                 !existingPlant.getRootstockId().equals(plant.getRootstockId()) ||
                 !existingPlant.getPlantSizeId().equals(plant.getPlantSizeId()) ||
                 !existingPlant.getPlantAgeId().equals(plant.getPlantAgeId()) ||
-                !existingPlant.getLandId().equals(plant.getLandId())) { // 'landId' karşılaştırması eklendi
+                !existingPlant.getLandId().equals(plant.getLandId())) {
 
-            if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndLandIdAndTenantId( // 'LandId' eklendi
+            if (plantRepository.findByPlantTypeIdAndPlantVarietyIdAndRootstockIdAndPlantSizeIdAndPlantAgeIdAndLandIdAndTenantId(
                     plant.getPlantTypeId(), plant.getPlantVarietyId(), plant.getRootstockId(),
-                    plant.getPlantSizeId(), plant.getPlantAgeId(), plant.getLandId(), tenantId).isPresent()) { // 'plant.getLandId()' eklendi
+                    plant.getPlantSizeId(), plant.getPlantAgeId(), plant.getLandId(), tenantId).isPresent()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu fidan kimliği kombinasyonu bu şirkette zaten mevcut.");
             }
         }
@@ -93,7 +93,7 @@ public class PlantService {
         existingPlant.setRootstockId(plant.getRootstockId());
         existingPlant.setPlantSizeId(plant.getPlantSizeId());
         existingPlant.setPlantAgeId(plant.getPlantAgeId());
-        existingPlant.setLandId(plant.getLandId()); // Yeni eklendi
+        existingPlant.setLandId(plant.getLandId());
 
 
         // DBRef'leri de güncelle
@@ -102,7 +102,7 @@ public class PlantService {
         existingPlant.setRootstock(plant.getRootstock());
         existingPlant.setPlantSize(plant.getPlantSize());
         existingPlant.setPlantAge(plant.getPlantAge());
-        existingPlant.setLand(plant.getLand()); // Yeni eklendi
+        existingPlant.setLand(plant.getLand());
 
         return plantRepository.save(existingPlant);
     }

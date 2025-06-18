@@ -26,6 +26,7 @@ public class StockMovement {
         SALE,          // Satış
         WASTAGE,       // Zayiat
         TRANSFER_IN,   // Depo Transfer Girişi
-        TRANSFER_OUT   // Depo Transfer Çıkışı
+        TRANSFER_OUT,  // Depo Transfer Çıkışı
+        RETURN         // İade (Yeni)
     }
 }

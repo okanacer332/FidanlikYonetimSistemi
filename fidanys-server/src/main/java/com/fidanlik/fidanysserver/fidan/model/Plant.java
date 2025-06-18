@@ -1,4 +1,3 @@
-// fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/model/Plant.java
 package com.fidanlik.fidanysserver.fidan.model;
 
 import lombok.Data;
@@ -9,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Document(collection = "plants")
-@CompoundIndex(def = "{'plantTypeId': 1, 'plantVarietyId': 1, 'rootstockId': 1, 'plantSizeId': 1, 'plantAgeId': 1, 'landId': 1, 'tenantId': 1}", unique = true) // 'landId' eklendi
+@CompoundIndex(def = "{'plantTypeId': 1, 'plantVarietyId': 1, 'rootstockId': 1, 'plantSizeId': 1, 'plantAgeId': 1, 'landId': 1, 'tenantId': 1}", unique = true)
 public class Plant {
     @Id
     private String id;
@@ -19,7 +18,7 @@ public class Plant {
     private String rootstockId;
     private String plantSizeId;
     private String plantAgeId;
-    private String landId; // Yeni eklendi
+    private String landId;
 
     @DBRef
     private PlantType plantType;
@@ -37,7 +36,7 @@ public class Plant {
     private PlantAge plantAge;
 
     @DBRef
-    private Land land; // Yeni eklendi
+    private Land land;
 
     private String tenantId;
 

@@ -1,4 +1,3 @@
-// Yeni konum: src/main/java/com/fidanlik/fidanysserver/role/model/Permission.java
 package com.fidanlik.fidanysserver.role.model;
 
 import lombok.Data;

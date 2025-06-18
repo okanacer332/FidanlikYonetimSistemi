@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/order/model/Order.java
 package com.fidanlik.fidanysserver.order.model;
 
 import lombok.Data;
@@ -22,6 +21,7 @@ public class Order {
     private LocalDateTime orderDate;
     private String userId;
     private String tenantId;
+    private LocalDateTime expectedDeliveryDate; // Yeni eklendi
 
     public enum OrderStatus {
         PREPARING, SHIPPED, DELIVERED, CANCELED
