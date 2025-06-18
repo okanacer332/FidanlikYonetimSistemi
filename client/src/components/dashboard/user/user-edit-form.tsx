@@ -1,4 +1,3 @@
-// Dosya Yolu: client/src/components/dashboard/user/user-edit-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -25,6 +24,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { useUser } from '@/hooks/use-user';
 
+// Role ve UserType interface'lerini doğrudan bu dosyada tanımlayalım
+// Bu, diğer dosyalardaki export'larla çakışmayı önler
 interface Role {
   id: string;
   name: string;
@@ -34,7 +35,8 @@ interface UserType {
   id: string;
   username: string;
   email: string;
-  roles: Role[];
+  // DÜZELTME: 'roles' özelliğini opsiyonel (?) yaptık.
+  roles?: Role[];
 }
 
 const schema = zod.object({
@@ -54,12 +56,11 @@ interface UserEditFormProps {
 }
 
 export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormProps): React.JSX.Element {
-  const { user: currentUser } = useUser(); // MEVCUT GİRİŞ YAPAN KULLANICIYI AL
+  const { user: currentUser } = useUser();
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [loadingRoles, setLoadingRoles] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
 
-  // YETKİ KONTROLÜ: Mevcut kullanıcı yönetici mi?
   const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
 
   const defaultValues = React.useMemo(() => ({
@@ -80,7 +81,12 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
     async function fetchRoles() {
       try {
         setLoadingRoles(true);
-        const response = await fetch('/api/v1/roles');
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error("Oturum bulunamadı.");
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/roles`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (!response.ok) throw new Error('Roller yüklenemedi.');
         const data = await response.json();
         setRoles(data);
@@ -90,16 +96,25 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
         setLoadingRoles(false);
       }
     }
-    fetchRoles();
-  }, []);
+    if (open) {
+        fetchRoles();
+    }
+  }, [open]);
 
   React.useEffect(() => {
-    reset(defaultValues);
+    if (user) {
+        reset(defaultValues);
+    }
   }, [user, reset, defaultValues]);
 
   const onSubmit = async (values: Values): Promise<void> => {
     setFormError(null);
+    if (!user) return;
+
     try {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error("Oturum bulunamadı.");
+
       const payload: any = {
         username: values.username,
         email: values.email,
@@ -110,9 +125,9 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
         payload.password = values.password;
       }
       
-      const response = await fetch(`/api/v1/users/${user?.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
 
@@ -133,47 +148,37 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 2 }}>
-            <Controller name="username" control={control} render={({ field }) => <TextField {...field} label="Kullanıcı Adı" error={Boolean(errors.username)} helperText={errors.username?.message} />} />
-            <Controller name="email" control={control} render={({ field }) => <TextField {...field} label="E-posta" type="email" error={Boolean(errors.email)} helperText={errors.email?.message} />} />
-            <Controller name="password" control={control} render={({ field }) => <TextField {...field} label="Yeni Şifre (isteğe bağlı)" type="password" error={Boolean(errors.password)} helperText={errors.password?.message} />} />
+            <Controller name="username" control={control} render={({ field }) => <TextField {...field} label="Kullanıcı Adı" error={Boolean(errors.username)} helperText={errors.username?.message} fullWidth />} />
+            <Controller name="email" control={control} render={({ field }) => <TextField {...field} label="E-posta" type="email" error={Boolean(errors.email)} helperText={errors.email?.message} fullWidth />} />
+            <Controller name="password" control={control} render={({ field }) => <TextField {...field} label="Yeni Şifre (değişmeyecekse boş bırakın)" type="password" error={Boolean(errors.password)} helperText={errors.password?.message} fullWidth />} />
             <Controller
               name="roleIds"
               control={control}
-              render={({ field }) => {
-                const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
-                return (
+              render={({ field }) => (
                   <FormControl fullWidth error={Boolean(errors.roleIds)}>
                     <InputLabel>Roller</InputLabel>
                     <Select<string[]>
                       multiple
                       label="Roller"
-                      // DÜZELTME: Sadece yönetici ise rol seçimi aktif olsun
-                      disabled={loadingRoles || roles.length === 0 || !isCurrentUserAdmin}
-                      value={selectedValue}
+                      disabled={loadingRoles || !isCurrentUserAdmin}
+                      value={field.value}
                       onChange={(event: SelectChangeEvent<string[]>) => field.onChange(event.target.value)}
                       input={<OutlinedInput label="Roller" />}
                       renderValue={(selected) =>
                         roles.filter(r => selected.includes(r.id)).map(r => r.name).join(', ')
                       }
                     >
-                      {loadingRoles ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} />
-                        </MenuItem>
-                      ) : (
-                        roles.map((role) => (
+                      {roles.map((role) => (
                           <MenuItem key={role.id} value={role.id}>
-                            <Checkbox checked={selectedValue.indexOf(role.id) > -1} />
+                            <Checkbox checked={field.value.indexOf(role.id) > -1} />
                             <ListItemText primary={role.name} />
                           </MenuItem>
-                        ))
-                      )}
+                        ))}
                     </Select>
-                    {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
+                    {errors.roleIds && <FormHelperText>{errors.roleIds.message}</FormHelperText>}
                     {!isCurrentUserAdmin && <FormHelperText>Rolleri sadece yöneticiler değiştirebilir.</FormHelperText>}
                   </FormControl>
-                );
-              }}
+              )}
             />
             {formError && <Alert severity="error">{formError}</Alert>}
           </Stack>
