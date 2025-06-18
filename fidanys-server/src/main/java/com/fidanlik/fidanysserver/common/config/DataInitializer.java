@@ -39,7 +39,7 @@ public class DataInitializer implements CommandLineRunner {
 
             // 1. Tenant Oluştur (Her şirketi temsil eden bir tenant)
             Tenant ataTechTenant = new Tenant();
-            ataTechTenant.setName("ata.fidanys.com"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
+            ataTechTenant.setName("ata.fidanys.xyz"); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             ataTechTenant.setActive(true); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             ataTechTenant = tenantRepository.save(ataTechTenant); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
             String ataTechTenantId = ataTechTenant.getId(); // cite: okanacer332/fidanlikyonetimsistemi/FidanlikYonetimSistemi-b05dc3c506dcd752b5ff3386df5bb12e988492da/fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
