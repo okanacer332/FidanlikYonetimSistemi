@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/common/config/DataInitializer.java
 package com.fidanlik.fidanysserver.common.config;
 
 import com.fidanlik.fidanysserver.role.model.Permission;
@@ -32,7 +31,6 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        // Ana Tenant'ı bul veya oluştur. Bu her zaman olmalı.
         Tenant ataTechTenant = tenantRepository.findByName("ata.fidanys.xyz")
                 .orElseGet(() -> {
                     System.out.println("Ana tenant 'ata.fidanys.xyz' bulunamadı, oluşturuluyor...");
@@ -44,19 +42,19 @@ public class DataInitializer implements CommandLineRunner {
 
         String ataTechTenantId = ataTechTenant.getId();
 
-        // ANA KONTROL: Eğer bu tenant için roller yoksa, her şeyi sıfırdan oluştur.
+        // ANA KONTROL: Eğer bu tenant için roller yoksa, tüm başlangıç verisini oluştur.
         if (roleRepository.findAllByTenantId(ataTechTenantId).isEmpty()) {
             System.out.println("Bu tenant için roller bulunamadı, başlangıç verileri (İzinler, Roller, Kullanıcılar) oluşturuluyor...");
 
             // --- İzinleri Oluştur ---
-            permissionRepository.deleteAllByTenantId(ataTechTenantId); // Önce eski izinleri temizle (varsa)
-            Permission tumYetkiler = permissionRepository.save(createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", ataTechTenantId));
-            Permission kullaniciYonetimi = permissionRepository.save(createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", ataTechTenantId));
-            Permission fidanEkle = permissionRepository.save(createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", ataTechTenantId));
-            Permission stokGoruntuleme = permissionRepository.save(createPermission("STOK_GORUNTULEME", "Stok durumunu görüntüleme yetkisi.", ataTechTenantId));
-            Permission siparisOlusturma = permissionRepository.save(createPermission("SIPARIS_OLUSTURMA", "Yeni sipariş oluşturma yetkisi.", ataTechTenantId));
-            Permission malKabulOlusturma = permissionRepository.save(createPermission("MAL_KABUL_OLUSTURMA", "Mal kabul kaydı oluşturma yetkisi.", ataTechTenantId));
-            Permission siparisSevkiyat = permissionRepository.save(createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", ataTechTenantId));
+            Permission tumYetkiler = createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", ataTechTenantId);
+            Permission kullaniciYonetimi = createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", ataTechTenantId);
+            Permission fidanEkle = createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", ataTechTenantId);
+            Permission stokGoruntuleme = createPermission("STOK_GORUNTULEME", "Stok durumunu görüntüleme yetkisi.", ataTechTenantId);
+            Permission siparisOlusturma = createPermission("SIPARIS_OLUSTURMA", "Yeni sipariş oluşturma yetkisi.", ataTechTenantId);
+            Permission malKabulOlusturma = createPermission("MAL_KABUL_OLUSTURMA", "Mal kabul kaydı oluşturma yetkisi.", ataTechTenantId);
+            Permission siparisSevkiyat = createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", ataTechTenantId);
+            permissionRepository.saveAll(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat));
             System.out.println("İzinler oluşturuldu.");
 
             // --- Rolleri Oluştur ---
@@ -80,8 +78,6 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Roller oluşturuldu.");
 
             // --- Varsayılan Kullanıcıları Oluştur ve Rollere Bağla ---
-            userRepository.deleteAllByTenantId(ataTechTenantId); // Önce eski kullanıcıları temizle
-
             createUser("admin", "admin@fidanys.xyz", "admin", ataTechTenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
             System.out.println("Kullanıcı oluşturuldu: admin");
 
@@ -92,7 +88,7 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Kullanıcı oluşturuldu: depo");
 
         } else {
-            System.out.println("Bu tenant için roller zaten mevcut, veri oluşturma işlemi atlandı.");
+            System.out.println("Varsayılan roller zaten mevcut, veri oluşturma işlemi atlandı.");
         }
     }
 
@@ -106,12 +102,15 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createUser(String username, String email, String password, String tenantId, Set<String> roleIds) {
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setTenantId(tenantId);
-        user.setRoleIds(roleIds);
-        userRepository.save(user);
+        // Kullanıcı zaten var mı diye kontrol et, eğer varsa tekrar oluşturma.
+        if (userRepository.findByUsernameAndTenantId(username, tenantId).isEmpty()) {
+            User user = new User();
+            user.setUsername(username);
+            user.setEmail(email);
+            user.setPassword(passwordEncoder.encode(password));
+            user.setTenantId(tenantId);
+            user.setRoleIds(roleIds);
+            userRepository.save(user);
+        }
     }
 }
