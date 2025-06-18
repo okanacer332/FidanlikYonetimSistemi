@@ -128,3 +128,23 @@ export interface SupplierCreate {
   email?: string;
   address: string;
 }
+
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  companyName?: string; // Şirket adı opsiyonel olabilir
+  phone: string;
+  email: string;
+  address: string; // Backend'deki gibi tek string olarak
+  tenantId: string;
+}
+
+export interface CustomerCreate {
+  firstName: string;
+  lastName: string;
+  companyName?: string;
+  phone: string;
+  email: string;
+  address: string;
+}

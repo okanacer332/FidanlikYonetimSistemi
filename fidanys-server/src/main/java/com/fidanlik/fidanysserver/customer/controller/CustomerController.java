@@ -16,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/customers")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELI')")
+@PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ_PERSONELI')")
 public class CustomerController {
 
     private final CustomerService customerService;
@@ -37,5 +37,20 @@ public class CustomerController {
     public ResponseEntity<Customer> getCustomerById(@PathVariable String id, Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(customerService.getCustomerById(id, user.getTenantId()));
+    }
+
+    @PutMapping("/{id}") // BU METOT EKLENDİ
+    public ResponseEntity<Customer> updateCustomer(@PathVariable String id, @RequestBody Customer customerDetails, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        Customer updatedCustomer = customerService.updateCustomer(id, customerDetails, user.getTenantId());
+        return ResponseEntity.ok(updatedCustomer);
+    }
+
+    @DeleteMapping("/{id}") // BU METOT EKLENDİ
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')") // Silme için sadece YÖNETİCİ yetkisi
+    public ResponseEntity<Void> deleteCustomer(@PathVariable String id, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        customerService.deleteCustomer(id, user.getTenantId());
+        return ResponseEntity.noContent().build();
     }
 }

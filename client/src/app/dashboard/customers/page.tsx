@@ -1,151 +1,205 @@
+// client/src/app/dashboard/customers/page.tsx
+'use client';
+
 import * as React from 'react';
-import type { Metadata } from 'next';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { DownloadIcon } from '@phosphor-icons/react/dist/ssr/Download';
-import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
-import { UploadIcon } from '@phosphor-icons/react/dist/ssr/Upload';
-import dayjs from 'dayjs';
+import { Button, Stack, Typography, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Plus as PlusIcon } from '@phosphor-icons/react';
 
-import { config } from '@/config';
-import { CustomersFilters } from '@/components/dashboard/customer/customers-filters';
 import { CustomersTable } from '@/components/dashboard/customer/customers-table';
-import type { Customer } from '@/components/dashboard/customer/customers-table';
-
-export const metadata = { title: `Customers | Dashboard | ${config.site.name}` } satisfies Metadata;
-
-const customers = [
-  {
-    id: 'USR-010',
-    name: 'Alcides Antonio',
-    avatar: '/assets/avatar-10.png',
-    email: 'alcides.antonio@devias.io',
-    phone: '908-691-3242',
-    address: { city: 'Madrid', country: 'Spain', state: 'Comunidad de Madrid', street: '4158 Hedge Street' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-009',
-    name: 'Marcus Finn',
-    avatar: '/assets/avatar-9.png',
-    email: 'marcus.finn@devias.io',
-    phone: '415-907-2647',
-    address: { city: 'Carson City', country: 'USA', state: 'Nevada', street: '2188 Armbrester Drive' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-008',
-    name: 'Jie Yan',
-    avatar: '/assets/avatar-8.png',
-    email: 'jie.yan.song@devias.io',
-    phone: '770-635-2682',
-    address: { city: 'North Canton', country: 'USA', state: 'Ohio', street: '4894 Lakeland Park Drive' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-007',
-    name: 'Nasimiyu Danai',
-    avatar: '/assets/avatar-7.png',
-    email: 'nasimiyu.danai@devias.io',
-    phone: '801-301-7894',
-    address: { city: 'Salt Lake City', country: 'USA', state: 'Utah', street: '368 Lamberts Branch Road' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-006',
-    name: 'Iulia Albu',
-    avatar: '/assets/avatar-6.png',
-    email: 'iulia.albu@devias.io',
-    phone: '313-812-8947',
-    address: { city: 'Murray', country: 'USA', state: 'Utah', street: '3934 Wildrose Lane' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-005',
-    name: 'Fran Perez',
-    avatar: '/assets/avatar-5.png',
-    email: 'fran.perez@devias.io',
-    phone: '712-351-5711',
-    address: { city: 'Atlanta', country: 'USA', state: 'Georgia', street: '1865 Pleasant Hill Road' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-
-  {
-    id: 'USR-004',
-    name: 'Penjani Inyene',
-    avatar: '/assets/avatar-4.png',
-    email: 'penjani.inyene@devias.io',
-    phone: '858-602-3409',
-    address: { city: 'Berkeley', country: 'USA', state: 'California', street: '317 Angus Road' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-003',
-    name: 'Carson Darrin',
-    avatar: '/assets/avatar-3.png',
-    email: 'carson.darrin@devias.io',
-    phone: '304-428-3097',
-    address: { city: 'Cleveland', country: 'USA', state: 'Ohio', street: '2849 Fulton Street' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-002',
-    name: 'Siegbert Gottfried',
-    avatar: '/assets/avatar-2.png',
-    email: 'siegbert.gottfried@devias.io',
-    phone: '702-661-1654',
-    address: { city: 'Los Angeles', country: 'USA', state: 'California', street: '1798 Hickory Ridge Drive' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-  {
-    id: 'USR-001',
-    name: 'Miron Vitold',
-    avatar: '/assets/avatar-1.png',
-    email: 'miron.vitold@devias.io',
-    phone: '972-333-4106',
-    address: { city: 'San Diego', country: 'USA', state: 'California', street: '75247' },
-    createdAt: dayjs().subtract(2, 'hours').toDate(),
-  },
-] satisfies Customer[];
+import { CustomerCreateForm } from '@/components/dashboard/customer/customer-create-form';
+import { CustomerEditForm } from '@/components/dashboard/customer/customer-edit-form'; // Eklendi
+import type { Customer } from '@/types/nursery'; // Güncellenen Customer tipi
+import { useUser } from '@/hooks/use-user'; // Yetkilendirme için User hook'unu import edin
 
 export default function Page(): React.JSX.Element {
-  const page = 0;
-  const rowsPerPage = 5;
+  const { user: currentUser } = useUser();
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [page, setPage] = React.useState<number>(0); // Sayfalama için
+  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10); // Sayfalama için
+  const [totalCustomers, setTotalCustomers] = React.useState<number>(0); // Sayfalama için
 
-  const paginatedCustomers = applyPagination(customers, page, rowsPerPage);
+  // Modal state'leri
+  const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
+  const [isEditModalOpen, setEditModalOpen] = React.useState(false); // Eklendi
+  const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false); // Eklendi
+  
+  // İşlem yapılacak öğe state'leri
+  const [itemToEdit, setItemToEdit] = React.useState<Customer | null>(null); // Eklendi
+  const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null); // Eklendi
 
-  return (
-    <Stack spacing={3}>
-      <Stack direction="row" spacing={3}>
-        <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-          <Typography variant="h4">Customers</Typography>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Button color="inherit" startIcon={<UploadIcon fontSize="var(--icon-fontSize-md)" />}>
-              Import
-            </Button>
-            <Button color="inherit" startIcon={<DownloadIcon fontSize="var(--icon-fontSize-md)" />}>
-              Export
-            </Button>
-          </Stack>
-        </Stack>
-        <div>
-          <Button startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
-            Add
-          </Button>
-        </div>
-      </Stack>
-      <CustomersFilters />
-      <CustomersTable
-        count={paginatedCustomers.length}
-        page={page}
-        rows={paginatedCustomers}
-        rowsPerPage={rowsPerPage}
-      />
-    </Stack>
+  // Yetki kontrolü
+  const canManageCustomers = currentUser?.roles?.some(role => 
+    role.name === 'Yönetici' || role.name === 'Satış Personeli'
   );
-}
+  const canDeleteCustomers = currentUser?.roles?.some(role => 
+    role.name === 'Yönetici'
+  );
 
-function applyPagination(rows: Customer[], page: number, rowsPerPage: number): Customer[] {
-  return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const fetchCustomers = React.useCallback(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+          const token = localStorage.getItem('authToken');
+          if (!token) throw new Error('Oturum bulunamadı.');
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
+              headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.message || 'Müşteriler yüklenemedi.');
+          }
+          const data = await response.json();
+          setCustomers(data);
+          setTotalCustomers(data.length); // Toplam müşteri sayısını ayarla
+      } catch (err) {
+          setError(err instanceof Error ? err.message : 'Bir hata oluştu.');
+      } finally {
+          setLoading(false);
+      }
+  }, []);
+
+  React.useEffect(() => {
+      if (canManageCustomers) { // Sadece yetkili kullanıcılar veriyi çekebilir
+          fetchCustomers();
+      } else {
+          setLoading(false);
+          setError('Müşteri listeleme yetkiniz bulunmamaktadır.');
+      }
+  }, [fetchCustomers, canManageCustomers]);
+
+  // Sayfalama handler'ları
+  const handlePageChange = React.useCallback((event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleRowsPerPageChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
+
+  // ---- Create Handlers ----
+  const handleCreateSuccess = () => {
+      setCreateModalOpen(false);
+      fetchCustomers();
+  };
+  
+  // ---- Edit Handlers ----
+  const handleEditClick = (customer: Customer) => {
+      setItemToEdit(customer);
+      setEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+      setEditModalOpen(false);
+      setItemToEdit(null);
+      fetchCustomers();
+  };
+
+  // ---- Delete Handlers ----
+  const handleDeleteClick = (customerId: string) => {
+      setItemToDeleteId(customerId);
+      setConfirmDeleteOpen(true);
+  };
+  
+  const handleConfirmDelete = async () => {
+      if (!itemToDeleteId) return;
+      setError(null);
+      try {
+          const token = localStorage.getItem('authToken');
+          if (!token) throw new Error('Oturum bulunamadı.');
+          
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers/${itemToDeleteId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+               const errData = await response.json();
+               throw new Error(errData.message || 'Müşteri silinemedi.');
+          }
+          
+          setConfirmDeleteOpen(false);
+          setItemToDeleteId(null);
+          fetchCustomers();
+      } catch (err) {
+          setError(err instanceof Error ? err.message : 'Silme işlemi sırasında bir hata oluştu.');
+          setConfirmDeleteOpen(false); // Hata durumunda da modalı kapat
+      }
+  };
+
+  const paginatedCustomers = React.useMemo(() => {
+    return customers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [customers, page, rowsPerPage]);
+      
+  return (
+      <Stack spacing={3}>
+          <Stack direction="row" spacing={3}>
+              <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
+                  <Typography variant="h4">Müşteriler</Typography>
+              </Stack>
+              <div>
+                  {canManageCustomers && (
+                      <Button
+                          startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
+                          variant="contained"
+                          onClick={() => setCreateModalOpen(true)}
+                      >
+                          Yeni Müşteri Ekle
+                      </Button>
+                  )}
+              </div>
+          </Stack>
+
+          {loading ? (
+              <Stack sx={{ alignItems: 'center', mt: 3 }}><CircularProgress /></Stack>
+          ) : error ? (
+              <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+          ) : (
+              <CustomersTable 
+                  count={totalCustomers}
+                  page={page}
+                  rows={paginatedCustomers}
+                  rowsPerPage={rowsPerPage}
+                  onPageChange={handlePageChange}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  onEdit={canManageCustomers ? handleEditClick : () => {}} // Yetki yoksa düzenlemeyi devre dışı bırak
+                  onDelete={canDeleteCustomers ? handleDeleteClick : () => {}} // Yetki yoksa silmeyi devre dışı bırak
+              />
+          )}
+          
+          {canManageCustomers && (
+              <CustomerCreateForm 
+                  open={isCreateModalOpen} 
+                  onClose={() => setCreateModalOpen(false)}
+                  onSuccess={handleCreateSuccess}
+              /> 
+          )}
+          
+          {canManageCustomers && (
+              <CustomerEditForm
+                  open={isEditModalOpen}
+                  onClose={() => setEditModalOpen(false)}
+                  onSuccess={handleEditSuccess}
+                  customer={itemToEdit}
+              />
+          )}
+
+          <Dialog open={isConfirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
+              <DialogTitle>Müşteriyi Silmek İstediğinize Emin Misiniz?</DialogTitle>
+              <DialogContent>
+                  <DialogContentText>
+                      Bu işlem geri alınamaz. Müşteri kalıcı olarak silinecektir.
+                  </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                  <Button onClick={() => setConfirmDeleteOpen(false)}>İptal</Button>
+                  <Button onClick={handleConfirmDelete} color="error">Sil</Button>
+              </DialogActions>
+          </Dialog>
+      </Stack>
+  );
 }
