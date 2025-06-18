@@ -1,67 +1,58 @@
-// Yeni konum: src/main/java/com/fidanlik/fidanysserver/common/security/UserDetailsServiceImpl.java
-package com.fidanlik.fidanysserver.common.security; // PAKET YOLUNU BU ŞEKİLDE DÜZELTİN
+package com.fidanlik.fidanysserver.common.security;
 
-import com.fidanlik.fidanysserver.user.model.User; // Yeni paket yolu
-import com.fidanlik.fidanysserver.role.repository.RoleRepository; // Yeni paket yolu
-import com.fidanlik.fidanysserver.user.repository.UserRepository; // Yeni paket yolu
+import com.fidanlik.fidanysserver.role.model.Role;
+import com.fidanlik.fidanysserver.role.repository.RoleRepository;
+import com.fidanlik.fidanysserver.user.model.User;
+import com.fidanlik.fidanysserver.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.Optional; // Optional importu
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UserDetailsServiceImpl implements UserDetailsService, TenantAwareUserDetailsService { // TenantAwareUserDetailsService'i implement ettik
+// DÜZELTME: Hem UserDetailsService'i hem de TenantAwareUserDetailsService'i tekrar implemente ediyoruz.
+public class UserDetailsServiceImpl implements UserDetailsService, TenantAwareUserDetailsService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Bu metod standart UserDetailsService arayüzünden gelir ve tenantId alamaz.
-        // Bu yüzden burada genel bir hata fırlatabiliriz veya varsayılan bir tenantId ile deneme yapabiliriz.
-        // Ancak bu multi-tenant uygulamalar için ideal değildir.
-        // AuthenticationProvider'ımız loadUserByUsernameAndTenantId metodumuzu çağıracak.
-        throw new UnsupportedOperationException("Tenant ID olmadan kullanıcı doğrulama desteklenmiyor. Lütfen TenantAwareAuthenticationProvider kullanın.");
+        // Bu metot, standart Spring arayüzü için gereklidir ancak bizim tenant'lı yapımızda
+        // doğrudan kullanılmamalıdır. Bu yüzden hata fırlatması doğrudur.
+        throw new UnsupportedOperationException("Tenant ID olmadan kullanıcı doğrulama desteklenmiyor.");
     }
 
-    @Override // TenantAwareUserDetailsService arayüzünden gelen metod
+    @Override
+    @Transactional(readOnly = true)
+    // DÜZELTME: TenantAuthenticationProvider tarafından kullanılan bu metodu geri ekliyoruz.
     public UserDetails loadUserByUsernameAndTenantId(String username, String tenantId) throws UsernameNotFoundException {
         User user = userRepository.findByUsernameAndTenantId(username, tenantId)
                 .orElseThrow(() -> new UsernameNotFoundException("Kullanıcı bulunamadı veya yanlış şirket kimliği: " + username));
 
-        // Kullanıcının rollerini doldur
-        Set<GrantedAuthority> authorities;
+        // Kullanıcının rollerini veritabanından çekip User nesnesine ekliyoruz.
+        // Bu, getAuthorities() metodunun doğru çalışması için kritik öneme sahiptir.
         if (user.getRoleIds() != null && !user.getRoleIds().isEmpty()) {
-            // Roller DBRef olduğu için manuel dolduralım
-            Set<com.fidanlik.fidanysserver.role.model.Role> roles = user.getRoleIds().stream()
+            Set<Role> roles = user.getRoleIds().stream()
                     .map(roleRepository::findById)
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toSet());
-            user.setRoles(roles); // User objesinin roles alanını doldur
-
-            authorities = roles.stream()
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
-                    .collect(Collectors.toSet());
+            user.setRoles(roles);
         } else {
-            authorities = Collections.emptySet();
-            user.setRoles(Collections.emptySet()); // Roles alanını boş set et
+            user.setRoles(Collections.emptySet());
         }
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                authorities
-        );
+        // Bizim User modelimiz zaten UserDetails'i implemente ettiği için,
+        // onu doğrudan döndürebiliriz.
+        return user;
     }
 }
