@@ -43,7 +43,7 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
       slotProps={{ paper: { sx: { width: '240px' } } }}
     >
       <Box sx={{ p: '16px 20px ' }}>
-        <Typography variant="subtitle1">{user?.kullaniciAdi || 'Kullanıcı'}</Typography>
+        <Typography variant="subtitle1">{user?.username || 'Kullanıcı'}</Typography> {/* Burası güncellendi */}
         <Typography color="text.secondary" variant="body2">
           {user?.email || ''}
         </Typography>

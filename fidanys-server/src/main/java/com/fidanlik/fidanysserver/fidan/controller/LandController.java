@@ -1,12 +1,12 @@
-// Yeni konum: src/main/java/com/fidanlik/fidanysserver/fidan/controller/LandController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
-import com.fidanlik.fidanysserver.fidan.model.Land; // Yeni paket yolu
-import com.fidanlik.fidanysserver.fidan.service.LandService; // Yeni service importu
-import com.fidanlik.fidanysserver.user.model.User; // Yeni paket yolu
+import com.fidanlik.fidanysserver.fidan.model.Land;
+import com.fidanlik.fidanysserver.fidan.service.LandService;
+import com.fidanlik.fidanysserver.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize; // Ekledik
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -19,10 +19,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LandController {
 
-    private final LandService landService; // Repository yerine Service enjekte ettik
+    private final LandService landService;
 
-    // Arazi Ekleme
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')") // Sadece yönetici oluşturabilir
     public ResponseEntity<Land> createLand(@RequestBody Land land) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
@@ -39,8 +39,8 @@ public class LandController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedLand);
     }
 
-    // Tüm Arazileri Listeleme (Tenant bazında)
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELI', 'ROLE_DEPO SORUMLUSU')") // BURASI DEĞİŞTİ
     public ResponseEntity<List<Land>> getAllLandsByTenant() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
@@ -57,8 +57,8 @@ public class LandController {
         return ResponseEntity.ok(lands);
     }
 
-    // Arazi Güncelleme
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')") // Sadece yönetici güncelleyebilir
     public ResponseEntity<Land> updateLand(@PathVariable String id, @RequestBody Land land) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
@@ -75,8 +75,8 @@ public class LandController {
         return ResponseEntity.ok(updatedLand);
     }
 
-    // Arazi Silme
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')") // Sadece yönetici silebilir
     public ResponseEntity<Void> deleteLand(@PathVariable String id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {

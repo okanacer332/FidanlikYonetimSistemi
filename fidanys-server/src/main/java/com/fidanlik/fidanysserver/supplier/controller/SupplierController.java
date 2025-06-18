@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/supplier/controller/SupplierController.java
 package com.fidanlik.fidanysserver.supplier.controller;
 
 import com.fidanlik.fidanysserver.user.model.User;
@@ -29,7 +28,7 @@ public class SupplierController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU', 'ROLE_SATIŞ PERSONELI')") // BURASI DEĞİŞTİ
     public ResponseEntity<List<Supplier>> getAllSuppliers(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         List<Supplier> suppliers = supplierService.getAllSuppliersByTenant(authenticatedUser.getTenantId());

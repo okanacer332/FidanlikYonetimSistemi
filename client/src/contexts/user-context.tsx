@@ -13,7 +13,7 @@ export interface Role {
 
 export interface User { // Frontend'de kullanılacak User tipi
   id: string;
-  kullaniciAdi: string; // Backend'den gelen 'username' alanına karşılık geliyor
+  username: string; // Backend'den gelen 'username' alanına karşılık geliyor
   email: string;
   roles?: Role[]; // Backend'den gelen 'roles' alanına karşılık geliyor
   tenantId?: string; // Backend'den gelen 'tenantId' alanına karşılık geliyor
@@ -51,7 +51,7 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
           // Backend'den gelen BackendUser tipini frontend'deki User tipine dönüştür
           const formattedUser: User = {
             id: data.id,
-            kullaniciAdi: data.username,
+            username: data.username, // Burası güncellendi
             email: data.email,
             roles: data.roles || [], // Eğer roles yoksa boş array ata
             tenantId: data.tenantId,

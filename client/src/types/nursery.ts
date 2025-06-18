@@ -53,7 +53,7 @@ export interface Supplier {
   name: string;
   contactPerson: string;
   phone: string;
-  email: string;
+  email?: string;
   address: string;
   tenantId: string;
 }
@@ -147,4 +147,39 @@ export interface CustomerCreate {
   phone: string;
   email: string;
   address: string;
+}
+
+export interface OrderItemDto { // OrderItemDto buraya taşındı ve salePrice eklendi
+  plantId: string;
+  quantity: number;
+  salePrice?: number; // Fidanın satış fiyatı, isteğe bağlı çünkü manuel girilecek veya tekliften gelecek
+}
+
+export interface OrderCreateRequest { // OrderCreateRequest buraya taşındı ve expectedDeliveryDate eklendi
+  customerId: string;
+  warehouseId: string;
+  deliveryAddress?: string; // İsteğe bağlı
+  items: OrderItemDto[];
+  expectedDeliveryDate?: string; // ISO 8601 string formatında teslim tarihi
+}
+
+export enum OrderStatus {
+  PREPARING = 'PREPARING',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELED = 'CANCELED',
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  warehouseId: string;
+  items: OrderItemDto[]; // Backend'deki OrderItem'a benzer, salePrice içerecek
+  totalAmount: number;
+  status: OrderStatus;
+  orderDate: string; // ISO 8601 string formatında
+  userId: string;
+  tenantId: string;
+  expectedDeliveryDate?: string; // ISO 8601 string formatında
 }

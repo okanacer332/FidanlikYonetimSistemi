@@ -21,12 +21,12 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z as zod } from 'zod';
 
 import type { MasterData, PlantCreateFormValues } from '@/types/nursery';
-import { PlantTypeCreateForm } from './plant-type-create-form'; // .tsx uzantısı kaldırıldı
-import { PlantVarietyCreateForm } from './plant-variety-create-form'; // .tsx uzantısı kaldırıldı
-import { RootstockCreateForm } from './rootstock-create-form'; // .tsx uzantısı kaldırıldı
-import { PlantSizeCreateForm } from './plant-size-create-form'; // .tsx uzantısı kaldırıldı
-import { PlantAgeCreateForm } from './plant-age-create-form'; // .tsx uzantısı kaldırıldı
-import { LandCreateForm } from './land-create-form'; // .tsx uzantısı kaldırıldı
+import { PlantTypeCreateForm } from './plant-type-create-form';
+import { PlantVarietyCreateForm } from './plant-variety-create-form';
+import { RootstockCreateForm } from './rootstock-create-form';
+import { PlantSizeCreateForm } from './plant-size-create-form';
+import { PlantAgeCreateForm } from './plant-age-create-form';
+import { LandCreateForm } from './land-create-form';
 
 const schema = zod.object({
   plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunludur.'),
@@ -35,7 +35,6 @@ const schema = zod.object({
   plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
   plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
   landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
-  // Fiyat alanları kaldırıldı.
 });
 
 interface PlantCreateFormProps {
@@ -206,7 +205,7 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
                   renderAutocompleteWithAdd('plantSizeId', 'Fidan Boyu', masterData?.plantSizes, () => setPlantSizeModalOpen(true))
                 )}
 
-                {selectedValues.plantSizeId && (
+                {selectedValues.rootstockId && (
                   renderAutocompleteWithAdd('plantAgeId', 'Fidan Yaşı', masterData?.plantAges, () => setPlantAgeModalOpen(true))
                 )}
 
@@ -228,7 +227,7 @@ export function PlantCreateForm({ open, onClose, onSuccess }: PlantCreateFormPro
       <RootstockCreateForm open={isRootstockModalOpen} onClose={() => setRootstockModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantSizeCreateForm open={isPlantSizeModalOpen} onClose={() => setPlantSizeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
       <PlantAgeCreateForm open={isPlantAgeModalOpen} onClose={() => setPlantAgeModalOpen(false)} onSuccess={handleMiniModalSuccess} />
-      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId || ''} /> {/* BURAYI DA GÜNCELLEDİK! */}
+      <PlantVarietyCreateForm open={isPlantVarietyModalOpen} onClose={() => setPlantVarietyModalOpen(false)} onSuccess={handleMiniModalSuccess} plantTypeId={selectedValues.plantTypeId || ''} />
       <LandCreateForm open={isLandModalOpen} onClose={() => setLandModalOpen(false)} onSuccess={handleMiniModalSuccess} />
     </>
   );

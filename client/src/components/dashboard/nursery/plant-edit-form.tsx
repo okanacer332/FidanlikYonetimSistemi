@@ -37,7 +37,6 @@ const schema = zod.object({
   plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
   plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
   landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
-  // Fiyat alanları kaldırıldı.
 });
 
 interface PlantEditFormProps {
@@ -250,7 +249,7 @@ export function PlantEditForm({ open, onClose, onSuccess, plant }: PlantEditForm
                   renderAutocompleteWithAdd('plantSizeId', 'Fidan Boyu', masterData?.plantSizes, () => setPlantSizeModalOpen(true))
                 )}
                 
-                {selectedValues.plantSizeId && (
+                {selectedValues.rootstockId && (
                   renderAutocompleteWithAdd('plantAgeId', 'Fidan Yaşı', masterData?.plantAges, () => setPlantAgeModalOpen(true))
                 )}
 

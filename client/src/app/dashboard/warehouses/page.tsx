@@ -7,10 +7,12 @@ import { Plus as PlusIcon } from '@phosphor-icons/react';
 
 import { WarehousesTable } from '@/components/dashboard/warehouse/warehouses-table';
 import { WarehouseCreateForm } from '@/components/dashboard/warehouse/warehouse-create-form';
-import { WarehouseEditForm } from '@/components/dashboard/warehouse/warehouse-edit-form'; // DÜZENLEME FORMU IMPORT EDİLDİ
+import { WarehouseEditForm } from '@/components/dashboard/warehouse/warehouse-edit-form';
 import type { Warehouse } from '@/types/nursery';
+import { useUser } from '@/hooks/use-user'; // useUser hook'unu import ettik
 
 export default function Page(): React.JSX.Element {
+    const { user: currentUser } = useUser(); // currentUser bilgisini alıyoruz
     const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -23,6 +25,19 @@ export default function Page(): React.JSX.Element {
     // İşlem yapılacak öğe state'leri
     const [itemToEdit, setItemToEdit] = React.useState<Warehouse | null>(null);
     const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
+
+    // Yetki kontrolü
+    const canListWarehouses = currentUser?.roles?.some(role =>
+      role.name === 'Yönetici' || role.name === 'Depo Sorumlusu' || role.name === 'Satış Personeli'
+    );
+    // Sadece Yönetici depo oluşturma, düzenleme ve silme yetkisine sahip
+    const canManageWarehouses = currentUser?.roles?.some(role =>
+      role.name === 'Yönetici'
+    );
+    const canDeleteWarehouses = currentUser?.roles?.some(role =>
+      role.name === 'Yönetici'
+    );
+
 
     const fetchWarehouses = React.useCallback(async () => {
         setLoading(true);
@@ -49,8 +64,13 @@ export default function Page(): React.JSX.Element {
     }, []);
 
     React.useEffect(() => {
-        fetchWarehouses();
-    }, [fetchWarehouses]);
+        if (canListWarehouses) { // Sadece listeleme yetkisi olanlar veriyi çekebilsin
+            fetchWarehouses();
+        } else {
+            setLoading(false);
+            setError('Depo listeleme yetkiniz bulunmamaktadır.');
+        }
+    }, [fetchWarehouses, canListWarehouses]);
 
     // ---- Create Handlers ----
     const handleCreateSuccess = () => {
@@ -98,7 +118,7 @@ export default function Page(): React.JSX.Element {
             fetchWarehouses();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Silme işlemi sırasında bir hata oluştu.');
-            setConfirmDeleteOpen(false); // Hata durumunda da modalı kapat
+            setConfirmDeleteOpen(false);
         }
     };
     
@@ -109,37 +129,48 @@ export default function Page(): React.JSX.Element {
                     <Typography variant="h4">Depo Yönetimi</Typography>
                 </Stack>
                 <div>
-                    <Button
-                        startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
-                        variant="contained"
-                        onClick={() => setCreateModalOpen(true)}
-                    >
-                        Yeni Depo Ekle
-                    </Button>
+                    {canManageWarehouses && ( // Sadece Yönetici ekleme butonu görebilsin
+                        <Button
+                            startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
+                            variant="contained"
+                            onClick={() => setCreateModalOpen(true)}
+                        >
+                            Yeni Depo Ekle
+                        </Button>
+                    )}
                 </div>
             </Stack>
 
             {loading ? (
                 <Stack sx={{ alignItems: 'center', mt: 3 }}><CircularProgress /></Stack>
+            ) : error ? (
+                <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
             ) : (
-                <WarehousesTable rows={warehouses} onEdit={handleEditClick} onDelete={handleDeleteClick} />
+                <WarehousesTable
+                    rows={warehouses}
+                    // Sadece Yönetici düzenleme butonu görebilsin
+                    onEdit={canManageWarehouses ? handleEditClick : () => { /* noop */ }}
+                    // Sadece Yönetici silme butonu görebilsin
+                    onDelete={canDeleteWarehouses ? handleDeleteClick : () => { /* noop */ }}
+                />
             )}
             
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-
-
-            <WarehouseCreateForm 
-                open={isCreateModalOpen} 
-                onClose={() => setCreateModalOpen(false)}
-                onSuccess={handleCreateSuccess}
-            /> 
+            {canManageWarehouses && ( // Sadece Yönetici formu açabilsin
+                <WarehouseCreateForm
+                    open={isCreateModalOpen}
+                    onClose={() => setCreateModalOpen(false)}
+                    onSuccess={handleCreateSuccess}
+                />
+            )}
             
-            <WarehouseEditForm
-                open={isEditModalOpen}
-                onClose={() => setEditModalOpen(false)}
-                onSuccess={handleEditSuccess}
-                warehouse={itemToEdit}
-            />
+            {canManageWarehouses && ( // Sadece Yönetici formu açabilsin
+                <WarehouseEditForm
+                    open={isEditModalOpen}
+                    onClose={() => setEditModalOpen(false)}
+                    onSuccess={handleEditSuccess}
+                    warehouse={itemToEdit}
+                />
+            )}
 
             <Dialog open={isConfirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
                 <DialogTitle>Depoyu Silmek İstediğinize Emin Misiniz?</DialogTitle>

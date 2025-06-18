@@ -7,33 +7,38 @@ import { Plus as PlusIcon } from '@phosphor-icons/react';
 
 import { CustomersTable } from '@/components/dashboard/customer/customers-table';
 import { CustomerCreateForm } from '@/components/dashboard/customer/customer-create-form';
-import { CustomerEditForm } from '@/components/dashboard/customer/customer-edit-form'; // Eklendi
-import type { Customer } from '@/types/nursery'; // Güncellenen Customer tipi
-import { useUser } from '@/hooks/use-user'; // Yetkilendirme için User hook'unu import edin
+import { CustomerEditForm } from '@/components/dashboard/customer/customer-edit-form';
+import type { Customer } from '@/types/nursery';
+import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
   const { user: currentUser } = useUser();
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [page, setPage] = React.useState<number>(0); // Sayfalama için
-  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10); // Sayfalama için
-  const [totalCustomers, setTotalCustomers] = React.useState<number>(0); // Sayfalama için
+  const [page, setPage] = React.useState<number>(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
+  const [totalCustomers, setTotalCustomers] = React.useState<number>(0);
 
   // Modal state'leri
   const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
-  const [isEditModalOpen, setEditModalOpen] = React.useState(false); // Eklendi
-  const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false); // Eklendi
+  const [isEditModalOpen, setEditModalOpen] = React.useState(false);
+  const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   
   // İşlem yapılacak öğe state'leri
-  const [itemToEdit, setItemToEdit] = React.useState<Customer | null>(null); // Eklendi
-  const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null); // Eklendi
+  const [itemToEdit, setItemToEdit] = React.useState<Customer | null>(null);
+  const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
 
-  // Yetki kontrolü
-  const canManageCustomers = currentUser?.roles?.some(role => 
+  // Yetki kontrolü (Listeleme yetkisi olan tüm roller)
+  const canListCustomers = currentUser?.roles?.some(role =>
+    role.name === 'Yönetici' || role.name === 'Satış Personeli' || role.name === 'Depo Sorumlusu'
+  );
+  // Oluşturma/Güncelleme yetkisi olan roller
+  const canCreateEditCustomers = currentUser?.roles?.some(role =>
     role.name === 'Yönetici' || role.name === 'Satış Personeli'
   );
-  const canDeleteCustomers = currentUser?.roles?.some(role => 
+  // Silme yetkisi olan roller
+  const canDeleteCustomers = currentUser?.roles?.some(role =>
     role.name === 'Yönetici'
   );
 
@@ -54,7 +59,7 @@ export default function Page(): React.JSX.Element {
           }
           const data = await response.json();
           setCustomers(data);
-          setTotalCustomers(data.length); // Toplam müşteri sayısını ayarla
+          setTotalCustomers(data.length);
       } catch (err) {
           setError(err instanceof Error ? err.message : 'Bir hata oluştu.');
       } finally {
@@ -63,13 +68,14 @@ export default function Page(): React.JSX.Element {
   }, []);
 
   React.useEffect(() => {
-      if (canManageCustomers) { // Sadece yetkili kullanıcılar veriyi çekebilir
+      // Listeleme yetkisi olanlar fetch etsin
+      if (canListCustomers) {
           fetchCustomers();
       } else {
           setLoading(false);
           setError('Müşteri listeleme yetkiniz bulunmamaktadır.');
       }
-  }, [fetchCustomers, canManageCustomers]);
+  }, [fetchCustomers, canListCustomers]); // canListCustomers bağımlılığı eklendi
 
   // Sayfalama handler'ları
   const handlePageChange = React.useCallback((event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
@@ -142,7 +148,7 @@ export default function Page(): React.JSX.Element {
                   <Typography variant="h4">Müşteriler</Typography>
               </Stack>
               <div>
-                  {canManageCustomers && (
+                  {canCreateEditCustomers && ( // Sadece yetkili olanlar Ekle butonu görebilsin
                       <Button
                           startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
                           variant="contained"
@@ -159,27 +165,29 @@ export default function Page(): React.JSX.Element {
           ) : error ? (
               <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
           ) : (
-              <CustomersTable 
+              <CustomersTable
                   count={totalCustomers}
                   page={page}
                   rows={paginatedCustomers}
                   rowsPerPage={rowsPerPage}
                   onPageChange={handlePageChange}
                   onRowsPerPageChange={handleRowsPerPageChange}
-                  onEdit={canManageCustomers ? handleEditClick : () => {}} // Yetki yoksa düzenlemeyi devre dışı bırak
-                  onDelete={canDeleteCustomers ? handleDeleteClick : () => {}} // Yetki yoksa silmeyi devre dışı bırak
+                  // Sadece oluşturma/güncelleme yetkisi olanlar düzenleyebilsin
+                  onEdit={canCreateEditCustomers ? handleEditClick : () => { /* noop */ }}
+                  // Sadece silme yetkisi olanlar silebilsin
+                  onDelete={canDeleteCustomers ? handleDeleteClick : () => { /* noop */ }}
               />
           )}
           
-          {canManageCustomers && (
-              <CustomerCreateForm 
-                  open={isCreateModalOpen} 
+          {canCreateEditCustomers && ( // Sadece yetkili olanlar formu açabilsin
+              <CustomerCreateForm
+                  open={isCreateModalOpen}
                   onClose={() => setCreateModalOpen(false)}
                   onSuccess={handleCreateSuccess}
-              /> 
+              />
           )}
           
-          {canManageCustomers && (
+          {canCreateEditCustomers && ( // Sadece yetkili olanlar formu açabilsin
               <CustomerEditForm
                   open={isEditModalOpen}
                   onClose={() => setEditModalOpen(false)}

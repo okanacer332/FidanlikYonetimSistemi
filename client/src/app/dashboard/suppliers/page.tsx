@@ -9,7 +9,7 @@ import { SuppliersTable } from '@/components/dashboard/supplier/suppliers-table'
 import { SupplierCreateForm } from '@/components/dashboard/supplier/supplier-create-form';
 import { SupplierEditForm } from '@/components/dashboard/supplier/supplier-edit-form';
 import type { Supplier } from '@/types/nursery';
-import { useUser } from '@/hooks/use-user'; // Yetkilendirme için User hook'unu import edin
+import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
     const { user: currentUser } = useUser();
@@ -27,12 +27,18 @@ export default function Page(): React.JSX.Element {
     const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
 
     // Yetki kontrolü
-    const canManageSuppliers = currentUser?.roles?.some(role => 
-      role.name === 'Yönetici' || role.name === 'Depo Sorumlusu'
+    const canListSuppliers = currentUser?.roles?.some(role =>
+      role.name === 'Yönetici' || role.name === 'Depo Sorumlusu' || role.name === 'Satış Personeli' // Satış Personeli de listeleme yapabilsin diye eklendi
     );
-    const canDeleteSuppliers = currentUser?.roles?.some(role => 
+    // Oluşturma ve Düzenleme için yetki kontrolü (Sadece Yönetici ve Depo Sorumlusu)
+    const canCreateEditSuppliers = currentUser?.roles?.some(role =>
+        role.name === 'Yönetici' || role.name === 'Depo Sorumlusu'
+    );
+    // Sadece Yönetici silebilir
+    const canDeleteSuppliers = currentUser?.roles?.some(role =>
       role.name === 'Yönetici'
     );
+
 
     const fetchSuppliers = React.useCallback(async () => {
         setLoading(true);
@@ -59,13 +65,13 @@ export default function Page(): React.JSX.Element {
     }, []);
 
     React.useEffect(() => {
-        if (canManageSuppliers) { // Sadece yetkili kullanıcılar veriyi çekebilir
+        if (canListSuppliers) { // Sadece listeleme yetkisi olanlar veriyi çekebilir
             fetchSuppliers();
         } else {
             setLoading(false);
             setError('Tedarikçi listeleme yetkiniz bulunmamaktadır.');
         }
-    }, [fetchSuppliers, canManageSuppliers]);
+    }, [fetchSuppliers, canListSuppliers]);
 
     // ---- Create Handlers ----
     const handleCreateSuccess = () => {
@@ -98,12 +104,9 @@ export default function Page(): React.JSX.Element {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error('Oturum bulunamadı.');
             
-            // Hata ayıklama için console logları
-            console.log('NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
             const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers/${itemToDeleteId}`;
-            console.log('DELETE URL:', url);
 
-            const response = await fetch(url, { // Oluşturulan 'url' değişkenini kullanıyoruz
+            const response = await fetch(url, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -118,7 +121,7 @@ export default function Page(): React.JSX.Element {
             fetchSuppliers();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-            setConfirmDeleteOpen(false); // Hata durumunda da modalı kapat
+            setConfirmDeleteOpen(false);
         }
     };
     
@@ -129,7 +132,7 @@ export default function Page(): React.JSX.Element {
                     <Typography variant="h4">Tedarikçi Yönetimi</Typography>
                 </Stack>
                 <div>
-                    {canManageSuppliers && (
+                    {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu ekleyebilsin
                         <Button
                             startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
                             variant="contained"
@@ -146,22 +149,24 @@ export default function Page(): React.JSX.Element {
             ) : error ? (
                 <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
             ) : (
-                <SuppliersTable 
-                    rows={suppliers} 
-                    onEdit={canManageSuppliers ? handleEditClick : () => {}} // Yetki yoksa düzenlemeyi devre dışı bırak
-                    onDelete={canDeleteSuppliers ? handleDeleteClick : () => {}} // Yetki yoksa silmeyi devre dışı bırak
+                <SuppliersTable
+                    rows={suppliers}
+                    // Sadece Yönetici ve Depo Sorumlusu düzenleyebilsin
+                    onEdit={canCreateEditSuppliers ? handleEditClick : () => { /* noop */ }}
+                    // Sadece Yönetici silebilsin
+                    onDelete={canDeleteSuppliers ? handleDeleteClick : () => { /* noop */ }}
                 />
             )}
             
-            {canManageSuppliers && (
-                <SupplierCreateForm 
-                    open={isCreateModalOpen} 
+            {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu formu açabilsin
+                <SupplierCreateForm
+                    open={isCreateModalOpen}
                     onClose={() => setCreateModalOpen(false)}
                     onSuccess={handleCreateSuccess}
-                /> 
+                />
             )}
             
-            {canManageSuppliers && (
+            {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu formu açabilsin
                 <SupplierEditForm
                     open={isEditModalOpen}
                     onClose={() => setEditModalOpen(false)}
