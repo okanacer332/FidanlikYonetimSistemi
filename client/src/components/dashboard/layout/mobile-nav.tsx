@@ -123,26 +123,25 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
 }
 
 function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
-  const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
-    // RENDER A GROUP
-    if (curr.type === 'group') {
+  const children = items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
+    // Correctly handle groups
+    if (item.type === 'group') {
       acc.push(
-        <Box component="li" key={curr.key} sx={{ py: 1.5 }}>
+        <Box component="li" key={item.key} sx={{ py: 1.5 }}>
           <Typography color="var(--mui-palette-neutral-500)" sx={{ fontSize: '0.75rem', fontWeight: 600, px: '16px', textTransform: 'uppercase' }}>
-            {curr.title}
+            {item.title}
           </Typography>
-          <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0, pl: '12px' }}>
-            {renderNavItems({ items: curr.items, pathname })}
+          <List component="ul" disablePadding sx={{ pl: '12px' }}>
+            {renderNavItems({ items: item.items, pathname })}
           </List>
         </Box>
       );
     } 
-    // RENDER A SINGLE ITEM
-    else {
-      const { key, ...item } = curr;
-      acc.push(<NavItem key={key} pathname={pathname} {...item} />);
+    // Correctly handle single items
+    else if (item.type === 'item') {
+      const { key, ...restOfItem } = item;
+      acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} />);
     }
-
     return acc;
   }, []);
 
@@ -153,7 +152,7 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
   );
 }
 
-interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key' | 'type'> {
+interface NavItemProps extends Extract<NavItemConfig, { type: 'item' }> {
   pathname: string;
 }
 
