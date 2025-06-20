@@ -19,6 +19,7 @@ import { Logo } from '@/components/core/logo';
 
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
+import List from '@mui/material/List';
 
 export interface MobileNavProps {
   onClose?: () => void;
@@ -123,9 +124,24 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
 
 function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
   const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
-    const { key, ...item } = curr;
-
-    acc.push(<NavItem key={key} pathname={pathname} {...item} />);
+    // RENDER A GROUP
+    if (curr.type === 'group') {
+      acc.push(
+        <Box component="li" key={curr.key} sx={{ py: 1.5 }}>
+          <Typography color="var(--mui-palette-neutral-500)" sx={{ fontSize: '0.75rem', fontWeight: 600, px: '16px', textTransform: 'uppercase' }}>
+            {curr.title}
+          </Typography>
+          <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0, pl: '12px' }}>
+            {renderNavItems({ items: curr.items, pathname })}
+          </List>
+        </Box>
+      );
+    } 
+    // RENDER A SINGLE ITEM
+    else {
+      const { key, ...item } = curr;
+      acc.push(<NavItem key={key} pathname={pathname} {...item} />);
+    }
 
     return acc;
   }, []);
