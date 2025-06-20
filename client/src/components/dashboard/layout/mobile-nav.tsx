@@ -137,7 +137,7 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
   );
 }
 
-interface NavItemProps extends Omit<NavItemConfig, 'items'> {
+interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key' | 'type'> {
   pathname: string;
 }
 
