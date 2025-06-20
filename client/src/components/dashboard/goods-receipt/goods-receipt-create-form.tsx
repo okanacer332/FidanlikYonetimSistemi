@@ -13,7 +13,6 @@ import { Plus as PlusIcon, Trash as TrashIcon } from '@phosphor-icons/react';
 
 import type { Plant, Warehouse, Supplier } from '@/types/nursery';
 
-// Schema for form validation
 const receiptItemSchema = zod.object({
   plantId: zod.string().min(1, 'Fidan seçimi zorunludur.'),
   quantity: zod.number({ invalid_type_error: 'Miktar gereklidir.' }).positive('Miktar 0\'dan büyük olmalıdır.'),
@@ -63,7 +62,6 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
 
   const fetchData = React.useCallback(async () => {
     setIsLoadingData(true);
-    setFormError(null);
     const token = localStorage.getItem('authToken');
     if (!token) {
         setFormError('Oturum bulunamadı.');
@@ -97,7 +95,6 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
   React.useEffect(() => {
     if (open) {
       fetchData();
-    } else {
       reset({
         receiptNumber: '',
         supplierId: '',
@@ -145,9 +142,8 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
             <Stack sx={{ alignItems: 'center', p: 3, minHeight: '400px', justifyContent: 'center' }}><CircularProgress /></Stack>
           ) : (
             <Grid container spacing={4}>
-
               {/* LEFT COLUMN - RECEIPT DETAILS */}
-              <Grid item xs={12} md={4}>
+              <Grid xs={12} md={4}>
                 <Stack spacing={3}>
                   <Typography variant="h6">Giriş Bilgileri</Typography>
                   <Controller
@@ -185,7 +181,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
               </Grid>
 
               {/* RIGHT COLUMN - ITEM DETAILS */}
-              <Grid item xs={12} md={8}>
+              <Grid xs={12} md={8}>
                 <Stack spacing={2}>
                   <Typography variant="h6">Giriş Yapılacak Fidanlar</Typography>
                   <Paper variant="outlined">
@@ -196,7 +192,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                                   <TableCell sx={{width: '50%', pl: 2 }}>Fidan</TableCell>
                                   <TableCell>Miktar</TableCell>
                                   <TableCell>Alış Fiyatı (Birim)</TableCell>
-                                  <TableCell align="right" sx={{pr: 2}}>İşlem</TableCell>
+                                  <TableCell align="center">İşlem</TableCell>
                               </TableRow>
                           </TableHead>
                           <TableBody>
@@ -222,7 +218,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                                               name={`items.${index}.quantity`}
                                               control={control}
                                               render={({ field }) => (
-                                                  <TextField {...field} type="number" variant="outlined" size="small" fullWidth
+                                                  <TextField {...field} type="number" variant="outlined" size="small" fullWidth required 
                                                   onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value, 10))}
                                                   error={Boolean(errors.items?.[index]?.quantity)} helperText={errors.items?.[index]?.quantity?.message} />
                                               )}
@@ -233,13 +229,13 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                                               name={`items.${index}.purchasePrice`}
                                               control={control}
                                               render={({ field }) => (
-                                                  <TextField {...field} type="number" variant="outlined" size="small" fullWidth
+                                                  <TextField {...field} type="number" variant="outlined" size="small" fullWidth required 
                                                   onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                                                   error={Boolean(errors.items?.[index]?.purchasePrice)} helperText={errors.items?.[index]?.purchasePrice?.message} />
                                               )}
                                           />
                                       </TableCell>
-                                      <TableCell align="right" sx={{pr: 2, verticalAlign: 'top', pt: 1.5}}>
+                                      <TableCell align="center" sx={{pr: 2, verticalAlign: 'top', pt: 1.5}}>
                                           <IconButton onClick={() => remove(index)} color="error" size="small" aria-label="Kalemi sil" sx={{mt: 1}}>
                                               <TrashIcon />
                                           </IconButton>
@@ -259,9 +255,9 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
               </Grid>
 
               {(errors.items || formError) && (
-                <Grid item xs={12}>
-                  {errors.items?.root && <Alert severity="error">{errors.items.root.message}</Alert>}
-                  {formError && <Alert severity="error">{formError}</Alert>}
+                <Grid xs={12}>
+                  {errors.items?.root && <Alert severity="error" sx={{mt: 2}}>{errors.items.root.message}</Alert>}
+                  {formError && <Alert severity="error" sx={{mt: 2}}>{formError}</Alert>}
                 </Grid>
               )}
               

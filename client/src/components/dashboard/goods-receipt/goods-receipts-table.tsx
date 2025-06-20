@@ -56,7 +56,6 @@ export function GoodsReceiptsTable({ rows = [], onCancel, canCancel }: GoodsRece
           </TableHead>
           <TableBody>
             {rows.map((row) => {
-              // UPDATED LOGIC: Add a fallback for undefined statuses
               const statusInfo = statusMap[row.status] || { label: 'Bilinmiyor', color: 'default' as const };
               const isCanceled = row.status === 'CANCELED';
 
@@ -72,8 +71,8 @@ export function GoodsReceiptsTable({ rows = [], onCancel, canCancel }: GoodsRece
                     <Chip label={statusInfo.label} color={statusInfo.color} size="small" variant="outlined" />
                   </TableCell>
                   <TableCell align="right">
-                    {/* Handle potential null or undefined totalValue gracefully */}
-                    {(row.totalValue || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                    {/* UPDATED: Explicitly convert to a Number before formatting */}
+                    {Number(row.totalValue || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                   </TableCell>
                   {canCancel && (
                     <TableCell align="center">
