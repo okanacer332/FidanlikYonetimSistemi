@@ -143,7 +143,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
           ) : (
             <Grid container spacing={4}>
               {/* LEFT COLUMN - RECEIPT DETAILS */}
-              <Grid xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Stack spacing={3}>
                   <Typography variant="h6">Giriş Bilgileri</Typography>
                   <Controller
@@ -181,7 +181,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
               </Grid>
 
               {/* RIGHT COLUMN - ITEM DETAILS */}
-              <Grid xs={12} md={8}>
+              <Grid size={{ xs: 12, md: 8 }}>
                 <Stack spacing={2}>
                   <Typography variant="h6">Giriş Yapılacak Fidanlar</Typography>
                   <Paper variant="outlined">
@@ -255,7 +255,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
               </Grid>
 
               {(errors.items || formError) && (
-                <Grid xs={12}>
+                <Grid size={{ xs: 12 }}>
                   {errors.items?.root && <Alert severity="error" sx={{mt: 2}}>{errors.items.root.message}</Alert>}
                   {formError && <Alert severity="error" sx={{mt: 2}}>{formError}</Alert>}
                 </Grid>
