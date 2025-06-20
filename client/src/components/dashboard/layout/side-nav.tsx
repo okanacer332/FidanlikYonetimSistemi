@@ -23,7 +23,7 @@ import { navIcons } from './nav-icons';
 
 function hasActiveChild(items: NavItemConfig[], pathname: string): boolean {
   for (const item of items) {
-    if (item.type === 'item' && isNavItemActive({ ...item, pathname })) { // SPREAD a aitem TO INCLUDE ALL PROPS
+    if (item.type === 'item' && isNavItemActive({ ...item, pathname })) {
       return true;
     }
     if (item.type === 'group' && hasActiveChild(item.items, pathname)) {
@@ -151,7 +151,13 @@ function NavGroup({ group, pathname, children }: { group: Extract<NavItemConfig,
     );
 }
 
-function NavItem({ disabled, external, href, icon, matcher, pathname, title }: Extract<NavItemConfig, { type: 'item' }>): React.JSX.Element {
+// Düzeltme: NavItemProps arayüzünü tanımlıyoruz. 'key' prop'unu Omit ile çıkarıyoruz.
+interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key'> {
+  pathname: string;
+}
+
+// Düzeltme: NavItem fonksiyonu artık doğru tipleri kullanıyor.
+function NavItem({ disabled, external, href, icon, matcher, pathname, title }: NavItemProps): React.JSX.Element {
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
   const Icon = icon ? navIcons[icon] : null;
 
