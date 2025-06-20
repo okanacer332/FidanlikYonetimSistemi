@@ -108,7 +108,8 @@ function renderNavItems({ items = [], pathname, userRoles }: { items?: NavItemCo
       );
     } 
     else if (item.type === 'item') {
-      acc.push(<NavItem key={item.key} pathname={pathname} {...item} />);
+      const { key, ...restOfItem } = item;
+      acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} />);
     }
 
     return acc;
