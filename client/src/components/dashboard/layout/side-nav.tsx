@@ -23,7 +23,7 @@ import { navIcons } from './nav-icons';
 
 function hasActiveChild(items: NavItemConfig[], pathname: string): boolean {
   for (const item of items) {
-    if (item.type === 'item' && isNavItemActive({ href: item.href, matcher: item.matcher, pathname })) {
+    if (item.type === 'item' && isNavItemActive({ ...item, pathname })) { // SPREAD a aitem TO INCLUDE ALL PROPS
       return true;
     }
     if (item.type === 'group' && hasActiveChild(item.items, pathname)) {
