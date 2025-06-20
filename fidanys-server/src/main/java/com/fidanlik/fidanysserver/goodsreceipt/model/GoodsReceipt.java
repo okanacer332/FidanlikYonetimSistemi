@@ -1,9 +1,9 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/goodsreceipt/model/GoodsReceipt.java
 package com.fidanlik.fidanysserver.goodsreceipt.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.math.BigDecimal; // Import BigDecimal
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,7 +16,15 @@ public class GoodsReceipt {
     private String supplierId;
     private String warehouseId;
     private List<GoodsReceiptItem> items;
+    private BigDecimal totalValue; // ADD THIS FIELD
+    private GoodsReceiptStatus status; // ADD THIS FIELD
     private String userId;
     private LocalDateTime receiptDate;
     private String tenantId;
+
+    // ADD THIS ENUM
+    public enum GoodsReceiptStatus {
+        COMPLETED,
+        CANCELED
+    }
 }

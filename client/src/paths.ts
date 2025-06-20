@@ -1,4 +1,3 @@
-// Dosya Yolu: client/src/paths.ts
 export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
@@ -11,7 +10,8 @@ export const paths = {
     userManagement: '/dashboard/user-management',
     plants: '/dashboard/plants',
     warehouses: '/dashboard/warehouses',
-    suppliers: '/dashboard/suppliers', // BU SATIR EKLENDİ
+    suppliers: '/dashboard/suppliers',
+    goodsReceipts: '/dashboard/goods-receipts', // ADD THIS LINE
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

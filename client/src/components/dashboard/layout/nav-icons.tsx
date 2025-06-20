@@ -1,5 +1,4 @@
-// Dosya Yolu: client/src/components/dashboard/layout/nav-icons.tsx
-import { ChartPieIcon, GearSixIcon, PlugsConnectedIcon, UserIcon, UsersIcon, TreeEvergreen as TreeEvergreenIcon, Buildings as BuildingsIcon } from '@phosphor-icons/react/dist/ssr';
+import { ChartPieIcon, GearSixIcon, PlugsConnectedIcon, UserIcon, UsersIcon, TreeEvergreen as TreeEvergreenIcon, Buildings as BuildingsIcon, Package as PackageIcon } from '@phosphor-icons/react/dist/ssr'; // Added PackageIcon
 
 export const navIcons = {
   'chart-pie': ChartPieIcon,
@@ -8,5 +7,6 @@ export const navIcons = {
   'user': UserIcon,
   'users': UsersIcon,
   'tree-evergreen': TreeEvergreenIcon,
-  'buildings': BuildingsIcon, // BU SATIRI EKLEYELİM
+  'buildings': BuildingsIcon,
+  'package': PackageIcon, // ADD THIS LINE
 } as const;

@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/model/StockMovement.java
 package com.fidanlik.fidanysserver.stock.model;
 
 import lombok.Data;
@@ -22,11 +21,12 @@ public class StockMovement {
     private String tenantId;
 
     public enum MovementType {
-        GOODS_RECEIPT, // Mal Kabul
-        SALE,          // Satış
-        WASTAGE,       // Zayiat
-        TRANSFER_IN,   // Depo Transfer Girişi
-        TRANSFER_OUT,  // Depo Transfer Çıkışı
-        RETURN         // İade (Yeni)
+        GOODS_RECEIPT,      // Mal Kabul
+        GOODS_RECEIPT_CANCEL, // Mal Kabul İptali (ADD THIS)
+        SALE,               // Satış
+        WASTAGE,            // Zayiat
+        TRANSFER_IN,        // Depo Transfer Girişi
+        TRANSFER_OUT,       // Depo Transfer Çıkışı
+        RETURN              // İade
     }
 }
