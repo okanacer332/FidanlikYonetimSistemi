@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/controller/StockController.java
 package com.fidanlik.fidanysserver.stock.controller;
 
 import com.fidanlik.fidanysserver.stock.model.Stock;
@@ -16,8 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/stock")
 @RequiredArgsConstructor
-// DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
-@PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
 public class StockController {
 
     private final StockService stockService;

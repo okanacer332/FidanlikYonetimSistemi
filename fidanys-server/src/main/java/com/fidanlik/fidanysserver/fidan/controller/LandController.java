@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/LandController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
 import com.fidanlik.fidanysserver.fidan.model.Land;
@@ -21,7 +20,7 @@ public class LandController {
     private final LandService landService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
     public ResponseEntity<Land> createLand(@RequestBody Land land, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -30,7 +29,7 @@ public class LandController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<Land>> getAllLandsByTenant(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -39,7 +38,7 @@ public class LandController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Land> updateLand(@PathVariable String id, @RequestBody Land land, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -48,7 +47,7 @@ public class LandController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteLand(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();

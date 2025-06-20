@@ -24,8 +24,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { useUser } from '@/hooks/use-user';
 
-// Role ve UserType interface'lerini doğrudan bu dosyada tanımlayalım
-// Bu, diğer dosyalardaki export'larla çakışmayı önler
 interface Role {
   id: string;
   name: string;
@@ -35,7 +33,6 @@ interface UserType {
   id: string;
   username: string;
   email: string;
-  // DÜZELTME: 'roles' özelliğini opsiyonel (?) yaptık.
   roles?: Role[];
 }
 
@@ -61,7 +58,8 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
   const [loadingRoles, setLoadingRoles] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
 
-  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
+  // UPDATED: Check for standardized role name 'ADMIN'
+  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
   const defaultValues = React.useMemo(() => ({
     username: user?.username || '',

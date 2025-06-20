@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/warehouse/controller/WarehouseController.java
 package com.fidanlik.fidanysserver.warehouse.controller;
 
 import com.fidanlik.fidanysserver.user.model.User;
@@ -21,7 +20,7 @@ public class WarehouseController {
     private final WarehouseService warehouseService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Warehouse> createWarehouse(@RequestBody Warehouse warehouse, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         Warehouse createdWarehouse = warehouseService.createWarehouse(warehouse, authenticatedUser.getTenantId());
@@ -29,8 +28,7 @@ public class WarehouseController {
     }
 
     @GetMapping
-    // DÜZELTİLDİ: 'ROLE_SATIŞ PERSONELI' -> 'ROLE_SATIŞ PERSONELİ' olarak değiştirildi.
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<Warehouse>> getAllWarehouses(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         List<Warehouse> warehouses = warehouseService.getAllWarehousesByTenant(authenticatedUser.getTenantId());
@@ -38,7 +36,7 @@ public class WarehouseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Warehouse> updateWarehouse(@PathVariable String id, @RequestBody Warehouse warehouseDetails, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         Warehouse updatedWarehouse = warehouseService.updateWarehouse(id, warehouseDetails, authenticatedUser.getTenantId());
@@ -46,7 +44,7 @@ public class WarehouseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteWarehouse(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         warehouseService.deleteWarehouse(id, authenticatedUser.getTenantId());

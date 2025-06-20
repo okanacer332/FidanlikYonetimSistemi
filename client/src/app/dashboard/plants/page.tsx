@@ -1,14 +1,13 @@
-// client/src/app/dashboard/plants/page.tsx
 'use client';
 
 import * as React from 'react';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
+import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import Dialog from '@mui/material/Dialog'; // Import Dialog components for delete confirmation
+import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
@@ -18,10 +17,10 @@ import type { Plant } from '@/types/nursery';
 import { PlantCreateForm } from '@/components/dashboard/nursery/plant-create-form';
 import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form';
 import { PlantsTable } from '@/components/dashboard/nursery/plants-table';
-import { useUser } from '@/hooks/use-user'; // Import useUser to check roles
+import { useUser } from '@/hooks/use-user';
 
 export default function Page(): React.JSX.Element {
-    const { user: currentUser } = useUser(); // Get current user to check roles
+    const { user: currentUser } = useUser();
     const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
     const [isEditModalOpen, setEditModalOpen] = React.useState(false);
     const [selectedPlantToEdit, setSelectedPlantToEdit] = React.useState<Plant | null>(null);
@@ -33,23 +32,18 @@ export default function Page(): React.JSX.Element {
     const [plantToDeleteId, setPlantToDeleteId] = React.useState<string | null>(null);
     const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
-
-    // Yetki kontrolü:
-    // Fidan kimliği oluşturma yetkisi
+    // UPDATED: Check for standardized role names
     const canCreatePlant = currentUser?.roles?.some(role =>
-        role.name === 'Yönetici' || role.name === 'Satış Personeli'
+        role.name === 'ADMIN' || role.name === 'SALES'
     );
-    // Fidan kimliği düzenleme yetkisi (şimdilik sadece Yönetici)
     const canEditPlants = currentUser?.roles?.some(role =>
-        role.name === 'Yönetici'
+        role.name === 'ADMIN'
     );
-    // Fidan kimliği silme yetkisi (şimdilik sadece Yönetici)
     const canDeletePlants = currentUser?.roles?.some(role =>
-        role.name === 'Yönetici'
+        role.name === 'ADMIN'
     );
-    // Fidan kimliği listeleme yetkisi olanlar (backend'de hasAnyAuthority var)
     const canListPlants = currentUser?.roles?.some(role =>
-        role.name === 'Yönetici' || role.name === 'Satış Personeli' || role.name === 'Depo Sorumlusu'
+        role.name === 'ADMIN' || role.name === 'SALES' || role.name === 'WAREHOUSE_STAFF'
     );
 
     const fetchPlants = React.useCallback(async () => {
@@ -77,7 +71,7 @@ export default function Page(): React.JSX.Element {
     }, []);
 
     React.useEffect(() => {
-        if (canListPlants) { // Sadece listeleme yetkisi olanlar fetch etsin
+        if (canListPlants) {
             fetchPlants();
         } else {
             setLoading(false);
@@ -142,7 +136,6 @@ export default function Page(): React.JSX.Element {
         setDeleteError(null);
     };
 
-
     return (
         <Stack spacing={3}>
             <Stack direction="row" spacing={3}>
@@ -153,7 +146,7 @@ export default function Page(): React.JSX.Element {
                     </Typography>
                 </Stack>
                 <div>
-                    {canCreatePlant && ( // Sadece yetkili olanlar Ekle butonu görebilsin
+                    {canCreatePlant && (
                         <Button
                             startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
                             variant="contained"
@@ -171,7 +164,7 @@ export default function Page(): React.JSX.Element {
                 onSuccess={handleCreateSuccess}
             />
 
-            {canEditPlants && ( // Sadece yetkili olanlar düzenleme formu görebilsin
+            {canEditPlants && (
                 <PlantEditForm
                     open={isEditModalOpen}
                     onClose={handleEditClose}
@@ -187,12 +180,11 @@ export default function Page(): React.JSX.Element {
             ) : (
                 <PlantsTable
                     rows={plants}
-                    onEdit={canEditPlants ? handleEditClick : undefined} // Sadece yetkili olanlar düzenleyebilsin
-                    onDelete={canDeletePlants ? handleDeleteClick : undefined} // Sadece yetkili olanlar silebilsin
+                    onEdit={canEditPlants ? handleEditClick : undefined}
+                    onDelete={canDeletePlants ? handleDeleteClick : undefined}
                 />
             )}
 
-            {/* Silme Onayı Modalı */}
             <Dialog
                 open={isConfirmDeleteOpen}
                 onClose={handleCloseDeleteConfirm}

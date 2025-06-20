@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
 import com.fidanlik.fidanysserver.fidan.model.Plant;
@@ -21,8 +20,7 @@ public class PlantController {
     private final PlantService plantService;
 
     @PostMapping
-    // EKLENDİ: Yetkilendirme kuralı eklendi. Yönetici ve Satış Personeli oluşturabilir.
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
     public ResponseEntity<Plant> createPlant(@RequestBody Plant plant, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -31,8 +29,7 @@ public class PlantController {
     }
 
     @GetMapping
-    // EKLENDİ: Yetkilendirme kuralı eklendi. Tüm yetkili roller listeleyebilir.
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<Plant>> getAllPlantsByTenant(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -41,8 +38,7 @@ public class PlantController {
     }
 
     @PutMapping("/{id}")
-    // EKLENDİ: Yetkilendirme kuralı eklendi. Sadece yönetici güncelleyebilir.
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Plant> updatePlant(@PathVariable String id, @RequestBody Plant plant, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -51,8 +47,7 @@ public class PlantController {
     }
 
     @DeleteMapping("/{id}")
-    // EKLENDİ: Yetkilendirme kuralı eklendi. Sadece yönetici silebilir.
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deletePlant(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();

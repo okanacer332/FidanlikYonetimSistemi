@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/goodsreceipt/controller/GoodsReceiptController.java
 package com.fidanlik.fidanysserver.goodsreceipt.controller;
 
 import com.fidanlik.fidanysserver.goodsreceipt.dto.GoodsReceiptRequest;
@@ -23,7 +22,7 @@ public class GoodsReceiptController {
     private final GoodsReceiptService goodsReceiptService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<GoodsReceipt> createGoodsReceipt(@RequestBody GoodsReceiptRequest request, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         GoodsReceipt createdReceipt = goodsReceiptService.createGoodsReceipt(

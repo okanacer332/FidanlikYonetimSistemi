@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantVarietyController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
 import com.fidanlik.fidanysserver.fidan.model.PlantVariety;
@@ -9,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +20,7 @@ public class PlantVarietyController {
     private final PlantVarietyService plantVarietyService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
     public ResponseEntity<PlantVariety> createPlantVariety(@RequestBody PlantVariety plantVariety, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -31,7 +29,7 @@ public class PlantVarietyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<PlantVariety>> getAllPlantVarietiesByTenant(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -40,7 +38,7 @@ public class PlantVarietyController {
     }
 
     @GetMapping("/by-plant-type/{plantTypeId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<PlantVariety>> getPlantVarietiesByPlantTypeAndTenant(@PathVariable String plantTypeId, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -49,7 +47,7 @@ public class PlantVarietyController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<PlantVariety> updatePlantVariety(@PathVariable String id, @RequestBody PlantVariety plantVariety, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -58,7 +56,7 @@ public class PlantVarietyController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deletePlantVariety(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();

@@ -26,14 +26,15 @@ export default function Page(): React.JSX.Element {
   const [itemToEdit, setItemToEdit] = React.useState<Customer | null>(null);
   const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
 
+  // UPDATED: Check for standardized role names
   const canListCustomers = currentUser?.roles?.some(role =>
-    role.name === 'Yönetici' || role.name === 'Satış Personeli' || role.name === 'Depo Sorumlusu'
+    role.name === 'ADMIN' || role.name === 'SALES' || role.name === 'WAREHOUSE_STAFF'
   );
   const canCreateEditCustomers = currentUser?.roles?.some(role =>
-    role.name === 'Yönetici' || role.name === 'Satış Personeli'
+    role.name === 'ADMIN' || role.name === 'SALES'
   );
   const canDeleteCustomers = currentUser?.roles?.some(role =>
-    role.name === 'Yönetici'
+    role.name === 'ADMIN'
   );
 
   const fetchCustomers = React.useCallback(async () => {
@@ -48,7 +49,6 @@ export default function Page(): React.JSX.Element {
           const token = localStorage.getItem('authToken');
           if (!token) throw new Error('Oturum bulunamadı.');
 
-          // DÜZELTME: API yolu environment değişkeninden alınarak düzeltildi.
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
               headers: { 'Authorization': `Bearer ${token}` },
           });
@@ -73,7 +73,6 @@ export default function Page(): React.JSX.Element {
     }
   }, [currentUser, fetchCustomers]);
 
-  // EKLENDİ: Eksik olan handler fonksiyonları
   const handlePageChange = React.useCallback((event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     setPage(newPage);
   }, []);
@@ -111,7 +110,6 @@ export default function Page(): React.JSX.Element {
           const token = localStorage.getItem('authToken');
           if (!token) throw new Error('Oturum bulunamadı.');
           
-          // DÜZELTME: API yolu environment değişkeninden alınarak düzeltildi.
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers/${itemToDeleteId}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` },

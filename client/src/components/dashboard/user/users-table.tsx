@@ -1,4 +1,3 @@
-// Dosya Yolu: client/src/components/dashboard/user/users-table.tsx
 'use client';
 
 import * as React from 'react';
@@ -18,7 +17,6 @@ import Button from '@mui/material/Button';
 import type { Role } from '@/types/user';
 import { useUser } from '@/hooks/use-user';
 
-// DÜZELTME: noop (hiçbir şey yapmayan) fonksiyon eklendi.
 function noop(): void {
   // do nothing
 }
@@ -47,7 +45,6 @@ export function UsersTable({
   rows = [],
   page = 0,
   rowsPerPage = 0,
-  // DÜZELTME: onPageChange ve onRowsPerPageChange için varsayılan noop fonksiyonları atandı.
   onPageChange = noop,
   onRowsPerPageChange = noop,
   onEditUser,
@@ -55,7 +52,8 @@ export function UsersTable({
 }: UsersTableProps): React.JSX.Element {
   
   const { user: currentUser } = useUser();
-  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
+  // UPDATED: Check for standardized role name 'ADMIN'
+  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
   return (
     <Card>

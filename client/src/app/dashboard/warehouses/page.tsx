@@ -1,4 +1,3 @@
-// Dosya Yolu: client/src/app/dashboard/warehouses/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -24,11 +23,12 @@ export default function Page(): React.JSX.Element {
     const [itemToEdit, setItemToEdit] = React.useState<Warehouse | null>(null);
     const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
 
+    // UPDATED: Check for standardized role names
     const canListWarehouses = currentUser?.roles?.some(role =>
-      role.name === 'Yönetici' || role.name === 'Depo Sorumlusu' || role.name === 'Satış Personeli'
+      role.name === 'ADMIN' || role.name === 'WAREHOUSE_STAFF' || role.name === 'SALES'
     );
     const canManageWarehouses = currentUser?.roles?.some(role =>
-      role.name === 'Yönetici'
+      role.name === 'ADMIN'
     );
 
     const fetchWarehouses = React.useCallback(async () => {
@@ -130,7 +130,6 @@ export default function Page(): React.JSX.Element {
             ) : (
                 <WarehousesTable
                     rows={warehouses}
-                    // DÜZELTME: Yetki yoksa prop olarak 'undefined' gönderilir.
                     onEdit={canManageWarehouses ? handleEditClick : undefined}
                     onDelete={canManageWarehouses ? handleDeleteClick : undefined}
                 />

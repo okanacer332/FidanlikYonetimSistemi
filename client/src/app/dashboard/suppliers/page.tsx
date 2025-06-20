@@ -1,4 +1,3 @@
-// client/src/app/dashboard/suppliers/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -17,28 +16,23 @@ export default function Page(): React.JSX.Element {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
 
-    // Modal state'leri
     const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
     const [isEditModalOpen, setEditModalOpen] = React.useState(false);
     const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
     
-    // İşlem yapılacak öğe state'leri
     const [itemToEdit, setItemToEdit] = React.useState<Supplier | null>(null);
     const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
 
-    // Yetki kontrolü
+    // UPDATED: Check for standardized role names
     const canListSuppliers = currentUser?.roles?.some(role =>
-      role.name === 'Yönetici' || role.name === 'Depo Sorumlusu' || role.name === 'Satış Personeli' // Satış Personeli de listeleme yapabilsin diye eklendi
+      role.name === 'ADMIN' || role.name === 'WAREHOUSE_STAFF' || role.name === 'SALES'
     );
-    // Oluşturma ve Düzenleme için yetki kontrolü (Sadece Yönetici ve Depo Sorumlusu)
     const canCreateEditSuppliers = currentUser?.roles?.some(role =>
-        role.name === 'Yönetici' || role.name === 'Depo Sorumlusu'
+        role.name === 'ADMIN' || role.name === 'WAREHOUSE_STAFF'
     );
-    // Sadece Yönetici silebilir
     const canDeleteSuppliers = currentUser?.roles?.some(role =>
-      role.name === 'Yönetici'
+      role.name === 'ADMIN'
     );
-
 
     const fetchSuppliers = React.useCallback(async () => {
         setLoading(true);
@@ -65,7 +59,7 @@ export default function Page(): React.JSX.Element {
     }, []);
 
     React.useEffect(() => {
-        if (canListSuppliers) { // Sadece listeleme yetkisi olanlar veriyi çekebilir
+        if (canListSuppliers) {
             fetchSuppliers();
         } else {
             setLoading(false);
@@ -73,13 +67,11 @@ export default function Page(): React.JSX.Element {
         }
     }, [fetchSuppliers, canListSuppliers]);
 
-    // ---- Create Handlers ----
     const handleCreateSuccess = () => {
         setCreateModalOpen(false);
         fetchSuppliers();
     };
     
-    // ---- Edit Handlers ----
     const handleEditClick = (supplier: Supplier) => {
         setItemToEdit(supplier);
         setEditModalOpen(true);
@@ -91,7 +83,6 @@ export default function Page(): React.JSX.Element {
         fetchSuppliers();
     };
 
-    // ---- Delete Handlers ----
     const handleDeleteClick = (supplierId: string) => {
         setItemToDeleteId(supplierId);
         setConfirmDeleteOpen(true);
@@ -132,7 +123,7 @@ export default function Page(): React.JSX.Element {
                     <Typography variant="h4">Tedarikçi Yönetimi</Typography>
                 </Stack>
                 <div>
-                    {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu ekleyebilsin
+                    {canCreateEditSuppliers && (
                         <Button
                             startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
                             variant="contained"
@@ -151,14 +142,12 @@ export default function Page(): React.JSX.Element {
             ) : (
                 <SuppliersTable
                     rows={suppliers}
-                    // Sadece Yönetici ve Depo Sorumlusu düzenleyebilsin
                     onEdit={canCreateEditSuppliers ? handleEditClick : () => { /* noop */ }}
-                    // Sadece Yönetici silebilsin
                     onDelete={canDeleteSuppliers ? handleDeleteClick : () => { /* noop */ }}
                 />
             )}
             
-            {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu formu açabilsin
+            {canCreateEditSuppliers && (
                 <SupplierCreateForm
                     open={isCreateModalOpen}
                     onClose={() => setCreateModalOpen(false)}
@@ -166,7 +155,7 @@ export default function Page(): React.JSX.Element {
                 />
             )}
             
-            {canCreateEditSuppliers && ( // Sadece Yönetici ve Depo Sorumlusu formu açabilsin
+            {canCreateEditSuppliers && (
                 <SupplierEditForm
                     open={isEditModalOpen}
                     onClose={() => setEditModalOpen(false)}

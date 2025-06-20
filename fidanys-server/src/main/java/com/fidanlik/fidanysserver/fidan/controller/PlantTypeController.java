@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/controller/PlantTypeController.java
 package com.fidanlik.fidanysserver.fidan.controller;
 
 import com.fidanlik.fidanysserver.fidan.model.PlantType;
@@ -21,7 +20,7 @@ public class PlantTypeController {
     private final PlantTypeService plantTypeService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
     public ResponseEntity<PlantType> createPlantType(@RequestBody PlantType plantType, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -30,7 +29,7 @@ public class PlantTypeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_YÖNETİCİ', 'ROLE_SATIŞ PERSONELİ', 'ROLE_DEPO SORUMLUSU')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
     public ResponseEntity<List<PlantType>> getAllPlantTypesByTenant(Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -39,7 +38,7 @@ public class PlantTypeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<PlantType> updatePlantType(@PathVariable String id, @RequestBody PlantType plantType, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();
@@ -48,7 +47,7 @@ public class PlantTypeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_YÖNETİCİ')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deletePlantType(@PathVariable String id, Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
         String tenantId = authenticatedUser.getTenantId();

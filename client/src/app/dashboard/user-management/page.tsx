@@ -36,7 +36,8 @@ export default function Page(): React.JSX.Element {
     const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = React.useState<boolean>(false);
     const [userToDeleteId, setUserToDeleteId] = React.useState<string | null>(null);
 
-    const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'Yönetici');
+    // UPDATED: Check for the new standardized role name 'ADMIN'
+    const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
     const fetchUsers = React.useCallback(async () => {
         if (!isCurrentUserAdmin) {
@@ -50,7 +51,6 @@ export default function Page(): React.JSX.Element {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error('Oturum tokenı bulunamadı.');
 
-            // DÜZELTME: API yolu environment değişkeninden alınarak düzeltildi.
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -89,7 +89,6 @@ export default function Page(): React.JSX.Element {
             const token = localStorage.getItem('authToken');
             if (!token) throw new Error('Oturum bulunamadı.');
 
-            // DÜZELTME: API yolu environment değişkeninden alınarak düzeltildi.
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${userToDeleteId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }

@@ -42,11 +42,9 @@ public class DataInitializer implements CommandLineRunner {
 
         String ataTechTenantId = ataTechTenant.getId();
 
-        // ANA KONTROL: Eğer bu tenant için roller yoksa, tüm başlangıç verisini oluştur.
         if (roleRepository.findAllByTenantId(ataTechTenantId).isEmpty()) {
             System.out.println("Bu tenant için roller bulunamadı, başlangıç verileri (İzinler, Roller, Kullanıcılar) oluşturuluyor...");
 
-            // --- İzinleri Oluştur ---
             Permission tumYetkiler = createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", ataTechTenantId);
             Permission kullaniciYonetimi = createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", ataTechTenantId);
             Permission fidanEkle = createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", ataTechTenantId);
@@ -57,27 +55,26 @@ public class DataInitializer implements CommandLineRunner {
             permissionRepository.saveAll(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat));
             System.out.println("İzinler oluşturuldu.");
 
-            // --- Rolleri Oluştur ---
+            // --- Role Creation (UPDATED) ---
             Role adminRol = new Role();
-            adminRol.setName("Yönetici");
+            adminRol.setName("ADMIN"); // Standardized Name
             adminRol.setTenantId(ataTechTenantId);
             adminRol.setPermissions(new HashSet<>(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat)));
             roleRepository.save(adminRol);
 
             Role satisPersoneliRol = new Role();
-            satisPersoneliRol.setName("Satış Personeli");
+            satisPersoneliRol.setName("SALES"); // Standardized Name
             satisPersoneliRol.setTenantId(ataTechTenantId);
             satisPersoneliRol.setPermissions(new HashSet<>(Arrays.asList(siparisOlusturma, stokGoruntuleme, fidanEkle)));
             roleRepository.save(satisPersoneliRol);
 
             Role depoSorumlusuRol = new Role();
-            depoSorumlusuRol.setName("Depo Sorumlusu");
+            depoSorumlusuRol.setName("WAREHOUSE_STAFF"); // Standardized Name
             depoSorumlusuRol.setTenantId(ataTechTenantId);
             depoSorumlusuRol.setPermissions(new HashSet<>(Arrays.asList(malKabulOlusturma, stokGoruntuleme, siparisSevkiyat)));
             roleRepository.save(depoSorumlusuRol);
             System.out.println("Roller oluşturuldu.");
 
-            // --- Varsayılan Kullanıcıları Oluştur ve Rollere Bağla ---
             createUser("admin", "admin@fidanys.xyz", "admin", ataTechTenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
             System.out.println("Kullanıcı oluşturuldu: admin");
 
@@ -92,7 +89,6 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    // Yardımcı metotlar
     private Permission createPermission(String name, String description, String tenantId) {
         Permission p = new Permission();
         p.setName(name);
@@ -102,7 +98,6 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createUser(String username, String email, String password, String tenantId, Set<String> roleIds) {
-        // Kullanıcı zaten var mı diye kontrol et, eğer varsa tekrar oluşturma.
         if (userRepository.findByUsernameAndTenantId(username, tenantId).isEmpty()) {
             User user = new User();
             user.setUsername(username);
