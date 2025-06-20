@@ -11,7 +11,8 @@ export const paths = {
     plants: '/dashboard/plants',
     warehouses: '/dashboard/warehouses',
     suppliers: '/dashboard/suppliers',
-    goodsReceipts: '/dashboard/goods-receipts', // ADD THIS LINE
+    goodsReceipts: '/dashboard/goods-receipts', // This should already be here
+    orders: '/dashboard/orders',             // ADD THIS LINE
   },
   errors: { notFound: '/errors/not-found' },
 } as const;
