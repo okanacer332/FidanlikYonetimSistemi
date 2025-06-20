@@ -1,4 +1,11 @@
-import type { NavItemConfig } from '@/types/nav';
+// Define a clearer interface for the function's parameters
+interface IsNavItemActiveParams {
+  disabled?: boolean;
+  external?: boolean;
+  href?: string;
+  matcher?: { type: 'startsWith' | 'equals'; href: string };
+  pathname: string;
+}
 
 export function isNavItemActive({
   disabled,
@@ -6,7 +13,7 @@ export function isNavItemActive({
   href,
   matcher,
   pathname,
-}: Pick<NavItemConfig, 'disabled' | 'external' | 'href' | 'matcher'> & { pathname: string }): boolean {
+}: IsNavItemActiveParams): boolean {
   if (disabled || !href || external) {
     return false;
   }
