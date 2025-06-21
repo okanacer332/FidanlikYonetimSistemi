@@ -5,7 +5,7 @@ export const navItems: NavItemConfig[] = [
   {
     type: 'item',
     key: 'overview',
-    title: 'Anasayfa', // Name changed from "Genel Bakış"
+    title: 'Anasayfa',
     href: paths.dashboard.overview,
     icon: 'chart-pie',
     roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
@@ -39,7 +39,7 @@ export const navItems: NavItemConfig[] = [
     roles: ['ADMIN'], // Only visible to Admins
     items: [
       { type: 'item', key: 'user-management', title: 'Kullanıcı Yönetimi', href: paths.dashboard.userManagement, icon: 'users', roles: ['ADMIN'] },
-      { type: 'item', key: 'settings', title: 'Ayarlar', href: paths.dashboard.settings, icon: 'gear-six', roles: ['ADMIN'] },
+      // "Ayarlar" buradan kaldırıldı.
     ],
   },
   {
