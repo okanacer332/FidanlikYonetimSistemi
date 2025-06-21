@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/order/service/OrderService.java
 package com.fidanlik.fidanysserver.order.service;
 
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
@@ -29,11 +28,10 @@ public class OrderService {
     private final StockService stockService;
     private final CustomerRepository customerRepository;
     private final WarehouseRepository warehouseRepository;
-    private final PlantRepository plantRepository; // PlantRepository'yi kullanmak için ekledik
+    private final PlantRepository plantRepository;
 
     @Transactional
     public Order createOrder(OrderCreateRequest request, String userId, String tenantId) {
-        // Gerekli ID'lerin varlığını ve tenant'a ait olduğunu kontrol et
         customerRepository.findById(request.getCustomerId())
                 .filter(c -> c.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz müşteri ID'si."));
@@ -42,16 +40,14 @@ public class OrderService {
                 .filter(w -> w.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz depo ID'si."));
 
-        // Sipariş kalemlerini ve toplam tutarı hesapla
         List<Order.OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (OrderItemDto itemDto : request.getItems()) {
-            // Fidanın varlığını kontrol et
             plantRepository.findById(itemDto.getPlantId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz fidan ID'si: " + itemDto.getPlantId()));
 
-            BigDecimal price = itemDto.getSalePrice() != null ? itemDto.getSalePrice() : BigDecimal.ZERO; // Fiyatı DTO'dan al
+            BigDecimal price = itemDto.getSalePrice() != null ? itemDto.getSalePrice() : BigDecimal.ZERO;
 
             Order.OrderItem orderItem = new Order.OrderItem();
             orderItem.setPlantId(itemDto.getPlantId());
@@ -63,21 +59,18 @@ public class OrderService {
         }
 
         Order order = new Order();
-        order.setOrderNumber("SIP-" + System.currentTimeMillis()); // Basit bir sipariş no üretimi
+        order.setOrderNumber("SIP-" + System.currentTimeMillis());
         order.setCustomerId(request.getCustomerId());
         order.setWarehouseId(request.getWarehouseId());
         order.setItems(orderItems);
         order.setTotalAmount(totalAmount);
-        order.setStatus(Order.OrderStatus.PREPARING); // Sipariş başlangıçta HAZIRLANIYOR durumunda
+        order.setStatus(Order.OrderStatus.PREPARING);
         order.setOrderDate(LocalDateTime.now());
         order.setUserId(userId);
         order.setTenantId(tenantId);
-        order.setExpectedDeliveryDate(request.getExpectedDeliveryDate()); // Yeni eklendi
+        order.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
 
         Order savedOrder = orderRepository.save(order);
-
-        // Stoktan düşme işlemleri burada YAPILMIYOR.
-        // Stok düşüşü, sipariş "SHIPPED" (Sevkedildi) durumuna geçtiğinde tetiklenecek.
 
         return savedOrder;
     }
@@ -91,19 +84,16 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Başka bir şirketin siparişini güncellemeye yetkiniz yok.");
         }
 
-        // Durum geçişi kontrolleri burada yapılabilir (örn: CANCELED'dan SHIPPED olamaz)
-        // Eğer sipariş zaten aynı durumdaysa işlem yapma
         if (order.getStatus() == newStatus) {
             return order;
         }
 
-        // Stoktan düşme işlemini sadece sipariş SEVKEDİLDİ durumuna geçtiğinde yap
-        if (newStatus == Order.OrderStatus.SHIPPED && order.getStatus() != Order.OrderStatus.SHIPPED) {
+        if (newStatus == Order.OrderStatus.SHIPPED && order.getStatus() == Order.OrderStatus.PREPARING) {
             for (Order.OrderItem item : order.getItems()) {
                 stockService.changeStock(
                         item.getPlantId(),
                         order.getWarehouseId(),
-                        -item.getQuantity(), // Negatif miktar ile stoktan düş
+                        -item.getQuantity(),
                         StockMovement.MovementType.SALE,
                         order.getId(),
                         "Sipariş Sevkiyatı - Sipariş No: " + order.getOrderNumber(),
@@ -112,21 +102,14 @@ public class OrderService {
                 );
             }
         }
-        // İptal durumunda stok iadesi (eğer daha önce düşüldüyse)
-        else if (newStatus == Order.OrderStatus.CANCELED && (order.getStatus() == Order.OrderStatus.SHIPPED || order.getStatus() == Order.OrderStatus.DELIVERED)) {
-            // Eğer sipariş zaten sevkedilmiş/teslim edilmişse ve iptal ediliyorsa stok iadesi yap
-            for (Order.OrderItem item : order.getItems()) {
-                stockService.changeStock(
-                        item.getPlantId(),
-                        order.getWarehouseId(),
-                        item.getQuantity(), // Pozitif miktar ile stok iadesi yap
-                        StockMovement.MovementType.RETURN, // Yeni MovementType ekleyebilirsiniz veya GOODS_RECEIPT kullanabilirsiniz
-                        order.getId(),
-                        "Sipariş İptali - Stok İadesi - Sipariş No: " + order.getOrderNumber(),
-                        userId,
-                        tenantId
-                );
-            }
+        else if (newStatus == Order.OrderStatus.CANCELED && order.getStatus() == Order.OrderStatus.PREPARING) {
+            // No stock movement needed if canceled from PREPARING
+        }
+        else if (newStatus == Order.OrderStatus.DELIVERED && order.getStatus() != Order.OrderStatus.SHIPPED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sipariş sevk edilmeden teslim edilemez.");
+        }
+        else if (order.getStatus() == Order.OrderStatus.CANCELED || order.getStatus() == Order.OrderStatus.DELIVERED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "İptal edilmiş veya teslim edilmiş siparişin durumu değiştirilemez.");
         }
 
 
@@ -134,5 +117,8 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Diğer Order servis metotları buraya eklenebilir (getAllOrdersByTenant, getOrderById vb.)
+    // NEW METHOD to get all orders
+    public List<Order> getAllOrdersByTenant(String tenantId) {
+        return orderRepository.findAllByTenantId(tenantId);
+    }
 }
