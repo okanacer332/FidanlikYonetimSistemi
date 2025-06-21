@@ -11,8 +11,8 @@ import ListItem from '@mui/material/ListItem';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemText from '@mui/material/ListItemText';
 import type { SxProps } from '@mui/material/styles';
-import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
-import { DotsThreeVerticalIcon } from '@phosphor-icons/react/dist/ssr/DotsThreeVertical';
+import { ArrowRight as ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
+import { DotsThreeVertical as DotsThreeVerticalIcon } from '@phosphor-icons/react/dist/ssr/DotsThreeVertical';
 import dayjs from 'dayjs';
 
 export interface Product {
@@ -30,7 +30,7 @@ export interface LatestProductsProps {
 export function LatestProducts({ products = [], sx }: LatestProductsProps): React.JSX.Element {
   return (
     <Card sx={sx}>
-      <CardHeader title="Latest products" />
+      <CardHeader title="Son Eklenen Ürünler" />
       <Divider />
       <List>
         {products.map((product, index) => (
@@ -52,7 +52,7 @@ export function LatestProducts({ products = [], sx }: LatestProductsProps): Reac
             <ListItemText
               primary={product.name}
               primaryTypographyProps={{ variant: 'subtitle1' }}
-              secondary={`Updated ${dayjs(product.updatedAt).format('MMM D, YYYY')}`}
+              secondary={`Güncellenme: ${dayjs(product.updatedAt).format('DD MMM, YYYY')}`}
               secondaryTypographyProps={{ variant: 'body2' }}
             />
             <IconButton edge="end">
@@ -69,7 +69,7 @@ export function LatestProducts({ products = [], sx }: LatestProductsProps): Reac
           size="small"
           variant="text"
         >
-          View all
+          Tümünü Gör
         </Button>
       </CardActions>
     </Card>

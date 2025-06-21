@@ -9,8 +9,8 @@ import CardHeader from '@mui/material/CardHeader';
 import Divider from '@mui/material/Divider';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { SxProps } from '@mui/material/styles';
-import { ArrowClockwiseIcon } from '@phosphor-icons/react/dist/ssr/ArrowClockwise';
-import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
+import { ArrowClockwise as ArrowClockwiseIcon } from '@phosphor-icons/react/dist/ssr/ArrowClockwise';
+import { ArrowRight as ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
 import type { ApexOptions } from 'apexcharts';
 
 import { Chart } from '@/components/core/chart';
@@ -28,10 +28,10 @@ export function Sales({ chartSeries, sx }: SalesProps): React.JSX.Element {
       <CardHeader
         action={
           <Button color="inherit" size="small" startIcon={<ArrowClockwiseIcon fontSize="var(--icon-fontSize-md)" />}>
-            Sync
+            Yenile
           </Button>
         }
-        title="Sales"
+        title="Satışlar"
       />
       <CardContent>
         <Chart height={350} options={chartOptions} series={chartSeries} type="bar" width="100%" />
@@ -39,7 +39,7 @@ export function Sales({ chartSeries, sx }: SalesProps): React.JSX.Element {
       <Divider />
       <CardActions sx={{ justifyContent: 'flex-end' }}>
         <Button color="inherit" endIcon={<ArrowRightIcon fontSize="var(--icon-fontSize-md)" />} size="small">
-          Overview
+          Genel Bakış
         </Button>
       </CardActions>
     </Card>
@@ -67,12 +67,12 @@ function useChartOptions(): ApexOptions {
     xaxis: {
       axisBorder: { color: theme.palette.divider, show: true },
       axisTicks: { color: theme.palette.divider, show: true },
-      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
       labels: { offsetY: 5, style: { colors: theme.palette.text.secondary } },
     },
     yaxis: {
       labels: {
-        formatter: (value) => (value > 0 ? `${value}K` : `${value}`),
+        formatter: (value) => (value > 999 ? `${(value / 1000).toFixed(0)}K` : `${value}`),
         offsetX: -10,
         style: { colors: theme.palette.text.secondary },
       },

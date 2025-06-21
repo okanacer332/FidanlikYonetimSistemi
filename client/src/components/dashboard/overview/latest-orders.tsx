@@ -15,17 +15,21 @@ import TableRow from '@mui/material/TableRow';
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
 import dayjs from 'dayjs';
 
+// GÜNCELLEME: Backend'den gelebilecek tüm durumlar için bir harita oluşturuldu.
 const statusMap = {
-  pending: { label: 'Pending', color: 'warning' },
-  delivered: { label: 'Delivered', color: 'success' },
-  refunded: { label: 'Refunded', color: 'error' },
+  preparing: { label: 'Hazırlanıyor', color: 'warning' },
+  shipped: { label: 'Sevk Edildi', color: 'info' },
+  delivered: { label: 'Teslim Edildi', color: 'success' },
+  canceled: { label: 'İptal Edildi', color: 'error' },
+  pending: { label: 'Beklemede', color: 'warning' },
+  refunded: { label: 'İade', color: 'error' },
 } as const;
 
 export interface Order {
   id: string;
   customer: { name: string };
   amount: number;
-  status: 'pending' | 'delivered' | 'refunded';
+  status: keyof typeof statusMap; // GÜNCELLEME: status tipi daha esnek hale getirildi.
   createdAt: Date;
 }
 
@@ -37,27 +41,27 @@ export interface LatestOrdersProps {
 export function LatestOrders({ orders = [], sx }: LatestOrdersProps): React.JSX.Element {
   return (
     <Card sx={sx}>
-      <CardHeader title="Latest orders" />
+      <CardHeader title="Son Siparişler" />
       <Divider />
       <Box sx={{ overflowX: 'auto' }}>
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
-              <TableCell>Order</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell sortDirection="desc">Date</TableCell>
-              <TableCell>Status</TableCell>
+              <TableCell>Sipariş No</TableCell>
+              <TableCell>Müşteri</TableCell>
+              <TableCell sortDirection="desc">Tarih</TableCell>
+              <TableCell>Durum</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {orders.map((order) => {
-              const { label, color } = statusMap[order.status] ?? { label: 'Unknown', color: 'default' };
+              const { label, color } = statusMap[order.status] ?? { label: 'Bilinmiyor', color: 'default' };
 
               return (
                 <TableRow hover key={order.id}>
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{order.customer.name}</TableCell>
-                  <TableCell>{dayjs(order.createdAt).format('MMM D, YYYY')}</TableCell>
+                  <TableCell>{dayjs(order.createdAt).format('DD MMM, YYYY')}</TableCell>
                   <TableCell>
                     <Chip color={color} label={label} size="small" />
                   </TableCell>
@@ -75,7 +79,7 @@ export function LatestOrders({ orders = [], sx }: LatestOrdersProps): React.JSX.
           size="small"
           variant="text"
         >
-          View all
+          Tümünü Gör
         </Button>
       </CardActions>
     </Card>

@@ -27,7 +27,7 @@ export function Budget({ diff, trend, sx, value }: BudgetProps): React.JSX.Eleme
           <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }} spacing={3}>
             <Stack spacing={1}>
               <Typography color="text.secondary" variant="overline">
-                Budget
+                Bütçe
               </Typography>
               <Typography variant="h4">{value}</Typography>
             </Stack>
@@ -44,7 +44,7 @@ export function Budget({ diff, trend, sx, value }: BudgetProps): React.JSX.Eleme
                 </Typography>
               </Stack>
               <Typography color="text.secondary" variant="caption">
-                Since last month
+                Geçen aydan beri
               </Typography>
             </Stack>
           ) : null}

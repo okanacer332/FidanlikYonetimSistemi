@@ -1,179 +1,204 @@
+'use client';
+
 import * as React from 'react';
-import type { Metadata } from 'next';
-import Grid from '@mui/material/Grid';
+import { Alert, CircularProgress, Grid, Stack, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 
-import { config } from '@/config';
-import { Budget } from '@/components/dashboard/overview/budget';
+// Anasayfa kart bileşenleri
 import { LatestOrders } from '@/components/dashboard/overview/latest-orders';
-import { LatestProducts } from '@/components/dashboard/overview/latest-products';
 import { Sales } from '@/components/dashboard/overview/sales';
-import { TasksProgress } from '@/components/dashboard/overview/tasks-progress';
 import { TotalCustomers } from '@/components/dashboard/overview/total-customers';
 import { TotalProfit } from '@/components/dashboard/overview/total-profit';
-import { Traffic } from '@/components/dashboard/overview/traffic';
+import { OpenOrders } from '@/components/dashboard/overview/open-orders';
+import { TotalStock } from '@/components/dashboard/overview/total-stock';
+import { TopSellingPlants } from '@/components/dashboard/overview/top-selling-plants';
+import { LowStockPlants } from '@/components/dashboard/overview/low-stock-plants';
 
-export const metadata = { title: `Overview | Dashboard | ${config.site.name}` } satisfies Metadata;
+// Backend'den gelecek veri tipleri
+import type { Customer, Order, Plant } from '@/types/nursery';
+
+// Stok verisi için tip tanımı (varsayımsal, projenizdeki tipe göre düzenlenebilir)
+interface Stock {
+  plantId: string;
+  quantity: number;
+}
+
+// Sayfada kullanılacak dinamik veriler için bir interface
+interface OverviewData {
+  totalCustomers: number;
+  totalProfit: number;
+  openOrders: number;
+  totalStock: number;
+  salesByMonth: number[];
+  latestOrders: {
+    id: string;
+    customer: { name: string };
+    amount: number;
+    status: 'preparing' | 'shipped' | 'delivered' | 'canceled' | 'pending' | 'refunded';
+    createdAt: Date;
+  }[];
+  topSellingPlants: { name: string; quantity: number }[];
+  lowStockPlants: { name: string; quantity: number }[];
+}
 
 export default function Page(): React.JSX.Element {
+  const [data, setData] = React.useState<OverviewData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchOverviewData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+
+        // Tüm gerekli verileri Promise.all ile tek seferde çekelim
+        const [ordersRes, customersRes, stockRes, plantsRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stock`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        if (!ordersRes.ok || !customersRes.ok || !stockRes.ok || !plantsRes.ok) {
+          throw new Error('Anasayfa verileri yüklenirken bir hata oluştu.');
+        }
+
+        const orders: Order[] = await ordersRes.json();
+        const customers: Customer[] = await customersRes.json();
+        const stocks: Stock[] = await stockRes.json();
+        const plants: Plant[] = await plantsRes.json();
+        
+        // --- Veri İşleme ---
+
+        // Kartlar için metrikler
+        const totalCustomers = customers.length;
+        const totalProfit = orders
+          .filter(order => order.status === 'DELIVERED')
+          .reduce((sum, order) => sum + order.totalAmount, 0);
+        const openOrders = orders.filter(order => order.status === 'PREPARING' || order.status === 'SHIPPED').length;
+        const totalStock = stocks.reduce((sum, stock) => sum + stock.quantity, 0);
+
+        // Son siparişler listesi
+        const customerMap = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`]));
+        const latestOrders = orders
+          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
+          .slice(0, 6)
+          .map(order => ({
+            id: order.orderNumber,
+            customer: { name: customerMap.get(order.customerId) || 'Bilinmeyen Müşteri' },
+            amount: order.totalAmount,
+            status: order.status.toLowerCase() as OverviewData['latestOrders'][number]['status'],
+            createdAt: new Date(order.orderDate),
+          }));
+
+        // Aylık satış grafiği
+        const salesByMonth = new Array(12).fill(0);
+        const currentYear = new Date().getFullYear();
+        orders.forEach(order => {
+          const orderDate = new Date(order.orderDate);
+          if (orderDate.getFullYear() === currentYear && order.status !== 'CANCELED') {
+            const month = orderDate.getMonth();
+            salesByMonth[month] += order.totalAmount;
+          }
+        });
+
+        // En çok satan ve stoku azalan fidanlar
+        const plantMap = new Map(plants.map(p => [p.id, `${p.plantType.name} - ${p.plantVariety.name}`]));
+        const salesCount: { [key: string]: number } = {};
+        orders.forEach(order => {
+            if (order.status !== 'CANCELED') {
+                order.items.forEach(item => {
+                    const plantName = plantMap.get(item.plantId) || 'Bilinmeyen Fidan';
+                    salesCount[plantName] = (salesCount[plantName] || 0) + item.quantity;
+                });
+            }
+        });
+        
+        const topSellingPlants = Object.entries(salesCount)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, quantity]) => ({ name, quantity }));
+
+        const lowStockPlants = stocks
+            .filter(s => s.quantity > 0 && s.quantity <= 10) // Örneğin stoğu 10'dan az olanlar
+            .sort((a, b) => a.quantity - b.quantity)
+            .slice(0, 5)
+            .map(stock => ({
+                name: plantMap.get(stock.plantId) || 'Bilinmeyen Fidan',
+                quantity: stock.quantity
+            }));
+        
+        setData({
+          totalCustomers,
+          totalProfit,
+          openOrders,
+          totalStock,
+          latestOrders,
+          salesByMonth,
+          topSellingPlants,
+          lowStockPlants
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOverviewData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Stack sx={{ alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
+  if (error) {
+    return <Alert severity="error">{error}</Alert>;
+  }
+
+  const formattedProfit = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(
+    data?.totalProfit || 0
+  );
+
   return (
     <Grid container spacing={3}>
-      <Grid
-        size={{
-          lg: 3,
-          sm: 6,
-          xs: 12,
-        }}
-      >
-        <Budget diff={12} trend="up" sx={{ height: '100%' }} value="$24k" />
+      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
+        <TotalProfit sx={{ height: '100%' }} value={formattedProfit} />
       </Grid>
-      <Grid
-        size={{
-          lg: 3,
-          sm: 6,
-          xs: 12,
-        }}
-      >
-        <TotalCustomers diff={16} trend="down" sx={{ height: '100%' }} value="1.6k" />
+      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
+        <TotalCustomers trend="up" diff={5} sx={{ height: '100%' }} value={data?.totalCustomers.toString() ?? '0'} />
       </Grid>
-      <Grid
-        size={{
-          lg: 3,
-          sm: 6,
-          xs: 12,
-        }}
-      >
-        <TasksProgress sx={{ height: '100%' }} value={75.5} />
+      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
+        <OpenOrders sx={{ height: '100%' }} value={data?.openOrders.toString() ?? '0'} />
       </Grid>
-      <Grid
-        size={{
-          lg: 3,
-          sm: 6,
-          xs: 12,
-        }}
-      >
-        <TotalProfit sx={{ height: '100%' }} value="$15k" />
+      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
+        <TotalStock sx={{ height: '100%' }} value={data?.totalStock.toString() ?? '0'} />
       </Grid>
-      <Grid
-        size={{
-          lg: 8,
-          xs: 12,
-        }}
-      >
+
+      <Grid size={{ lg: 8, xs: 12 }}>
         <Sales
           chartSeries={[
-            { name: 'This year', data: [18, 16, 5, 8, 3, 14, 14, 16, 17, 19, 18, 20] },
-            { name: 'Last year', data: [12, 11, 4, 6, 2, 9, 9, 10, 11, 12, 13, 13] },
+            { name: 'Bu Yıl (₺)', data: data?.salesByMonth || [] },
           ]}
           sx={{ height: '100%' }}
         />
       </Grid>
-      <Grid
-        size={{
-          lg: 4,
-          md: 6,
-          xs: 12,
-        }}
-      >
-        <Traffic chartSeries={[63, 15, 22]} labels={['Desktop', 'Tablet', 'Phone']} sx={{ height: '100%' }} />
+      <Grid size={{ lg: 4, md: 6, xs: 12 }}>
+        <TopSellingPlants plants={data?.topSellingPlants} sx={{ height: '100%' }} />
       </Grid>
-      <Grid
-        size={{
-          lg: 4,
-          md: 6,
-          xs: 12,
-        }}
-      >
-        <LatestProducts
-          products={[
-            {
-              id: 'PRD-005',
-              name: 'Soja & Co. Eucalyptus',
-              image: '/assets/product-5.png',
-              updatedAt: dayjs().subtract(18, 'minutes').subtract(5, 'hour').toDate(),
-            },
-            {
-              id: 'PRD-004',
-              name: 'Necessaire Body Lotion',
-              image: '/assets/product-4.png',
-              updatedAt: dayjs().subtract(41, 'minutes').subtract(3, 'hour').toDate(),
-            },
-            {
-              id: 'PRD-003',
-              name: 'Ritual of Sakura',
-              image: '/assets/product-3.png',
-              updatedAt: dayjs().subtract(5, 'minutes').subtract(3, 'hour').toDate(),
-            },
-            {
-              id: 'PRD-002',
-              name: 'Lancome Rouge',
-              image: '/assets/product-2.png',
-              updatedAt: dayjs().subtract(23, 'minutes').subtract(2, 'hour').toDate(),
-            },
-            {
-              id: 'PRD-001',
-              name: 'Erbology Aloe Vera',
-              image: '/assets/product-1.png',
-              updatedAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-          ]}
-          sx={{ height: '100%' }}
-        />
+
+      <Grid size={{ lg: 8, md: 12, xs: 12 }}>
+        <LatestOrders orders={data?.latestOrders} sx={{ height: '100%' }} />
       </Grid>
-      <Grid
-        size={{
-          lg: 8,
-          md: 12,
-          xs: 12,
-        }}
-      >
-        <LatestOrders
-          orders={[
-            {
-              id: 'ORD-007',
-              customer: { name: 'Ekaterina Tankova' },
-              amount: 30.5,
-              status: 'pending',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-            {
-              id: 'ORD-006',
-              customer: { name: 'Cao Yu' },
-              amount: 25.1,
-              status: 'delivered',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-            {
-              id: 'ORD-004',
-              customer: { name: 'Alexa Richardson' },
-              amount: 10.99,
-              status: 'refunded',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-            {
-              id: 'ORD-003',
-              customer: { name: 'Anje Keizer' },
-              amount: 96.43,
-              status: 'pending',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-            {
-              id: 'ORD-002',
-              customer: { name: 'Clarke Gillebert' },
-              amount: 32.54,
-              status: 'delivered',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-            {
-              id: 'ORD-001',
-              customer: { name: 'Adam Denisov' },
-              amount: 16.76,
-              status: 'delivered',
-              createdAt: dayjs().subtract(10, 'minutes').toDate(),
-            },
-          ]}
-          sx={{ height: '100%' }}
-        />
+       <Grid size={{ lg: 4, md: 6, xs: 12 }}>
+        <LowStockPlants plants={data?.lowStockPlants} sx={{ height: '100%' }} />
       </Grid>
     </Grid>
   );
