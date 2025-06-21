@@ -1,4 +1,3 @@
-// Konum: client/src/components/dashboard/layout/user-popover.tsx
 'use client';
 
 import * as React from 'react';
@@ -43,24 +42,18 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
       slotProps={{ paper: { sx: { width: '240px' } } }}
     >
       <Box sx={{ p: '16px 20px ' }}>
-        <Typography variant="subtitle1">{user?.username || 'Kullanıcı'}</Typography> {/* Burası güncellendi */}
+        <Typography variant="subtitle1">{user?.username || 'Kullanıcı'}</Typography>
         <Typography color="text.secondary" variant="body2">
           {user?.email || ''}
         </Typography>
       </Box>
       <Divider />
       <MenuList disablePadding sx={{ p: '8px', '& .MuiMenuItem-root': { borderRadius: 1 } }}>
-        <MenuItem component={RouterLink} href={paths.dashboard.settings} onClick={onClose}>
-          <ListItemIcon>
-            <GearSixIcon fontSize="var(--icon-fontSize-md)" />
-          </ListItemIcon>
-          Ayarlar
-        </MenuItem>
         <MenuItem component={RouterLink} href={paths.dashboard.account} onClick={onClose}>
           <ListItemIcon>
             <UserIcon fontSize="var(--icon-fontSize-md)" />
           </ListItemIcon>
-          Profil
+          Profilim
         </MenuItem>
         <MenuItem onClick={handleSignOut}>
           <ListItemIcon>

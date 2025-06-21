@@ -58,6 +58,16 @@ export interface Supplier {
   tenantId: string;
 }
 
+// --- YENİ EKLENEN TİP ---
+// Backend'deki Stock modeline karşılık gelir.
+export interface Stock {
+  id: string;
+  plantId: string;
+  warehouseId: string;
+  quantity: number;
+  tenantId: string;
+}
+// --- YENİ TİP SONU ---
 
 
 // --- Form Değerleri için Tipler ---
