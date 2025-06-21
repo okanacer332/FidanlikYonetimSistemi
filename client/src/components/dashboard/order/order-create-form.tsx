@@ -13,11 +13,10 @@ import { Plus as PlusIcon, Trash as TrashIcon } from '@phosphor-icons/react';
 
 import type { Plant, Warehouse, Customer } from '@/types/nursery';
 
-// Schema for form validation
 const orderItemSchema = zod.object({
   plantId: zod.string().min(1, 'Fidan seçimi zorunludur.'),
-  quantity: zod.number({ invalid_type_error: 'Miktar gereklidir.' }).positive('Miktar 0\'dan büyük olmalıdır.'),
-  salePrice: zod.number({ invalid_type_error: 'Fiyat gereklidir.' }).min(0, 'Fiyat negatif olamaz.'),
+  quantity: zod.coerce.number({ invalid_type_error: 'Miktar gereklidir.' }).positive({ message: 'Miktar 0\'dan büyük olmalıdır.' }),
+  salePrice: zod.coerce.number({ invalid_type_error: 'Fiyat gereklidir.' }).min(0, { message: 'Fiyat negatif olamaz.' }),
 });
 
 const formSchema = zod.object({
@@ -151,7 +150,7 @@ export function OrderCreateForm({ open, onClose, onSuccess }: OrderCreateFormPro
             <Grid container spacing={4}>
 
               {/* LEFT COLUMN - ORDER DETAILS */}
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Stack spacing={3}>
                   <Typography variant="h6">Sipariş Bilgileri</Typography>
                   <Controller
@@ -194,7 +193,7 @@ export function OrderCreateForm({ open, onClose, onSuccess }: OrderCreateFormPro
               </Grid>
 
               {/* RIGHT COLUMN - ITEM DETAILS */}
-              <Grid item xs={12} md={8}>
+              <Grid size={{ xs: 12, md: 8 }}>
                 <Stack spacing={2}>
                   <Typography variant="h6">Sipariş Kalemleri</Typography>
                   <Paper variant="outlined">
@@ -232,7 +231,6 @@ export function OrderCreateForm({ open, onClose, onSuccess }: OrderCreateFormPro
                                               control={control}
                                               render={({ field }) => (
                                                   <TextField {...field} type="number" variant="outlined" size="small" fullWidth required 
-                                                  onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value, 10))}
                                                   error={Boolean(errors.items?.[index]?.quantity)} helperText={errors.items?.[index]?.quantity?.message} />
                                               )}
                                           />
@@ -243,7 +241,6 @@ export function OrderCreateForm({ open, onClose, onSuccess }: OrderCreateFormPro
                                               control={control}
                                               render={({ field }) => (
                                                   <TextField {...field} type="number" variant="outlined" size="small" fullWidth required 
-                                                  onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                                                   error={Boolean(errors.items?.[index]?.salePrice)} helperText={errors.items?.[index]?.salePrice?.message} />
                                               )}
                                           />

@@ -8,16 +8,21 @@ import {
 import { Truck as TruckIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 
-// This type will be used for each row in the table
+// --- Değişiklik Başlangıcı ---
+// OrderStatus enum'ını nursery tiplerinden import ediyoruz.
+import type { OrderStatus } from '@/types/nursery';
+
+// OrderRow arayüzü
 export interface OrderRow {
   id: string;
   orderNumber: string;
   customerName: string;
   warehouseName: string;
   totalAmount: number;
-  status: 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELED';
+  status: OrderStatus; // <-- Burası string union'dan 'OrderStatus' enum'ına çevrildi.
   orderDate: string;
 }
+// --- Değişiklik Sonu ---
 
 interface OrdersTableProps {
   rows?: OrderRow[];

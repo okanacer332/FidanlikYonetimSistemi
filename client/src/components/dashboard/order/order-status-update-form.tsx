@@ -5,7 +5,8 @@ import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, FormControl,
   InputLabel, Select, MenuItem, Alert, CircularProgress, DialogContentText
 } from '@mui/material';
-import type { OrderStatus } from '@/types/nursery';
+// GÜNCELLEME: Enum'ı bir değer olarak import ediyoruz, sadece tip olarak değil.
+import { OrderStatus } from '@/types/nursery';
 
 interface OrderStatusUpdateFormProps {
   open: boolean;
@@ -15,11 +16,12 @@ interface OrderStatusUpdateFormProps {
   currentStatus: OrderStatus | null;
 }
 
+// GÜNCELLEME: String literaller yerine OrderStatus enum üyeleri kullanıldı.
 const nextStatusMap: Record<string, { value: OrderStatus; label: string }[]> = {
-    PREPARING: [{ value: 'SHIPPED', label: 'Sevk Edildi' }, { value: 'CANCELED', label: 'İptal Et' }],
-    SHIPPED: [{ value: 'DELIVERED', label: 'Teslim Edildi' }],
-    DELIVERED: [],
-    CANCELED: [],
+    [OrderStatus.PREPARING]: [{ value: OrderStatus.SHIPPED, label: 'Sevk Edildi' }, { value: OrderStatus.CANCELED, label: 'İptal Et' }],
+    [OrderStatus.SHIPPED]: [{ value: OrderStatus.DELIVERED, label: 'Teslim Edildi' }],
+    [OrderStatus.DELIVERED]: [],
+    [OrderStatus.CANCELED]: [],
 };
 
 export function OrderStatusUpdateForm({ open, onClose, onSuccess, orderId, currentStatus }: OrderStatusUpdateFormProps): React.JSX.Element {
