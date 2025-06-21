@@ -1,47 +1,51 @@
+'use client';
+
 import * as React from 'react';
 import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-const user = {
-  name: 'Sofia Rivers',
-  avatar: '/assets/avatar.png',
-  jobTitle: 'Senior Developer',
-  country: 'USA',
-  city: 'Los Angeles',
-  timezone: 'GTM-7',
-} as const;
+import { useUser } from '@/hooks/use-user'; // useUser hook'unu import ediyoruz
 
 export function AccountInfo(): React.JSX.Element {
+  const { user } = useUser(); // Hook'tan kullanıcı verilerini alıyoruz
+
+  const userRoles = user?.roles?.map(role => role.name).join(', ') || 'Belirtilmemiş';
+
   return (
     <Card>
       <CardContent>
         <Stack spacing={2} sx={{ alignItems: 'center' }}>
           <div>
-            <Avatar src={user.avatar} sx={{ height: '80px', width: '80px' }} />
+            {/* Kullanıcının adının baş harfi ile Avatar oluşturuyoruz */}
+            <Avatar sx={{ height: '80px', width: '80px', fontSize: '2.5rem' }}>
+              {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
+            </Avatar>
           </div>
           <Stack spacing={1} sx={{ textAlign: 'center' }}>
-            <Typography variant="h5">{user.name}</Typography>
+            {/* Dinamik kullanıcı adını gösteriyoruz */}
+            <Typography variant="h5">{user?.username || 'Kullanıcı'}</Typography>
+            {/* Dinamik e-posta ve rolleri gösteriyoruz */}
             <Typography color="text.secondary" variant="body2">
-              {user.city} {user.country}
+              {user?.email || 'E-posta adresi yok'}
             </Typography>
             <Typography color="text.secondary" variant="body2">
-              {user.timezone}
+              Rol: {userRoles}
             </Typography>
           </Stack>
         </Stack>
       </CardContent>
       <Divider />
-      <CardActions>
+      {/* Bu kısım ihtiyaca göre yeniden düzenlenebilir, şimdilik kaldırıldı */}
+      {/* <CardActions>
         <Button fullWidth variant="text">
-          Upload picture
+          Resmi Güncelle
         </Button>
       </CardActions>
+      */}
     </Card>
   );
 }
