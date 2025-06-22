@@ -22,11 +22,12 @@ public class StockMovement {
 
     public enum MovementType {
         GOODS_RECEIPT,      // Mal Kabul
-        GOODS_RECEIPT_CANCEL, // Mal Kabul İptali (ADD THIS)
+        GOODS_RECEIPT_CANCEL,
         SALE,               // Satış
+        SALE_CANCEL,        // Satış İptali (İade) -> YENİ EKLENDİ
         WASTAGE,            // Zayiat
         TRANSFER_IN,        // Depo Transfer Girişi
         TRANSFER_OUT,       // Depo Transfer Çıkışı
-        RETURN              // İade
+        RETURN              // Müşteri İadesi (Bu, iptalden farklı bir senaryo için kullanılabilir)
     }
 }

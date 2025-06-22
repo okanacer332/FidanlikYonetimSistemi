@@ -5,7 +5,6 @@ import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, FormControl,
   InputLabel, Select, MenuItem, Alert, CircularProgress, DialogContentText
 } from '@mui/material';
-// GÜNCELLEME: Enum'ı bir değer olarak import ediyoruz, sadece tip olarak değil.
 import { OrderStatus } from '@/types/nursery';
 
 interface OrderStatusUpdateFormProps {
@@ -16,30 +15,39 @@ interface OrderStatusUpdateFormProps {
   currentStatus: OrderStatus | null;
 }
 
-// GÜNCELLEME: String literaller yerine OrderStatus enum üyeleri kullanıldı.
-const nextStatusMap: Record<string, { value: OrderStatus; label: string }[]> = {
-    [OrderStatus.PREPARING]: [{ value: OrderStatus.SHIPPED, label: 'Sevk Edildi' }, { value: OrderStatus.CANCELED, label: 'İptal Et' }],
-    [OrderStatus.SHIPPED]: [{ value: OrderStatus.DELIVERED, label: 'Teslim Edildi' }],
-    [OrderStatus.DELIVERED]: [],
-    [OrderStatus.CANCELED]: [],
+// Bu harita artık hangi eylemin hangi endpoint'e gideceğini belirleyecek.
+const actionMap: Record<string, { endpoint: string; label: string }> = {
+    [OrderStatus.PREPARING]: { endpoint: 'ship', label: 'Sevk Et' },
+    [OrderStatus.SHIPPED]: { endpoint: 'deliver', label: 'Teslim Et' },
 };
 
+// İptal etme her zaman ayrı bir eylem
+const cancelAction = { endpoint: 'cancel', label: 'Siparişi İptal Et' };
+
 export function OrderStatusUpdateForm({ open, onClose, onSuccess, orderId, currentStatus }: OrderStatusUpdateFormProps): React.JSX.Element {
-  const [newStatus, setNewStatus] = React.useState<OrderStatus | ''>('');
+  const [selectedAction, setSelectedAction] = React.useState<string>('');
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
 
-  const possibleNextStatuses = currentStatus ? nextStatusMap[currentStatus] : [];
+  const possibleActions = [];
+  if (currentStatus && actionMap[currentStatus]) {
+      possibleActions.push(actionMap[currentStatus]);
+  }
+  // Sipariş teslim edilmediyse iptal edilebilir
+  if (currentStatus && currentStatus !== OrderStatus.DELIVERED) {
+      possibleActions.push(cancelAction);
+  }
+
 
   React.useEffect(() => {
     if (open) {
-      setNewStatus('');
+      setSelectedAction('');
       setError(null);
     }
   }, [open]);
 
   const handleSubmit = async () => {
-    if (!orderId || !newStatus) return;
+    if (!orderId || !selectedAction) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -47,9 +55,10 @@ export function OrderStatusUpdateForm({ open, onClose, onSuccess, orderId, curre
     try {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('Oturum bulunamadı.');
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/orders/${orderId}/status/${newStatus}`, {
-            method: 'PUT',
+        
+        // Seçilen aksiyona göre doğru endpoint'e POST isteği yap
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/orders/${orderId}/${selectedAction}`, {
+            method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
         });
 
@@ -67,32 +76,32 @@ export function OrderStatusUpdateForm({ open, onClose, onSuccess, orderId, curre
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Sipariş Durumunu Güncelle</DialogTitle>
+      <DialogTitle>Sipariş İşlemi Seçin</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-            {possibleNextStatuses.length > 0 ? (
+            {possibleActions.length > 0 ? (
                 <FormControl fullWidth>
-                    <InputLabel>Yeni Durum</InputLabel>
+                    <InputLabel>Yapılacak İşlem</InputLabel>
                     <Select
-                        value={newStatus}
-                        label="Yeni Durum"
-                        onChange={(e) => setNewStatus(e.target.value as OrderStatus)}
+                        value={selectedAction}
+                        label="Yapılacak İşlem"
+                        onChange={(e) => setSelectedAction(e.target.value as string)}
                     >
-                        {possibleNextStatuses.map(status => (
-                            <MenuItem key={status.value} value={status.value}>{status.label}</MenuItem>
+                        {possibleActions.map(action => (
+                            <MenuItem key={action.endpoint} value={action.endpoint}>{action.label}</MenuItem>
                         ))}
                     </Select>
                 </FormControl>
             ) : (
-                <DialogContentText>Bu sipariş için durum güncellemesi yapılamaz.</DialogContentText>
+                <DialogContentText>Bu sipariş için yapılabilecek bir işlem bulunmuyor.</DialogContentText>
             )}
             {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Vazgeç</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!newStatus || isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Güncelle'}
+        <Button onClick={handleSubmit} variant="contained" disabled={!selectedAction || isSubmitting}>
+            {isSubmitting ? <CircularProgress size={24} /> : 'Onayla'}
         </Button>
       </DialogActions>
     </Dialog>

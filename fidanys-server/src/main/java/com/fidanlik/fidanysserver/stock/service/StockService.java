@@ -1,20 +1,17 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/service/StockService.java
 package com.fidanlik.fidanysserver.stock.service;
 
+import com.fidanlik.fidanysserver.common.exception.InsufficientStockException; // YENİ IMPORT
 import com.fidanlik.fidanysserver.stock.model.Stock;
 import com.fidanlik.fidanysserver.stock.model.StockMovement;
 import com.fidanlik.fidanysserver.stock.repository.StockMovementRepository;
 import com.fidanlik.fidanysserver.stock.repository.StockRepository;
-import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,11 +33,12 @@ public class StockService {
                     .orElse(null);
 
             if (currentStock == null || currentStock.getQuantity() < Math.abs(quantity)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yetersiz stok. Mevcut: " + (currentStock != null ? currentStock.getQuantity() : 0));
+                // DEĞİŞİKLİK: ResponseStatusException yerine kendi özel hatamızı fırlatıyoruz.
+                throw new InsufficientStockException("Yetersiz stok. İstenen: " + Math.abs(quantity) + ", Mevcut: " + (currentStock != null ? currentStock.getQuantity() : 0));
             }
         }
 
-        // 1. Stok Hareketini Kaydet (İşlemin kaydını tut)
+        // 1. Stok Hareketini Kaydet
         StockMovement movement = new StockMovement();
         movement.setPlantId(plantId);
         movement.setWarehouseId(warehouseId);
@@ -54,7 +52,6 @@ public class StockService {
         stockMovementRepository.save(movement);
 
         // 2. Anlık Stok Miktarını Atomik Olarak Güncelle
-        // Eğer ilgili plantId ve warehouseId için stok kaydı yoksa oluşturur, varsa günceller (upsert).
         Query query = new Query(Criteria.where("plantId").is(plantId)
                 .and("warehouseId").is(warehouseId)
                 .and("tenantId").is(tenantId));
