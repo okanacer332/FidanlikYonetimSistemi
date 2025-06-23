@@ -35,7 +35,7 @@ export function WarehouseEditForm({ open, onClose, onSuccess, warehouse }: Wareh
 
   React.useEffect(() => {
     if (open && warehouse) {
-      reset({ name: warehouse.name, address: warehouse.address });
+      reset({ name: warehouse.name, address: warehouse.location });
       setFormError(null);
     } else {
       reset();
