@@ -1,6 +1,21 @@
 // client/src/types/nursery.ts
 
 // --- YENİ EKLENEN TİPLER (ÖDEME) ---
+export interface ExpenseCategory {
+    id: string;
+    name: string;
+    description: string;
+}
+
+export interface Expense {
+    id: string;
+    description: string;
+    amount: number;
+    expenseDate: string; // ISO Date String
+    category: ExpenseCategory;
+    userId: string;
+    paymentId: string;
+}
 
 export enum PaymentType {
     COLLECTION = 'COLLECTION', // Tahsilat
@@ -259,3 +274,4 @@ export interface OrderCreateRequest {
   items: OrderItemDto[];
   expectedDeliveryDate?: string;
 }
+

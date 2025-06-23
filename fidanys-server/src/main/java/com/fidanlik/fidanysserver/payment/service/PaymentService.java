@@ -3,6 +3,7 @@ package com.fidanlik.fidanysserver.payment.service;
 import com.fidanlik.fidanysserver.accounting.model.Transaction;
 import com.fidanlik.fidanysserver.accounting.service.TransactionService;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
+import com.fidanlik.fidanysserver.expense.model.Expense;
 import com.fidanlik.fidanysserver.invoicing.model.Invoice;
 import com.fidanlik.fidanysserver.invoicing.repository.InvoiceRepository;
 import com.fidanlik.fidanysserver.payment.dto.PaymentRequest;
@@ -27,7 +28,6 @@ public class PaymentService {
 
     @Transactional
     public Payment createCollection(PaymentRequest request, String userId, String tenantId) {
-        // Müşteri var mı ve bu tenant'a mı ait kontrol et
         customerRepository.findById(request.getCustomerId())
                 .filter(c -> c.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Müşteri bulunamadı."));
@@ -46,10 +46,9 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        // Cari hesaba alacak kaydı at
         transactionService.createCustomerTransaction(
                 request.getCustomerId(),
-                Transaction.TransactionType.CREDIT, // Müşterinin borcundan düşülecek
+                Transaction.TransactionType.CREDIT,
                 request.getAmount(),
                 "Tahsilat - " + request.getDescription(),
                 savedPayment.getId(),
@@ -57,17 +56,31 @@ public class PaymentService {
                 tenantId
         );
 
-        // Eğer bir faturaya bağlıysa, faturanın durumunu güncelle
         if (request.getInvoiceId() != null && !request.getInvoiceId().isEmpty()) {
             invoiceRepository.findById(request.getInvoiceId()).ifPresent(invoice -> {
-                // TODO: Faturanın kalan tutarını hesaplayıp, tam ödendiyse durumunu 'PAID' yap.
-                // Şimdilik basitçe durumu güncelliyoruz.
                 invoice.setStatus(Invoice.InvoiceStatus.PAID);
                 invoiceRepository.save(invoice);
             });
         }
 
         return savedPayment;
+    }
+
+    // YENİ METOT: Gider için ödeme oluşturur
+    @Transactional
+    public Payment createPaymentForExpense(Expense expense, Payment.PaymentMethod method, String userId, String tenantId) {
+        Payment payment = new Payment();
+        payment.setTenantId(tenantId);
+        payment.setUserId(userId);
+        payment.setType(Payment.PaymentType.PAYMENT); // Tediye (Para Çıkışı)
+        payment.setMethod(method);
+        payment.setPaymentDate(expense.getExpenseDate());
+        payment.setAmount(expense.getAmount());
+        payment.setDescription("Gider - " + expense.getDescription());
+        payment.setRelatedId(expense.getId());
+        payment.setRelatedEntityType(Payment.RelatedEntityType.EXPENSE);
+
+        return paymentRepository.save(payment);
     }
 
     public List<Payment> getAllPayments(String tenantId) {
