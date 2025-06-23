@@ -1,6 +1,20 @@
 // client/src/types/nursery.ts
 
 // --- YENİ EKLENEN TİPLER (ÖDEME) ---
+
+export interface TopSellingPlantReport {
+    plantTypeName: string;
+    plantVarietyName: string;
+    totalQuantitySold: number;
+}
+
+export interface CustomerSalesReport {
+    customerFirstName: string;
+    customerLastName: string;
+    totalSalesAmount: number;
+    orderCount: number;
+}
+
 export interface ExpenseCategory {
     id: string;
     name: string;

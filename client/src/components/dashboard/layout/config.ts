@@ -33,6 +33,7 @@ export const navItems: NavItemConfig[] = [
       { type: 'item', key: 'invoices', title: 'Faturalar', href: paths.dashboard.accounting.invoices, icon: 'receipt' }, // Yeni path
       { type: 'item', key: 'payments', title: 'Kasa & Banka', href: paths.dashboard.accounting.payments, icon: 'bank' }, // Yeni ikon ve path
       { type: 'item', key: 'expenses', title: 'Gider Yönetimi', href: paths.dashboard.accounting.expenses, icon: 'credit-card' }, // Yeni ikon ve path
+      { type: 'item', key: 'reports', title: 'Raporlar', href: paths.dashboard.reports, icon: 'chart-bar' },
     ],
   },
   // -------------------------
