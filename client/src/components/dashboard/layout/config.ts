@@ -8,7 +8,7 @@ export const navItems: NavItemConfig[] = [
     title: 'Anasayfa',
     href: paths.dashboard.overview,
     icon: 'chart-pie',
-    roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
+    roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF', 'ACCOUNTANT'], // Muhasebe rolü de anasayfayı görebilir
   },
   {
     type: 'group',
@@ -22,6 +22,20 @@ export const navItems: NavItemConfig[] = [
       { type: 'item', key: 'customers', title: 'Müşteriler', href: paths.dashboard.customers, icon: 'users', roles: ['ADMIN', 'SALES'] },
     ],
   },
+  // --- YENİ MUHASEBE GRUBU ---
+  {
+    type: 'group',
+    key: 'accounting',
+    title: 'Muhasebe',
+    roles: ['ADMIN', 'ACCOUNTANT'],
+    items: [
+      { type: 'item', key: 'current-accounts', title: 'Cari Hesaplar', href: paths.dashboard.accounting.currentAccounts, icon: 'swap' }, // Yeni ikon ve path eklenecek
+      { type: 'item', key: 'invoices', title: 'Faturalar', href: paths.dashboard.accounting.invoices, icon: 'receipt' }, // Yeni path
+      { type: 'item', key: 'payments', title: 'Kasa & Banka', href: paths.dashboard.accounting.payments, icon: 'bank' }, // Yeni ikon ve path
+      { type: 'item', key: 'expenses', title: 'Gider Yönetimi', href: paths.dashboard.accounting.expenses, icon: 'credit-card' }, // Yeni ikon ve path
+    ],
+  },
+  // -------------------------
   {
     type: 'group',
     key: 'operations',
@@ -36,10 +50,9 @@ export const navItems: NavItemConfig[] = [
     type: 'group',
     key: 'system',
     title: 'Sistem',
-    roles: ['ADMIN'], // Only visible to Admins
+    roles: ['ADMIN'],
     items: [
       { type: 'item', key: 'user-management', title: 'Kullanıcı Yönetimi', href: paths.dashboard.userManagement, icon: 'users', roles: ['ADMIN'] },
-      // "Ayarlar" buradan kaldırıldı.
     ],
   },
   {
@@ -48,6 +61,6 @@ export const navItems: NavItemConfig[] = [
     title: 'Profilim',
     href: paths.dashboard.account,
     icon: 'user',
-    roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
+    roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF', 'ACCOUNTANT'],
   },
 ];

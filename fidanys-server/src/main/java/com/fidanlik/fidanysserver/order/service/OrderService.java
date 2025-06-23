@@ -1,5 +1,7 @@
 package com.fidanlik.fidanysserver.order.service;
 
+import com.fidanlik.fidanysserver.accounting.model.Transaction;
+import com.fidanlik.fidanysserver.accounting.service.TransactionService;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
 import com.fidanlik.fidanysserver.order.dto.OrderCreateRequest;
@@ -31,12 +33,11 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final WarehouseRepository warehouseRepository;
     private final PlantRepository plantRepository;
+    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
 
-    // Bu metot doğru, dokunmuyoruz.
     @Transactional
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
     public Order createOrder(OrderCreateRequest request, String userId, String tenantId) {
-        // ... (mevcut createOrder kodu burada kalacak)
         customerRepository.findById(request.getCustomerId())
                 .filter(c -> c.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz müşteri ID'si."));
@@ -78,8 +79,6 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // --- YENİ GÜVENLİ METOTLAR ---
-
     @Transactional
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_WAREHOUSE_STAFF')")
     public Order shipOrder(String orderId, String userId, String tenantId) {
@@ -96,6 +95,17 @@ public class OrderService {
                     "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId
             );
         }
+
+        // --- YENİ: CARİ HESABA BORÇ KAYDI OLUŞTURMA ---
+        transactionService.createCustomerTransaction(
+                order.getCustomerId(),
+                Transaction.TransactionType.DEBIT, // Müşteri Borçlandırılıyor
+                order.getTotalAmount(),
+                "#" + order.getOrderNumber() + " nolu sipariş sevkiyatı.",
+                order.getId(),
+                userId,
+                tenantId
+        );
 
         order.setStatus(Order.OrderStatus.SHIPPED);
         return orderRepository.save(order);
@@ -126,13 +136,21 @@ public class OrderService {
                         "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId
                 );
             }
+            // --- YENİ: CARİ HESAPTAN BORCU SİLME (ALACAK KAYDI) ---
+            transactionService.createCustomerTransaction(
+                    order.getCustomerId(),
+                    Transaction.TransactionType.CREDIT, // Borç iptali için Alacak kaydı
+                    order.getTotalAmount(),
+                    "#" + order.getOrderNumber() + " nolu siparişin iptali.",
+                    order.getId(),
+                    userId,
+                    tenantId
+            );
         }
 
         order.setStatus(Order.OrderStatus.CANCELED);
         return orderRepository.save(order);
     }
-
-    // --- YARDIMCI METOT ---
 
     private Order findOrderForUpdate(String orderId, String tenantId) {
         Order order = orderRepository.findById(orderId)

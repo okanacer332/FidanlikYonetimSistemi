@@ -1,6 +1,39 @@
 // client/src/types/nursery.ts
 
-// --- Ana Veri Tipleri ---
+// --- YENİ EKLENEN TİPLER (ÖDEME) ---
+
+export enum PaymentType {
+    COLLECTION = 'COLLECTION', // Tahsilat
+    PAYMENT = 'PAYMENT'        // Tediye
+}
+
+export enum PaymentMethod {
+    CASH = 'CASH',
+    BANK_TRANSFER = 'BANK_TRANSFER',
+    CREDIT_CARD = 'CREDIT_CARD'
+}
+
+export enum RelatedEntityType {
+    CUSTOMER = 'CUSTOMER',
+    SUPPLIER = 'SUPPLIER',
+    EXPENSE = 'EXPENSE'
+}
+
+export interface Payment {
+    id: string;
+    tenantId: string;
+    userId: string;
+    type: PaymentType;
+    method: PaymentMethod;
+    paymentDate: string; // ISO Date String
+    amount: number;
+    description: string;
+    relatedId: string;
+    relatedEntityType: RelatedEntityType;
+    invoiceId?: string;
+}
+
+// ... (dosyanın geri kalanı aynı kalacak)
 
 export interface Land {
   id: string;
@@ -37,7 +70,7 @@ export interface PlantVariety {
   id: string;
   name: string;
   plantTypeId: string;
-  plantType?: PlantType; // DBRef'ten gelen dolu nesne (opsiyonel)
+  plantType?: PlantType;
   tenantId: string;
 }
 
@@ -58,8 +91,6 @@ export interface Supplier {
   tenantId: string;
 }
 
-// --- YENİ EKLENEN TİP ---
-// Backend'deki Stock modeline karşılık gelir.
 export interface Stock {
   id: string;
   plantId: string;
@@ -67,8 +98,96 @@ export interface Stock {
   quantity: number;
   tenantId: string;
 }
-// --- YENİ TİP SONU ---
 
+export enum InvoiceStatus {
+    DRAFT = 'DRAFT',
+    SENT = 'SENT',
+    PAID = 'PAID',
+    CANCELED = 'CANCELED'
+}
+
+export interface InvoiceItem {
+    plantId: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+}
+
+export interface Invoice {
+    id: string;
+    tenantId: string;
+    invoiceNumber: string;
+    customerId: string;
+    orderId: string;
+    issueDate: string; 
+    dueDate: string; 
+    totalAmount: number;
+    status: InvoiceStatus;
+    items: InvoiceItem[];
+    userId: string;
+}
+
+export interface Transaction {
+  id: string;
+  transactionDate: string; 
+  customerId?: string;
+  supplierId?: string;
+  type: 'DEBIT' | 'CREDIT'; 
+  amount: number;
+  description: string;
+  relatedDocumentId: string;
+  userId: string;
+}
+
+export interface Plant {
+    id: string;
+    plantType: PlantType;
+    plantVariety: PlantVariety;
+    rootstock: Rootstock;
+    plantSize: PlantSize;
+    plantAge: PlantAge;
+    land: Land;
+    tenantId: string;
+}
+
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  companyName?: string;
+  phone: string;
+  email: string;
+  address: string;
+  tenantId: string;
+}
+
+export enum OrderStatus {
+  PREPARING = 'PREPARING',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELED = 'CANCELED',
+}
+
+export interface OrderItemDto {
+  plantId: string;
+  quantity: number;
+  salePrice?: number;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  warehouseId: string;
+  items: OrderItemDto[];
+  totalAmount: number;
+  status: OrderStatus;
+  orderDate: string; 
+  userId: string;
+  tenantId: string;
+  expectedDeliveryDate?: string; 
+}
 
 // --- Form Değerleri için Tipler ---
 
@@ -93,10 +212,6 @@ export interface PlantVarietyCreate {
     plantTypeId: string;
 }
 
-
-// --- Birleşik Tipler ---
-
-// Backend'deki MasterDataDTO'ya karşılık gelen tip
 export interface MasterData {
     plantTypes: PlantType[];
     plantVarieties: PlantVariety[];
@@ -104,17 +219,6 @@ export interface MasterData {
     plantSizes: PlantSize[];
     plantAges: PlantAge[];
     lands: Land[];
-}
-
-export interface Plant {
-    id: string;
-    plantType: PlantType;
-    plantVariety: PlantVariety;
-    rootstock: Rootstock;
-    plantSize: PlantSize;
-    plantAge: PlantAge;
-    land: Land;
-    tenantId: string;
 }
 
 export interface PlantCreateFormValues {
@@ -139,17 +243,6 @@ export interface SupplierCreate {
   address: string;
 }
 
-export interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  companyName?: string; // Şirket adı opsiyonel olabilir
-  phone: string;
-  email: string;
-  address: string; // Backend'deki gibi tek string olarak
-  tenantId: string;
-}
-
 export interface CustomerCreate {
   firstName: string;
   lastName: string;
@@ -159,37 +252,10 @@ export interface CustomerCreate {
   address: string;
 }
 
-export interface OrderItemDto { // OrderItemDto buraya taşındı ve salePrice eklendi
-  plantId: string;
-  quantity: number;
-  salePrice?: number; // Fidanın satış fiyatı, isteğe bağlı çünkü manuel girilecek veya tekliften gelecek
-}
-
-export interface OrderCreateRequest { // OrderCreateRequest buraya taşındı ve expectedDeliveryDate eklendi
+export interface OrderCreateRequest {
   customerId: string;
   warehouseId: string;
-  deliveryAddress?: string; // İsteğe bağlı
+  deliveryAddress?: string;
   items: OrderItemDto[];
-  expectedDeliveryDate?: string; // ISO 8601 string formatında teslim tarihi
-}
-
-export enum OrderStatus {
-  PREPARING = 'PREPARING',
-  SHIPPED = 'SHIPPED',
-  DELIVERED = 'DELIVERED',
-  CANCELED = 'CANCELED',
-}
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  customerId: string;
-  warehouseId: string;
-  items: OrderItemDto[]; // Backend'deki OrderItem'a benzer, salePrice içerecek
-  totalAmount: number;
-  status: OrderStatus;
-  orderDate: string; // ISO 8601 string formatında
-  userId: string;
-  tenantId: string;
-  expectedDeliveryDate?: string; // ISO 8601 string formatında
+  expectedDeliveryDate?: string;
 }

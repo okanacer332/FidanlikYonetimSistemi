@@ -11,7 +11,10 @@ import {
   Stack as StackIcon,           // ADD THIS
   Wrench as WrenchIcon,         // ADD THIS
   ChartLine as ChartLineIcon,   // ADD THIS
-  Swap as SwapIcon              // ADD THIS
+  Swap as SwapIcon,            // ADD THIS
+  Receipt as ReceiptIcon, // Zaten var, kullanılabilir
+  Bank as BankIcon,
+  CreditCard as CreditCardIcon
 } from '@phosphor-icons/react/dist/ssr';
 
 export const navIcons = {
@@ -28,4 +31,7 @@ export const navIcons = {
   'wrench': WrenchIcon,           // ADD THIS
   'chart-line': ChartLineIcon,    // ADD THIS
   'swap': SwapIcon,               // ADD THIS
+  'receipt': ReceiptIcon,
+  'bank': BankIcon,
+  'credit-card': CreditCardIcon
 } as const;

@@ -12,7 +12,14 @@ export const paths = {
     suppliers: '/dashboard/suppliers',
     goodsReceipts: '/dashboard/goods-receipts',
     orders: '/dashboard/orders',
-    // "settings" buradan kaldırıldı.
+    // --- YENİ MUHASEBE PATH'LERİ ---
+    accounting: {
+      currentAccounts: '/dashboard/accounting/current-accounts',
+      invoices: '/dashboard/accounting/invoices',
+      payments: '/dashboard/accounting/payments',
+      expenses: '/dashboard/accounting/expenses',
+    },
+    // ----------------------------
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

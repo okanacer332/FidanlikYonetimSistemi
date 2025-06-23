@@ -1,6 +1,7 @@
-// This file is now correct because the repository has been updated.
 package com.fidanlik.fidanysserver.goodsreceipt.service;
 
+import com.fidanlik.fidanysserver.accounting.model.Transaction;
+import com.fidanlik.fidanysserver.accounting.service.TransactionService;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
 import com.fidanlik.fidanysserver.goodsreceipt.dto.GoodsReceiptRequest;
 import com.fidanlik.fidanysserver.goodsreceipt.dto.ReceiptItemDto;
@@ -31,6 +32,7 @@ public class GoodsReceiptService {
     private final WarehouseRepository warehouseRepository;
     private final SupplierRepository supplierRepository;
     private final PlantRepository plantRepository;
+    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
 
     @Transactional
     public GoodsReceipt createGoodsReceipt(GoodsReceiptRequest request, String userId, String tenantId) {
@@ -49,7 +51,7 @@ public class GoodsReceiptService {
         goodsReceipt.setTenantId(tenantId);
         goodsReceipt.setReceiptDate(LocalDateTime.now());
         goodsReceipt.setItems(request.getItems().stream().map(this::mapDtoToItem).collect(Collectors.toList()));
-        goodsReceipt.setStatus(GoodsReceipt.GoodsReceiptStatus.COMPLETED); // Set initial status
+        goodsReceipt.setStatus(GoodsReceipt.GoodsReceiptStatus.COMPLETED);
 
         BigDecimal totalValue = goodsReceipt.getItems().stream()
                 .map(item -> item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())))
@@ -75,11 +77,21 @@ public class GoodsReceiptService {
             );
         }
 
+        // --- YENİ: CARİ HESABA ALACAK KAYDI OLUŞTURMA ---
+        transactionService.createSupplierTransaction(
+                savedGoodsReceipt.getSupplierId(),
+                Transaction.TransactionType.CREDIT, // Tedarikçi Alacaklandırılıyor
+                savedGoodsReceipt.getTotalValue(),
+                "#" + savedGoodsReceipt.getReceiptNumber() + " nolu irsaliye ile mal alımı.",
+                savedGoodsReceipt.getId(),
+                userId,
+                tenantId
+        );
+
         return savedGoodsReceipt;
     }
 
     public List<GoodsReceipt> getAllGoodsReceiptsByTenant(String tenantId) {
-        // This line will now work correctly
         return goodsReceiptRepository.findAllByTenantId(tenantId);
     }
 
@@ -101,7 +113,7 @@ public class GoodsReceiptService {
             stockService.changeStock(
                     item.getPlantId(),
                     goodsReceipt.getWarehouseId(),
-                    -item.getQuantity(),
+                    -item.getQuantity(), // Stoktan düş
                     StockMovement.MovementType.GOODS_RECEIPT_CANCEL,
                     goodsReceipt.getId(),
                     description,
@@ -109,6 +121,17 @@ public class GoodsReceiptService {
                     tenantId
             );
         }
+
+        // --- YENİ: CARİ HESAPTAN ALACAĞI SİLME (BORÇ KAYDI) ---
+        transactionService.createSupplierTransaction(
+                goodsReceipt.getSupplierId(),
+                Transaction.TransactionType.DEBIT, // Alacak iptali için Borç kaydı
+                goodsReceipt.getTotalValue(),
+                "#" + goodsReceipt.getReceiptNumber() + " nolu irsaliyenin iptali.",
+                goodsReceipt.getId(),
+                userId,
+                tenantId
+        );
 
         goodsReceipt.setStatus(GoodsReceipt.GoodsReceiptStatus.CANCELED);
         goodsReceiptRepository.save(goodsReceipt);

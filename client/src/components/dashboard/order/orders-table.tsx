@@ -5,13 +5,11 @@ import {
   Box, Card, Table, TableBody, TableCell, TableHead, TableRow, Stack, Chip,
   Typography, IconButton, Tooltip
 } from '@mui/material';
-import { Truck as TruckIcon } from '@phosphor-icons/react';
+import { Truck as TruckIcon, Receipt as ReceiptIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 
-// GÜNCELLEME: OrderStatus enum'ı import edildi.
 import type { OrderStatus } from '@/types/nursery';
 
-// GÜNCELLEME: OrderRow arayüzü OrderStatus enum'ını kullanacak şekilde değiştirildi.
 export interface OrderRow {
   id: string;
   orderNumber: string;
@@ -20,15 +18,18 @@ export interface OrderRow {
   totalAmount: number;
   status: OrderStatus;
   orderDate: string;
+  isBilled: boolean; // Siparişin faturalanıp faturalanmadığı bilgisi
 }
 
 interface OrdersTableProps {
   rows?: OrderRow[];
   onUpdateStatus: (orderId: string, currentStatus: OrderRow['status']) => void;
   canUpdateStatus: boolean;
+  onInvoice: (orderId: string) => void;
+  canInvoice: boolean;
 }
 
-export function OrdersTable({ rows = [], onUpdateStatus, canUpdateStatus }: OrdersTableProps): React.JSX.Element {
+export function OrdersTable({ rows = [], onUpdateStatus, canUpdateStatus, onInvoice, canInvoice }: OrdersTableProps): React.JSX.Element {
   if (rows.length === 0) {
     return (
       <Card sx={{ p: 3, textAlign: 'center' }}>
@@ -56,13 +57,14 @@ export function OrdersTable({ rows = [], onUpdateStatus, canUpdateStatus }: Orde
               <TableCell>Sipariş Tarihi</TableCell>
               <TableCell>Durum</TableCell>
               <TableCell align="right">Toplam Tutar</TableCell>
-              {canUpdateStatus && <TableCell align="center">İşlemler</TableCell>}
+              <TableCell align="center">İşlemler</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => {
               const statusInfo = statusMap[row.status] || { label: 'Bilinmiyor', color: 'default' as const };
               const isActionable = row.status === 'PREPARING' || row.status === 'SHIPPED';
+              const isCanceled = row.status === 'CANCELED';
 
               return (
                 <TableRow hover key={row.id}>
@@ -73,22 +75,34 @@ export function OrdersTable({ rows = [], onUpdateStatus, canUpdateStatus }: Orde
                   <TableCell>{row.warehouseName}</TableCell>
                   <TableCell>{dayjs(row.orderDate).format('DD/MM/YYYY')}</TableCell>
                   <TableCell>
-                    <Chip label={statusInfo.label} color={statusInfo.color} size="small" variant="outlined"/>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip label={statusInfo.label} color={statusInfo.color} size="small" variant="outlined"/>
+                      {row.isBilled && <Chip label="Faturalandı" color="primary" size="small" />}
+                    </Stack>
                   </TableCell>
                   <TableCell align="right">
                     {Number(row.totalAmount || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                   </TableCell>
-                  {canUpdateStatus && (
-                    <TableCell align="center">
-                      <Tooltip title="Sipariş Durumunu Güncelle">
-                         <span>
-                           <IconButton onClick={() => onUpdateStatus(row.id, row.status)} disabled={!isActionable}>
-                              <TruckIcon />
-                           </IconButton>
-                         </span>
-                      </Tooltip>
-                    </TableCell>
-                  )}
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={0} justifyContent="center">
+                        <Tooltip title="Sipariş Durumunu Güncelle">
+                            <span>
+                               <IconButton onClick={() => onUpdateStatus(row.id, row.status)} disabled={!isActionable || !canUpdateStatus}>
+                                  <TruckIcon />
+                               </IconButton>
+                            </span>
+                        </Tooltip>
+                        {canInvoice && (
+                            <Tooltip title={row.isBilled ? "Bu sipariş zaten faturalandırılmış" : "Faturalaştır"}>
+                                <span>
+                                    <IconButton onClick={() => onInvoice(row.id)} disabled={row.isBilled || isCanceled}>
+                                        <ReceiptIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        )}
+                    </Stack>
+                  </TableCell>
                 </TableRow>
               );
             })}
