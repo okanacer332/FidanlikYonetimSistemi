@@ -115,8 +115,9 @@ export interface PlantVariety {
 export interface Warehouse {
   id: string;
   name: string;
-  address: string;
+  location: string; // Backend modelinizle tam uyumlu alan
   tenantId: string;
+  createdAt: string; // JSON'da string olarak gelir
 }
 
 export interface Supplier {
