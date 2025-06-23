@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional; // Optional import'u eklendi
 
 @RestController
 @RequestMapping("/api/v1/invoices")
@@ -32,5 +33,14 @@ public class InvoiceController {
         User user = (User) authentication.getPrincipal();
         List<Invoice> invoices = invoiceService.getAllInvoices(user.getTenantId());
         return ResponseEntity.ok(invoices);
+    }
+
+    // YENİ ENDPOINT: ID ile tek bir fatura getirir
+    @GetMapping("/{invoiceId}")
+    public ResponseEntity<Invoice> getInvoiceById(@PathVariable String invoiceId, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return invoiceService.getInvoiceById(invoiceId, user.getTenantId())
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

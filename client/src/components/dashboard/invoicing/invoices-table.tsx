@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -16,8 +17,8 @@ import {
 } from '@mui/material';
 import { Eye as EyeIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
+import { paths } from '@/paths';
 
-// DÜZELTME: 'InvoiceStatus' bir değer olarak import edildi, 'Invoice' ise tip olarak kaldı.
 import { type Invoice, InvoiceStatus } from '@/types/nursery';
 
 export interface InvoiceRow extends Invoice {
@@ -29,6 +30,8 @@ interface InvoicesTableProps {
 }
 
 export function InvoicesTable({ rows = [] }: InvoicesTableProps): React.JSX.Element {
+  const router = useRouter();
+
   if (rows.length === 0) {
     return (
       <Card sx={{ p: 3, textAlign: 'center' }}>
@@ -78,7 +81,7 @@ export function InvoicesTable({ rows = [] }: InvoicesTableProps): React.JSX.Elem
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title="Faturayı Görüntüle">
-                      <IconButton onClick={() => { /* TODO: Fatura detay sayfasına yönlendir */ }}>
+                      <IconButton onClick={() => router.push(`${paths.dashboard.accounting.invoices}/${row.id}`)}>
                         <EyeIcon />
                       </IconButton>
                     </Tooltip>

@@ -1,6 +1,6 @@
 package com.fidanlik.fidanysserver.invoicing.service;
 
-import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
+import com.fidanlik.fidanysserver.fidan.repository.PlantRepository; // Gerekli import
 import com.fidanlik.fidanysserver.invoicing.model.Invoice;
 import com.fidanlik.fidanysserver.invoicing.model.InvoiceItem;
 import com.fidanlik.fidanysserver.invoicing.repository.InvoiceRepository;
@@ -12,9 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
+import java.math.BigDecimal; // Gerekli import
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional; // Gerekli import
 import java.util.stream.Collectors;
 
 @Service
@@ -23,7 +24,7 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final OrderRepository orderRepository;
-    private final PlantRepository plantRepository; // Fidan adını almak için
+    private final PlantRepository plantRepository;
 
     @Transactional
     public Invoice createInvoiceFromOrder(String orderId, String userId, String tenantId) {
@@ -38,7 +39,6 @@ public class InvoiceService {
         List<InvoiceItem> invoiceItems = order.getItems().stream().map(orderItem -> {
             InvoiceItem item = new InvoiceItem();
             item.setPlantId(orderItem.getPlantId());
-            // Fidan adını alıp açıklamaya ekleyelim
             plantRepository.findById(orderItem.getPlantId()).ifPresent(plant ->
                     item.setDescription(plant.getPlantType().getName() + " - " + plant.getPlantVariety().getName())
             );
@@ -53,10 +53,9 @@ public class InvoiceService {
         invoice.setUserId(userId);
         invoice.setOrderId(order.getId());
         invoice.setCustomerId(order.getCustomerId());
-        // TODO: Daha gelişmiş bir fatura numarası üretme mekanizması eklenebilir.
         invoice.setInvoiceNumber("FAT-" + order.getOrderNumber());
         invoice.setIssueDate(LocalDate.now());
-        invoice.setDueDate(LocalDate.now().plusDays(30)); // Örn: 30 gün vade
+        invoice.setDueDate(LocalDate.now().plusDays(30));
         invoice.setTotalAmount(order.getTotalAmount());
         invoice.setStatus(Invoice.InvoiceStatus.DRAFT);
         invoice.setItems(invoiceItems);
@@ -66,5 +65,11 @@ public class InvoiceService {
 
     public List<Invoice> getAllInvoices(String tenantId) {
         return invoiceRepository.findAllByTenantId(tenantId);
+    }
+
+    // YENİ METOT: ID ile tek bir fatura getirir
+    public Optional<Invoice> getInvoiceById(String invoiceId, String tenantId) {
+        return invoiceRepository.findById(invoiceId)
+                .filter(invoice -> invoice.getTenantId().equals(tenantId));
     }
 }
