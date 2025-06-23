@@ -1,205 +1,115 @@
 'use client';
 
 import * as React from 'react';
-import { Alert, CircularProgress, Grid, Stack, Typography } from '@mui/material';
-import dayjs from 'dayjs';
+import { Box, Container, Typography, CircularProgress, Alert, Stack } from '@mui/material';
+import { CreditCard as CreditCardIcon, ShoppingCart as ShoppingCartIcon, Users as UsersIcon, Tree as TreeIcon } from '@phosphor-icons/react';
 
-// Anasayfa kart bileşenleri
-import { LatestOrders } from '@/components/dashboard/overview/latest-orders';
-import { Sales } from '@/components/dashboard/overview/sales';
-import { TotalCustomers } from '@/components/dashboard/overview/total-customers';
-import { TotalProfit } from '@/components/dashboard/overview/total-profit';
-import { OpenOrders } from '@/components/dashboard/overview/open-orders';
-import { TotalStock } from '@/components/dashboard/overview/total-stock';
-import { TopSellingPlants } from '@/components/dashboard/overview/top-selling-plants';
-import { LowStockPlants } from '@/components/dashboard/overview/low-stock-plants';
-
-// Backend'den gelecek veri tipleri
-import type { Customer, Order, Plant } from '@/types/nursery';
-
-// Stok verisi için tip tanımı (varsayımsal, projenizdeki tipe göre düzenlenebilir)
-interface Stock {
-  plantId: string;
-  quantity: number;
-}
-
-// Sayfada kullanılacak dinamik veriler için bir interface
-interface OverviewData {
-  totalCustomers: number;
-  totalProfit: number;
-  openOrders: number;
-  totalStock: number;
-  salesByMonth: number[];
-  latestOrders: {
-    id: string;
-    customer: { name: string };
-    amount: number;
-    status: 'preparing' | 'shipped' | 'delivered' | 'canceled' | 'pending' | 'refunded';
-    createdAt: Date;
-  }[];
-  topSellingPlants: { name: string; quantity: number }[];
-  lowStockPlants: { name: string; quantity: number }[];
-}
+import { useUser } from '@/hooks/use-user';
+import type { OverviewReportDto, TopSellingPlantReport, CustomerSalesReport } from '@/types/nursery';
+import { OverviewCard } from '@/components/dashboard/overview/overview-card';
+import { TopSellingPlantsChart } from '@/components/dashboard/reporting/top-selling-plants-chart';
+import { CustomerSalesTable } from '@/components/dashboard/reporting/customer-sales-table';
 
 export default function Page(): React.JSX.Element {
-  const [data, setData] = React.useState<OverviewData | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { user } = useUser();
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  
+  const [overviewData, setOverviewData] = React.useState<OverviewReportDto | null>(null);
+  const [topPlantsData, setTopPlantsData] = React.useState<TopSellingPlantReport[]>([]);
+  const [customerSalesData, setCustomerSalesData] = React.useState<CustomerSalesReport[]>([]);
 
   React.useEffect(() => {
-    const fetchOverviewData = async () => {
-      setIsLoading(true);
+    const fetchDashboardData = async () => {
+      setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+        if (!token) throw new Error('Oturum bulunamadı.');
 
-        // Tüm gerekli verileri Promise.all ile tek seferde çekelim
-        const [ordersRes, customersRes, stockRes, plantsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stock`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { Authorization: `Bearer ${token}` } }),
+        const [overviewRes, topPlantsRes, customerSalesRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/overview`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/top-selling-plants`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/customer-sales`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
-        if (!ordersRes.ok || !customersRes.ok || !stockRes.ok || !plantsRes.ok) {
+        if (!overviewRes.ok || !topPlantsRes.ok || !customerSalesRes.ok) {
           throw new Error('Anasayfa verileri yüklenirken bir hata oluştu.');
         }
 
-        const orders: Order[] = await ordersRes.json();
-        const customers: Customer[] = await customersRes.json();
-        const stocks: Stock[] = await stockRes.json();
-        const plants: Plant[] = await plantsRes.json();
-        
-        // --- Veri İşleme ---
+        setOverviewData(await overviewRes.json());
+        setTopPlantsData(await topPlantsRes.json());
+        setCustomerSalesData(await customerSalesRes.json());
 
-        // Kartlar için metrikler
-        const totalCustomers = customers.length;
-        const totalProfit = orders
-          .filter(order => order.status === 'DELIVERED')
-          .reduce((sum, order) => sum + order.totalAmount, 0);
-        const openOrders = orders.filter(order => order.status === 'PREPARING' || order.status === 'SHIPPED').length;
-        const totalStock = stocks.reduce((sum, stock) => sum + stock.quantity, 0);
-
-        // Son siparişler listesi
-        const customerMap = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`]));
-        const latestOrders = orders
-          .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-          .slice(0, 6)
-          .map(order => ({
-            id: order.orderNumber,
-            customer: { name: customerMap.get(order.customerId) || 'Bilinmeyen Müşteri' },
-            amount: order.totalAmount,
-            status: order.status.toLowerCase() as OverviewData['latestOrders'][number]['status'],
-            createdAt: new Date(order.orderDate),
-          }));
-
-        // Aylık satış grafiği
-        const salesByMonth = new Array(12).fill(0);
-        const currentYear = new Date().getFullYear();
-        orders.forEach(order => {
-          const orderDate = new Date(order.orderDate);
-          if (orderDate.getFullYear() === currentYear && order.status !== 'CANCELED') {
-            const month = orderDate.getMonth();
-            salesByMonth[month] += order.totalAmount;
-          }
-        });
-
-        // En çok satan ve stoku azalan fidanlar
-        const plantMap = new Map(plants.map(p => [p.id, `${p.plantType.name} - ${p.plantVariety.name}`]));
-        const salesCount: { [key: string]: number } = {};
-        orders.forEach(order => {
-            if (order.status !== 'CANCELED') {
-                order.items.forEach(item => {
-                    const plantName = plantMap.get(item.plantId) || 'Bilinmeyen Fidan';
-                    salesCount[plantName] = (salesCount[plantName] || 0) + item.quantity;
-                });
-            }
-        });
-        
-        const topSellingPlants = Object.entries(salesCount)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([name, quantity]) => ({ name, quantity }));
-
-        const lowStockPlants = stocks
-            .filter(s => s.quantity > 0 && s.quantity <= 10) // Örneğin stoğu 10'dan az olanlar
-            .sort((a, b) => a.quantity - b.quantity)
-            .slice(0, 5)
-            .map(stock => ({
-                name: plantMap.get(stock.plantId) || 'Bilinmeyen Fidan',
-                quantity: stock.quantity
-            }));
-        
-        setData({
-          totalCustomers,
-          totalProfit,
-          openOrders,
-          totalStock,
-          latestOrders,
-          salesByMonth,
-          topSellingPlants,
-          lowStockPlants
-        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata.');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-
-    fetchOverviewData();
+    fetchDashboardData();
   }, []);
 
-  if (isLoading) {
-    return (
-      <Stack sx={{ alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Stack>
-    );
-  }
-
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
-
-  const formattedProfit = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(
-    data?.totalProfit || 0
-  );
-
   return (
-    <Grid container spacing={3}>
-      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
-        <TotalProfit sx={{ height: '100%' }} value={formattedProfit} />
-      </Grid>
-      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
-        <TotalCustomers trend="up" diff={5} sx={{ height: '100%' }} value={data?.totalCustomers.toString() ?? '0'} />
-      </Grid>
-      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
-        <OpenOrders sx={{ height: '100%' }} value={data?.openOrders.toString() ?? '0'} />
-      </Grid>
-      <Grid size={{ lg: 3, sm: 6, xs: 12 }}>
-        <TotalStock sx={{ height: '100%' }} value={data?.totalStock.toString() ?? '0'} />
-      </Grid>
-
-      <Grid size={{ lg: 8, xs: 12 }}>
-        <Sales
-          chartSeries={[
-            { name: 'Bu Yıl (₺)', data: data?.salesByMonth || [] },
-          ]}
-          sx={{ height: '100%' }}
-        />
-      </Grid>
-      <Grid size={{ lg: 4, md: 6, xs: 12 }}>
-        <TopSellingPlants plants={data?.topSellingPlants} sx={{ height: '100%' }} />
-      </Grid>
-
-      <Grid size={{ lg: 8, md: 12, xs: 12 }}>
-        <LatestOrders orders={data?.latestOrders} sx={{ height: '100%' }} />
-      </Grid>
-       <Grid size={{ lg: 4, md: 6, xs: 12 }}>
-        <LowStockPlants plants={data?.lowStockPlants} sx={{ height: '100%' }} />
-      </Grid>
-    </Grid>
+    <Box
+      sx={{
+        flexGrow: 1,
+        py: 8,
+      }}
+    >
+      <Container maxWidth="xl">
+        <Stack spacing={3}>
+          <Typography variant="h4">Hoş Geldiniz, {user?.username || 'Kullanıcı'}!</Typography>
+          
+          {loading ? (
+            <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>
+          ) : error ? (
+            <Alert severity="error">{error}</Alert>
+          ) : (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              {/* DÜZELTME: <Grid> yerine <Box> ve flexbox kullanıldı. */}
+              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
+                <OverviewCard
+                  title="Toplam Satış"
+                  value={overviewData?.totalSales?.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) || '₺0.00'}
+                  icon={CreditCardIcon}
+                  color="success.main"
+                />
+              </Box>
+              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
+                <OverviewCard
+                  title="Toplam Müşteri"
+                  value={overviewData?.totalCustomers?.toString() || '0'}
+                  icon={UsersIcon}
+                  color="info.main"
+                />
+              </Box>
+              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
+                <OverviewCard
+                  title="Toplam Sipariş"
+                  value={overviewData?.totalOrders?.toString() || '0'}
+                  icon={ShoppingCartIcon}
+                  color="warning.main"
+                />
+              </Box>
+              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
+                <OverviewCard
+                  title="Stoktaki Fidan"
+                  value={overviewData?.totalPlantsInStock?.toString() || '0'}
+                  icon={TreeIcon}
+                  color="error.main"
+                />
+              </Box>
+              <Box sx={{ flex: '1 1 auto', width: { xs: '100%', lg: 'calc(66.66% - 12px)' } }}>
+                <TopSellingPlantsChart data={topPlantsData} />
+              </Box>
+              <Box sx={{ flex: '1 1 auto', width: { xs: '100%', lg: 'calc(33.33% - 12px)' } }}>
+                 <CustomerSalesTable data={customerSalesData} />
+              </Box>
+            </Box>
+          )}
+        </Stack>
+      </Container>
+    </Box>
   );
 }

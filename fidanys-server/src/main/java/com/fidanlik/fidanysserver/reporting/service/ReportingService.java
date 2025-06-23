@@ -3,8 +3,11 @@ package com.fidanlik.fidanysserver.reporting.service;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
 import com.fidanlik.fidanysserver.order.model.Order;
+import com.fidanlik.fidanysserver.order.repository.OrderRepository;
 import com.fidanlik.fidanysserver.reporting.dto.CustomerSalesReport;
+import com.fidanlik.fidanysserver.reporting.dto.OverviewReportDto;
 import com.fidanlik.fidanysserver.reporting.dto.TopSellingPlantReport;
+import com.fidanlik.fidanysserver.stock.repository.StockRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -13,7 +16,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators;
 import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
-import org.springframework.data.mongodb.core.aggregation.ConvertOperators; // YENİ IMPORT
+import org.springframework.data.mongodb.core.aggregation.ConvertOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
@@ -29,10 +32,48 @@ public class ReportingService {
     private final MongoTemplate mongoTemplate;
     private final PlantRepository plantRepository;
     private final CustomerRepository customerRepository;
+    private final StockRepository stockRepository;
+    private final OrderRepository orderRepository;
 
-    // Geçici DTO'lar
     @Data private static class PlantSaleResult { String plantId; int totalQuantitySold; }
     @Data private static class CustomerSaleResult { String customerId; BigDecimal totalSalesAmount; int orderCount; }
+    @Data private static class TotalSalesResult { BigDecimal totalSales; }
+
+    public OverviewReportDto getOverviewReport(String tenantId) {
+        long totalCustomers = customerRepository.countByTenantId(tenantId);
+        long totalOrders = orderRepository.countByTenantId(tenantId);
+
+        long totalPlantsInStock = stockRepository.findAllByTenantId(tenantId).stream()
+                .mapToLong(stock -> (long) stock.getQuantity())
+                .sum();
+
+        // DÜZELTME: Toplam satışı, sipariş kalemlerinden yeniden hesapla
+        Aggregation salesAggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(Order.OrderStatus.DELIVERED)),
+                Aggregation.unwind("items"),
+                Aggregation.group() // Tüm belgeleri tek bir grupta topla
+                        .sum(
+                                ArithmeticOperators.Multiply.valueOf(
+                                        ConvertOperators.ToDecimal.toDecimal(
+                                                ConditionalOperators.ifNull("items.quantity").then(0)
+                                        )
+                                ).multiplyBy(
+                                        ConvertOperators.ToDecimal.toDecimal(
+                                                ConditionalOperators.ifNull("items.salePrice").then(new BigDecimal(0))
+                                        )
+                                )
+                        ).as("totalSales")
+        );
+        AggregationResults<TotalSalesResult> salesResult = mongoTemplate.aggregate(salesAggregation, Order.class, TotalSalesResult.class);
+        BigDecimal totalSales = salesResult.getUniqueMappedResult() != null ? salesResult.getUniqueMappedResult().getTotalSales() : BigDecimal.ZERO;
+
+        return OverviewReportDto.builder()
+                .totalCustomers(totalCustomers)
+                .totalSales(totalSales)
+                .totalOrders(totalOrders)
+                .totalPlantsInStock(totalPlantsInStock)
+                .build();
+    }
 
     public List<TopSellingPlantReport> getTopSellingPlants(String tenantId) {
         Aggregation plantAggregation = Aggregation.newAggregation(
@@ -68,7 +109,6 @@ public class ReportingService {
                 Aggregation.unwind("items"),
                 Aggregation.group("customerId")
                         .sum(
-                                // DÜZELTME: Çarpma işleminden önce alanları sayısal tipe dönüştür
                                 ArithmeticOperators.Multiply.valueOf(
                                         ConvertOperators.ToDecimal.toDecimal(
                                                 ConditionalOperators.ifNull("items.quantity").then(0)

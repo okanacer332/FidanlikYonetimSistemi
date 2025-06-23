@@ -1,6 +1,7 @@
 package com.fidanlik.fidanysserver.reporting.controller;
 
 import com.fidanlik.fidanysserver.reporting.dto.CustomerSalesReport;
+import com.fidanlik.fidanysserver.reporting.dto.OverviewReportDto;
 import com.fidanlik.fidanysserver.reporting.dto.TopSellingPlantReport;
 import com.fidanlik.fidanysserver.reporting.service.ReportingService;
 import com.fidanlik.fidanysserver.user.model.User;
@@ -17,10 +18,17 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTANT')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTANT', 'SALES')") // Anasayfa için SALES rolü de eklendi
 public class ReportingController {
 
     private final ReportingService reportingService;
+
+    // YENİ ENDPOINT
+    @GetMapping("/overview")
+    public ResponseEntity<OverviewReportDto> getOverviewReport(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(reportingService.getOverviewReport(user.getTenantId()));
+    }
 
     @GetMapping("/top-selling-plants")
     public ResponseEntity<List<TopSellingPlantReport>> getTopSellingPlants(Authentication authentication) {

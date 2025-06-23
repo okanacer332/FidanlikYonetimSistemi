@@ -2,11 +2,20 @@
 
 // --- YENİ EKLENEN TİPLER (ÖDEME) ---
 
+export interface OverviewReportDto {
+    totalCustomers: number;
+    totalSales: number;
+    totalOrders: number;
+    totalPlantsInStock: number;
+}
+
 export interface TopSellingPlantReport {
     plantTypeName: string;
     plantVarietyName: string;
     totalQuantitySold: number;
 }
+
+
 
 export interface CustomerSalesReport {
     customerFirstName: string;
