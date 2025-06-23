@@ -1,4 +1,3 @@
-// YENİ DOSYA: client/src/components/dashboard/warehouse/warehouse-edit-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -27,7 +26,7 @@ interface WarehouseEditFormProps {
 
 export function WarehouseEditForm({ open, onClose, onSuccess, warehouse }: WarehouseEditFormProps): React.JSX.Element {
   const [formError, setFormError] = React.useState<string | null>(null);
-  
+
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: '', address: '' },
@@ -35,7 +34,7 @@ export function WarehouseEditForm({ open, onClose, onSuccess, warehouse }: Wareh
 
   React.useEffect(() => {
     if (open && warehouse) {
-      reset({ name: warehouse.name, address: warehouse.location });
+      reset({ name: warehouse.name, address: warehouse.address });
       setFormError(null);
     } else {
       reset();
@@ -48,7 +47,7 @@ export function WarehouseEditForm({ open, onClose, onSuccess, warehouse }: Wareh
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum bulunamadı.');
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/warehouses/${warehouse.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

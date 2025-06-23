@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z as zod } from 'zod';
 import {
   Stack, Typography, CircularProgress, Alert, Dialog, DialogTitle,
-  DialogContent, DialogContentText, DialogActions, Button
+  DialogContent, DialogContentText, DialogActions, Button, Grid // Grid'i buraya ekledik
 } from '@mui/material';
 
 import { useUser } from '@/hooks/use-user';
@@ -19,12 +19,12 @@ import { WarehousesTable } from '@/components/dashboard/warehouse/warehouses-tab
 
 interface WarehouseFormValues {
     name: string;
-    location: string;
+    address: string; // DEĞİŞİKLİK: 'location' yerine 'address'
 }
 
 const schema = zod.object({
   name: zod.string().min(1, 'Depo adı zorunludur.'),
-  location: zod.string().min(1, 'Konum bilgisi zorunludur.'),
+  address: zod.string().min(1, 'Konum bilgisi zorunludur.'), // DEĞİŞİKLİK: 'location' yerine 'address'
 });
 
 export default function Page(): React.JSX.Element {
@@ -45,7 +45,7 @@ export default function Page(): React.JSX.Element {
 
     const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<WarehouseFormValues>({
         resolver: zodResolver(schema),
-        defaultValues: { name: '', location: '' },
+        defaultValues: { name: '', address: '' }, // DEĞİŞİKLİK: 'location' yerine 'address'
     });
 
     const fetchData = React.useCallback(async () => {
@@ -84,7 +84,7 @@ export default function Page(): React.JSX.Element {
             if (!response.ok) {
                 throw new Error((await response.json()).message || 'Depo oluşturulamadı.');
             }
-            reset(); 
+            reset();
             await fetchData();
         } catch (err) {
             setError('root', { type: 'server', message: err instanceof Error ? err.message : 'Bir hata oluştu.' });
@@ -145,7 +145,7 @@ export default function Page(): React.JSX.Element {
         <Stack spacing={3}>
             <Typography variant="h5">Depo Yönetimi</Typography>
             {pageError && <Alert severity="error">{pageError}</Alert>}
-            
+
             {canManageWarehouses && (
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <WarehouseCreateInline
@@ -155,7 +155,7 @@ export default function Page(): React.JSX.Element {
                     />
                 </form>
             )}
-            
+
             <WarehousesTable
                 rows={warehouses}
                 onEdit={canManageWarehouses ? handleEditClick : undefined}

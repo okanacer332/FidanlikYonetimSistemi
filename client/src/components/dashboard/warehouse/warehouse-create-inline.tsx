@@ -12,7 +12,7 @@ import { Controller } from 'react-hook-form';
 // Formdan gelecek değerlerin tipini tanımlayalım
 interface WarehouseFormValues {
     name: string;
-    location: string;
+    address: string; // 'location' yerine 'address'
 }
 
 interface WarehouseCreateInlineProps {
@@ -26,14 +26,15 @@ export function WarehouseCreateInline({
   errors,
   isSubmitting,
 }: WarehouseCreateInlineProps): React.JSX.Element {
-  
+
   return (
     <Card>
       <CardHeader title="Yeni Depo Ekle" />
       <Divider />
       <CardContent>
-        {/* Dikey boşluğu azaltmak için spacing=2 yapıldı */}
+        {/* DÜZELTME: Grid container olarak işaretlendi */}
         <Grid container spacing={2}>
+          {/* DÜZELTME: Grid size prop'u kullanıldı */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Controller
               name="name"
@@ -43,7 +44,6 @@ export function WarehouseCreateInline({
                   {...field}
                   fullWidth
                   label="Depo Adı"
-                  // DEĞİŞİKLİK: Input alanını küçültmek için size="small" eklendi
                   size="small"
                   error={!!errors.name}
                   helperText={errors.name?.message}
@@ -51,19 +51,19 @@ export function WarehouseCreateInline({
               )}
             />
           </Grid>
+          {/* DÜZELTME: Grid size prop'u kullanıldı */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Controller
-              name="location"
+              name="address"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
                   fullWidth
                   label="Konum"
-                  // DEĞİŞİKLİK: Input alanını küçültmek için size="small" eklendi
                   size="small"
-                  error={!!errors.location}
-                  helperText={errors.location?.message}
+                  error={!!errors.address}
+                  helperText={errors.address?.message}
                 />
               )}
             />

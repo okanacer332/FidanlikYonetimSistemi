@@ -34,7 +34,6 @@ export interface Expense {
     id: string;
     description: string;
     amount: number;
-    expenseDate: string; // ISO Date String
     category: ExpenseCategory;
     userId: string;
     paymentId: string;
@@ -115,7 +114,7 @@ export interface PlantVariety {
 export interface Warehouse {
   id: string;
   name: string;
-  location: string; // Backend modelinizle tam uyumlu alan
+  address: string; // DEĞİŞİKLİK: 'location' yerine 'address'
   tenantId: string;
   createdAt: string; // JSON'da string olarak gelir
 }
@@ -271,7 +270,7 @@ export interface PlantCreateFormValues {
 
 export interface WarehouseCreate {
   name: string;
-  address: string;
+  address: string; // DEĞİŞİKLİK: 'location' yerine 'address'
 }
 
 export interface SupplierCreate {
@@ -298,4 +297,3 @@ export interface OrderCreateRequest {
   items: OrderItemDto[];
   expectedDeliveryDate?: string;
 }
-

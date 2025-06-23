@@ -5,8 +5,8 @@ import {
   Box, Card, Divider, Stack, Table, TableBody, TableCell, TableHead,
   TablePagination, TableRow, Typography, Tooltip, IconButton, TextField, InputAdornment
 } from '@mui/material';
-import { 
-    PencilSimple as PencilSimpleIcon, 
+import {
+    PencilSimple as PencilSimpleIcon,
     Trash as TrashIcon,
     MagnifyingGlass as MagnifyingGlassIcon
 } from '@phosphor-icons/react';
@@ -34,7 +34,8 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
       return rows;
     }
     return rows.filter((row) => {
-      const searchFields = [row.name, row.location].join(' ').toLowerCase();
+      // DEĞİŞİKLİK: 'row.location' yerine 'row.address' kullanıldı
+      const searchFields = [row.name, row.address].join(' ').toLowerCase();
       return searchFields.includes(searchTerm.toLowerCase());
     });
   }, [rows, searchTerm]);
@@ -43,7 +44,7 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
 
   const handlePageChange = (_: unknown, newPage: number): void => { setPage(newPage); };
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>): void => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); };
-  
+
   const showActionsColumn = onEdit || onDelete;
 
   return (
@@ -62,7 +63,7 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
           <TableHead>
             <TableRow>
               <TableCell>Depo Adı</TableCell>
-              <TableCell>Konum</TableCell>
+              <TableCell>Konum</TableCell> {/* Başlık 'Konum' kalabilir, problem değil */}
               <TableCell>Oluşturulma Tarihi</TableCell>
               {showActionsColumn && <TableCell align="right">İşlemler</TableCell>}
             </TableRow>
@@ -72,20 +73,20 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
               paginatedRows.map((row) => (
                 <TableRow hover key={row.id}>
                   <TableCell><Typography variant="subtitle2">{row.name}</Typography></TableCell>
-                  
-                  {/* DEĞİŞİKLİK: Konum bilgisi boş ise "-" göster */}
+
+                  {/* DEĞİŞİKLİK: row.location yerine row.address kullanıldı */}
                   <TableCell>
-                    {row.location ? (
-                      row.location
+                    {row.address ? ( // DEĞİŞİKLİK: row.location yerine row.address
+                      row.address
                     ) : (
                       <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
                         Belirtilmemiş
                       </Typography>
                     )}
                   </TableCell>
-                  
+
                   <TableCell>{dayjs(row.createdAt).format('DD/MM/YYYY HH:mm')}</TableCell>
-                  
+
                   {showActionsColumn && (
                     <TableCell align="right" sx={{ p: 0 }}>
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -107,7 +108,16 @@ export function WarehousesTable({ rows = [], onEdit, onDelete }: WarehousesTable
         </Table>
       </Box>
       <Divider />
-      <TablePagination component="div" count={filteredRows.length} onPageChange={handlePageChange} onRowsPerPageChange={handleRowsPerPageChange} page={page} rowsPerPage={rowsPerPage} rowsPerPageOptions={[5, 10, 25]} labelRowsPerPage="Sayfa başına satır:"/>
+      <TablePagination
+        component="div"
+        count={filteredRows.length}
+        onPageChange={handlePageChange}
+        onRowsPerPageChange={handleRowsPerPageChange}
+        page={page} // DÜZELTME: page prop'u eklendi
+        rowsPerPage={rowsPerPage}
+        rowsPerPageOptions={[5, 10, 25]}
+        labelRowsPerPage="Sayfa başına satır:"
+      />
     </Card>
   );
 }
