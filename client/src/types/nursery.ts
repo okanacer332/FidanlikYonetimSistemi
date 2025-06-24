@@ -35,7 +35,7 @@ export interface Expense {
     description: string;
     amount: number;
     category: ExpenseCategory;
-    expenseDat: string;
+    expenseDate: string;
     userId: string;
     paymentId: string;
 }

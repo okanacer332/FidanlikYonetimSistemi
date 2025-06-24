@@ -35,7 +35,7 @@ export function ExpensesTable({ expenses = [] }: ExpensesTableProps): React.JSX.
           <TableBody>
             {expenses.map((expense) => (
               <TableRow hover key={expense.id}>
-                <TableCell>{dayjs(expense.expenseDat).format('DD/MM/YYYY')}</TableCell>
+                <TableCell>{dayjs(expense.expenseDate).format('DD/MM/YYYY')}</TableCell>
                 <TableCell>
                   <Chip label={expense.category.name} size="small" variant="outlined" />
                 </TableCell>
