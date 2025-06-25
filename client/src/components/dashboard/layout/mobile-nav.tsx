@@ -12,6 +12,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
+import NProgress from 'nprogress';
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 
 import type { NavItemConfig } from '@/types/nav';
@@ -224,7 +225,14 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
               rel: external ? 'noreferrer' : undefined,
             }
           : { role: 'button' })}
-        onClick={onClose}
+        onClick={() => {
+          if (href) {
+            NProgress.start();
+          }
+          if (onClose) {
+            onClose();
+          }
+        }}
         sx={{
           borderRadius: 1,
           color: 'var(--NavItem-color)',

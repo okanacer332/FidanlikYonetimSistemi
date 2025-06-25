@@ -1,7 +1,7 @@
 // Konum: client/src/app/layout.tsx
 import * as React from 'react';
 import type { Viewport } from 'next';
-
+import { TopProgressBar } from '@/components/core/top-progress-bar';
 import '@/styles/global.css';
 
 import { UserProvider } from '@/contexts/user-context';
@@ -22,7 +22,10 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         {/* CustomApolloProvider kullanımı kaldırıldı */}
         <LocalizationProvider>
           <UserProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              <TopProgressBar />
+              {children}
+            </ThemeProvider>
           </UserProvider>
         </LocalizationProvider>
       </body>
