@@ -15,7 +15,9 @@ import {
   Receipt as ReceiptIcon, // Zaten var, kullanılabilir
   Bank as BankIcon,
   CreditCard as CreditCardIcon,
-  ChartBar as ChartBarIcon 
+  ChartBar as ChartBarIcon,
+  FileCsv as FileCsvIcon,
+  Download as DownloadIcon
 } from '@phosphor-icons/react/dist/ssr';
 
 export const navIcons = {
@@ -28,12 +30,14 @@ export const navIcons = {
   'buildings': BuildingsIcon,
   'package': PackageIcon,
   'shopping-cart': ShoppingCartIcon,
-  'stack': StackIcon,             // ADD THIS
-  'wrench': WrenchIcon,           // ADD THIS
-  'chart-line': ChartLineIcon,    // ADD THIS
-  'swap': SwapIcon,               // ADD THIS
+  'stack': StackIcon,
+  'wrench': WrenchIcon,
+  'chart-line': ChartLineIcon,
+  'swap': SwapIcon,
   'receipt': ReceiptIcon,
   'bank': BankIcon,
   'chart-bar': ChartBarIcon,
-  'credit-card': CreditCardIcon
+  'credit-card': CreditCardIcon,
+  'file-csv': FileCsvIcon,
+  'download': DownloadIcon,
 } as const;

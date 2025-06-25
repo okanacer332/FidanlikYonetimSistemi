@@ -298,3 +298,12 @@ export interface OrderCreateRequest {
   items: OrderItemDto[];
   expectedDeliveryDate?: string;
 }
+
+export interface ProfitabilityReportDto {
+  plantId: string;
+  plantName: string;
+  totalQuantitySold: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+}

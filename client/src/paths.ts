@@ -19,7 +19,10 @@ export const paths = {
       payments: '/dashboard/accounting/payments',
       expenses: '/dashboard/accounting/expenses',
     },
-    reports: '/dashboard/reports'
+   reports: {
+       overview: '/dashboard/reports', // Mevcut raporlar sayfanız
+       profitability: '/dashboard/reports/profitability' // YENİ EKLENDİ
+    }
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

@@ -12,7 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.fidanlik.fidanysserver.reporting.dto.ProfitabilityReportDto;
 import java.util.List;
 
 @RestController
@@ -40,5 +40,11 @@ public class ReportingController {
     public ResponseEntity<List<CustomerSalesReport>> getCustomerSales(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(reportingService.getCustomerSales(user.getTenantId()));
+    }
+
+    @GetMapping("/profitability")
+    public ResponseEntity<List<ProfitabilityReportDto>> getProfitabilityReport(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(reportingService.getProfitabilityReport(user.getTenantId()));
     }
 }
