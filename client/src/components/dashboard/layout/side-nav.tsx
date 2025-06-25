@@ -11,7 +11,6 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 
 import type { NavItemConfig } from '@/types/nav';
@@ -20,6 +19,19 @@ import { isNavItemActive } from '@/lib/is-nav-item-active';
 import { useUser } from '@/hooks/use-user';
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
+
+// --- TÜM DEĞİŞİKLİKLER BU DOSYADA ---
+
+function getActiveGroup(items: NavItemConfig[], pathname: string): string | undefined {
+  for (const item of items) {
+    if (item.type === 'group') {
+      if (hasActiveChild(item.items, pathname)) {
+        return item.key;
+      }
+    }
+  }
+  return undefined;
+}
 
 function hasActiveChild(items: NavItemConfig[], pathname: string): boolean {
   for (const item of items) {
@@ -35,21 +47,31 @@ function hasActiveChild(items: NavItemConfig[], pathname: string): boolean {
 
 function canUserAccess(item: NavItemConfig, userRoles: Set<string>): boolean {
   if (!item.roles || item.roles.length === 0) {
-    return true; // No roles defined, accessible to all
+    return true;
   }
-  return item.roles.some(role => userRoles.has(role));
+  return item.roles.some((role) => userRoles.has(role));
 }
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
   const { user } = useUser();
+  const userRoles = React.useMemo(() => new Set(user?.roles?.map((role) => role.name) || []), [user]);
 
-  const userRoles = React.useMemo(() => new Set(user?.roles?.map(role => role.name) || []), [user]);
+  const [openGroup, setOpenGroup] = React.useState<string | undefined>(() => getActiveGroup(navItems, pathname));
+
+  React.useEffect(() => {
+    setOpenGroup(getActiveGroup(navItems, pathname));
+  }, [pathname]);
+
+  const handleGroupToggle = React.useCallback((groupKey: string) => {
+    setOpenGroup((prevOpenGroup) => (prevOpenGroup === groupKey ? undefined : groupKey));
+  }, []);
 
   return (
     <Box
       sx={{
-        '--SideNav-background': 'var(--mui-palette-neutral-950)',
+        // --- RENK DEĞİŞİKLİĞİ BURADA ---
+        '--SideNav-background': 'var(--mui-palette-neutral-900)', // Koyu yeşil tonu
         '--SideNav-color': 'var(--mui-palette-common-white)',
         '--NavItem-color': 'var(--mui-palette-neutral-300)',
         '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
@@ -75,26 +97,44 @@ export function SideNav(): React.JSX.Element {
       }}
     >
       <Stack spacing={2} sx={{ p: 3, alignItems: 'center' }}>
-         <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
-              <Box
-                component="img"
-                alt="FidanFYS Logo"
-                src="/assets/acrtech-fidanfys-logo.png"
-                sx={{ height: '100px', width: 'auto' }}
-              />
-            </Box>
+        <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
+          <Box
+            component="img"
+            alt="FidanFYS Logo"
+            src="/assets/acrtech-fidanfys-logo.png"
+            sx={{ height: '100px', width: 'auto' }}
+          />
+        </Box>
       </Stack>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
         <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          {renderNavItems({ items: navItems, pathname, userRoles })}
+          {renderNavItems({
+            items: navItems,
+            pathname,
+            userRoles,
+            openGroup,
+            handleGroupToggle,
+          })}
         </List>
       </Box>
     </Box>
   );
 }
 
-function renderNavItems({ items = [], pathname, userRoles }: { items?: NavItemConfig[]; pathname: string; userRoles: Set<string> }): React.ReactNode {
+function renderNavItems({
+  items = [],
+  pathname,
+  userRoles,
+  openGroup,
+  handleGroupToggle,
+}: {
+  items?: NavItemConfig[];
+  pathname: string;
+  userRoles: Set<string>;
+  openGroup?: string;
+  handleGroupToggle: (key: string) => void;
+}): React.ReactNode {
   return items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
     if (!canUserAccess(item, userRoles)) {
       return acc;
@@ -102,12 +142,16 @@ function renderNavItems({ items = [], pathname, userRoles }: { items?: NavItemCo
 
     if (item.type === 'group') {
       acc.push(
-        <NavGroup key={item.key} group={item} pathname={pathname}>
-          {renderNavItems({ items: item.items, pathname, userRoles })}
+        <NavGroup
+          key={item.key}
+          group={item}
+          isOpen={openGroup === item.key}
+          onToggle={() => handleGroupToggle(item.key)}
+        >
+          {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle })}
         </NavGroup>
       );
-    } 
-    else if (item.type === 'item') {
+    } else if (item.type === 'item') {
       const { key, ...restOfItem } = item;
       acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} />);
     }
@@ -116,47 +160,47 @@ function renderNavItems({ items = [], pathname, userRoles }: { items?: NavItemCo
   }, []);
 }
 
-function NavGroup({ group, pathname, children }: { group: Extract<NavItemConfig, { type: 'group' }>, pathname: string, children: React.ReactNode }): React.JSX.Element {
-    const [open, setOpen] = React.useState<boolean>(hasActiveChild(group.items, pathname));
-
-    React.useEffect(() => {
-        if(hasActiveChild(group.items, pathname)) {
-            setOpen(true);
-        }
-    }, [pathname, group.items]);
-
-    return (
-        <li style={{ paddingBottom: '8px' }}>
-            <ListItemButton onClick={() => setOpen(!open)} sx={{ borderRadius: 1, py: '6px' }}>
-                <ListItemText 
-                    primary={group.title}
-                    primaryTypographyProps={{
-                        variant: 'overline',
-                        sx: { color: 'var(--mui-palette-neutral-400)' }
-                    }}
-                />
-                <CaretDownIcon
-                    style={{
-                        transform: open ? 'rotate(180deg)' : 'rotate(0)',
-                        transition: 'transform 0.2s',
-                    }}
-                />
-            </ListItemButton>
-            <Collapse in={open} timeout="auto" unmountOnExit>
-                <List component="ul" disablePadding sx={{ pl: '12px', pt: '8px' }}>
-                    {children}
-                </List>
-            </Collapse>
-        </li>
-    );
+function NavGroup({
+  group,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  group: Extract<NavItemConfig, { type: 'group' }>;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <li style={{ paddingBottom: '8px' }}>
+      <ListItemButton onClick={onToggle} sx={{ borderRadius: 1, py: '6px' }}>
+        <ListItemText
+          primary={group.title}
+          primaryTypographyProps={{
+            variant: 'overline',
+            sx: { color: 'var(--mui-palette-neutral-400)' },
+          }}
+        />
+        <CaretDownIcon
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
+            transition: 'transform 0.2s',
+          }}
+        />
+      </ListItemButton>
+      <Collapse in={isOpen} timeout="auto" unmountOnExit>
+        <List component="ul" disablePadding sx={{ pl: '12px', pt: '8px' }}>
+          {children}
+        </List>
+      </Collapse>
+    </li>
+  );
 }
 
-// Düzeltme: NavItemProps arayüzünü tanımlıyoruz. 'key' prop'unu Omit ile çıkarıyoruz.
 interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key'> {
   pathname: string;
 }
 
-// Düzeltme: NavItem fonksiyonu artık doğru tipleri kullanıyor.
 function NavItem({ disabled, external, href, icon, matcher, pathname, title }: NavItemProps): React.JSX.Element {
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
   const Icon = icon ? navIcons[icon] : null;
@@ -191,7 +235,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
         }}
       >
         {Icon && (
-          <ListItemIcon sx={{minWidth: 'auto', mr: 1.5, color: 'inherit'}}>
+          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5, color: 'inherit' }}>
             <Icon
               fill={active ? 'var(--NavItem-icon-active-color)' : 'var(--NavItem-icon-color)'}
               fontSize="var(--icon-fontSize-md)"
@@ -206,7 +250,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
             fontWeight: 500,
             lineHeight: '28px',
             variant: 'body1',
-            sx: { color: 'inherit' }
+            sx: { color: 'inherit' },
           }}
         />
       </ListItemButton>
