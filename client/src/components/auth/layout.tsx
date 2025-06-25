@@ -48,7 +48,7 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           display: { xs: 'none', lg: 'flex' }, // Bu kısım değiştirilmedi, çünkü buradaki logo büyük ekrana ait.
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'url(/assets/acrtech-fidanfys-logo.png) no-repeat center center',
+          background: 'url(/assets/asd.png) no-repeat center center',
           backgroundSize: 'cover',
           backgroundColor: '#090E23',
           p: 0,
