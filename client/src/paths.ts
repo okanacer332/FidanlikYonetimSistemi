@@ -14,6 +14,7 @@ export const paths = {
     orders: '/dashboard/orders',
     accounting: {
       currentAccounts: '/dashboard/accounting/current-accounts',
+      suppliers: '/dashboard/accounting/suppliers', // DÜZELTME: Bu satır eksikti.
       invoices: '/dashboard/accounting/invoices',
       payments: '/dashboard/accounting/payments',
       expenses: '/dashboard/accounting/expenses',

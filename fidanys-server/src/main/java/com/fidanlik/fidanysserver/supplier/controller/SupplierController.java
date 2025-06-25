@@ -50,4 +50,10 @@ public class SupplierController {
         supplierService.deleteSupplier(id, authenticatedUser.getTenantId());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Supplier> getSupplierById(@PathVariable String id, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(supplierService.getSupplierById(id, user.getTenantId()));
+    }
 }

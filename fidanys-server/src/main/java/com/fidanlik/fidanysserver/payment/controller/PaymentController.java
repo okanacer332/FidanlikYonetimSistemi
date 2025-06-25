@@ -28,6 +28,14 @@ public class PaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
 
+    @PostMapping("/payment-to-supplier")
+    public ResponseEntity<Payment> createPaymentToSupplier(@RequestBody PaymentRequest request, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        // DİKKAT: Request DTO'sunda supplierId bekliyoruz.
+        Payment payment = paymentService.createPaymentToSupplier(request, user.getId(), user.getTenantId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+    }
+
     @GetMapping
     public ResponseEntity<List<Payment>> getAllPayments(Authentication authentication) {
         User user = (User) authentication.getPrincipal();

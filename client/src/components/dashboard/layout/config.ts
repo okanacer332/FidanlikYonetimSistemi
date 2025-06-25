@@ -30,6 +30,7 @@ export const navItems: NavItemConfig[] = [
     roles: ['ADMIN', 'ACCOUNTANT'],
     items: [
       { type: 'item', key: 'current-accounts', title: 'Cari Hesaplar', href: paths.dashboard.accounting.currentAccounts, icon: 'swap' }, // Yeni ikon ve path eklenecek
+      { type: 'item', key: 'supplier-accounts', title: 'Tedarikçi Carileri', href: paths.dashboard.accounting.suppliers, icon: 'users' },
       { type: 'item', key: 'invoices', title: 'Faturalar', href: paths.dashboard.accounting.invoices, icon: 'receipt' }, // Yeni path
       { type: 'item', key: 'payments', title: 'Kasa & Banka', href: paths.dashboard.accounting.payments, icon: 'bank' }, // Yeni ikon ve path
       { type: 'item', key: 'expenses', title: 'Gider Yönetimi', href: paths.dashboard.accounting.expenses, icon: 'credit-card' }, // Yeni ikon ve path

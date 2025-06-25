@@ -55,4 +55,10 @@ public class SupplierService {
 
         supplierRepository.delete(supplierToDelete);
     }
+
+    public Supplier getSupplierById(String id, String tenantId) {
+        return supplierRepository.findById(id)
+                .filter(supplier -> supplier.getTenantId().equals(tenantId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tedarikçi bulunamadı"));
+    }
 }

@@ -13,5 +13,6 @@ public class PaymentRequest {
     private BigDecimal amount;
     private String description;
     private String customerId; // Tahsilat için
+    private String supplierId; // Tediye için (YENİ EKLENDİ)
     private String invoiceId;  // Faturaya bağlı tahsilat için
 }

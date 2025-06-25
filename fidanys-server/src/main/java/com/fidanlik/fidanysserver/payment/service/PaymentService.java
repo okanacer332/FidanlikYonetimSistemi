@@ -9,6 +9,7 @@ import com.fidanlik.fidanysserver.invoicing.repository.InvoiceRepository;
 import com.fidanlik.fidanysserver.payment.dto.PaymentRequest;
 import com.fidanlik.fidanysserver.payment.model.Payment;
 import com.fidanlik.fidanysserver.payment.repository.PaymentRepository;
+import com.fidanlik.fidanysserver.supplier.repository.SupplierRepository; // BU SATIR ZATEN VARDI
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,9 +26,11 @@ public class PaymentService {
     private final TransactionService transactionService;
     private final CustomerRepository customerRepository;
     private final InvoiceRepository invoiceRepository;
+    private final SupplierRepository supplierRepository; // DÜZELTME: Bu satırın burada olması gerekiyor.
 
     @Transactional
     public Payment createCollection(PaymentRequest request, String userId, String tenantId) {
+        // ... (Mevcut createCollection metodu aynı kalacak)
         customerRepository.findById(request.getCustomerId())
                 .filter(c -> c.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Müşteri bulunamadı."));
@@ -66,9 +69,41 @@ public class PaymentService {
         return savedPayment;
     }
 
-    // YENİ METOT: Gider için ödeme oluşturur
+    @Transactional
+    public Payment createPaymentToSupplier(PaymentRequest request, String userId, String tenantId) {
+        supplierRepository.findById(request.getSupplierId())
+                .filter(s -> s.getTenantId().equals(tenantId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tedarikçi bulunamadı."));
+
+        Payment payment = new Payment();
+        payment.setTenantId(tenantId);
+        payment.setUserId(userId);
+        payment.setType(Payment.PaymentType.PAYMENT);
+        payment.setMethod(request.getMethod());
+        payment.setPaymentDate(request.getPaymentDate());
+        payment.setAmount(request.getAmount());
+        payment.setDescription(request.getDescription());
+        payment.setRelatedId(request.getSupplierId());
+        payment.setRelatedEntityType(Payment.RelatedEntityType.SUPPLIER);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        transactionService.createSupplierTransaction(
+                request.getSupplierId(),
+                Transaction.TransactionType.DEBIT,
+                request.getAmount(),
+                "Tediye - " + request.getDescription(),
+                savedPayment.getId(),
+                userId,
+                tenantId
+        );
+
+        return savedPayment;
+    }
+
     @Transactional
     public Payment createPaymentForExpense(Expense expense, Payment.PaymentMethod method, String userId, String tenantId) {
+        // ... (Mevcut createPaymentForExpense metodu aynı kalacak)
         Payment payment = new Payment();
         payment.setTenantId(tenantId);
         payment.setUserId(userId);
