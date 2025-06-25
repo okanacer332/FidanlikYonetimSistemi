@@ -23,7 +23,10 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         <LocalizationProvider>
           <UserProvider>
             <ThemeProvider>
-              <TopProgressBar />
+              {/* TopProgressBar'ı bir Suspense boundary içine sarın */}
+              <React.Suspense fallback={null}>
+                <TopProgressBar />
+              </React.Suspense>
               {children}
             </ThemeProvider>
           </UserProvider>
