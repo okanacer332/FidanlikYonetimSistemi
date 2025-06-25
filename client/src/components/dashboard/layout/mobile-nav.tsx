@@ -12,7 +12,6 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 
 import type { NavItemConfig } from '@/types/nav';
@@ -76,16 +75,17 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
     <Drawer
       PaperProps={{
         sx: {
-          '--MobileNav-background': 'var(--mui-palette-neutral-900)',
-          '--MobileNav-color': 'var(--mui-palette-common-white)',
-          '--NavItem-color': 'var(--mui-palette-neutral-300)',
-          '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
+          // --- RENK DEĞİŞİKLİKLERİ BURADA ---
+          '--MobileNav-background': '#fdfae5', // Saman kağıdı / Kırık beyaz rengi
+          '--MobileNav-color': 'var(--mui-palette-neutral-900)', // Arka plan açık olduğu için yazı rengi koyu
+          '--NavItem-color': 'var(--mui-palette-neutral-600)',
+          '--NavItem-hover-background': 'rgba(0, 0, 0, 0.04)',
           '--NavItem-active-background': 'var(--mui-palette-primary-main)',
           '--NavItem-active-color': 'var(--mui-palette-primary-contrastText)',
-          '--NavItem-disabled-color': 'var(--mui-palette-neutral-500)',
-          '--NavItem-icon-color': 'var(--mui-palette-neutral-400)',
+          '--NavItem-disabled-color': 'var(--mui-palette-neutral-400)',
+          '--NavItem-icon-color': 'var(--mui-palette-neutral-500)',
           '--NavItem-icon-active-color': 'var(--mui-palette-primary-contrastText)',
-          '--NavItem-icon-disabled-color': 'var(--mui-palette-neutral-600)',
+          '--NavItem-icon-disabled-color': 'var(--mui-palette-neutral-400)',
           bgcolor: 'var(--MobileNav-background)',
           color: 'var(--MobileNav-color)',
           display: 'flex',
@@ -110,7 +110,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
             />
         </Box>
       </Stack>
-      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
+      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-200)' }} />
       <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
         <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {renderNavItems({
@@ -119,7 +119,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
             userRoles,
             openGroup,
             handleGroupToggle,
-            onClose, // onClose fonksiyonunu render fonksiyonuna iletiyoruz
+            onClose,
           })}
         </List>
       </Box>
@@ -133,14 +133,14 @@ function renderNavItems({
   userRoles,
   openGroup,
   handleGroupToggle,
-  onClose, // onClose prop'unu alıyoruz
+  onClose,
 }: {
   items?: NavItemConfig[];
   pathname: string;
   userRoles: Set<string>;
   openGroup?: string;
   handleGroupToggle: (key: string) => void;
-  onClose?: () => void; // onClose prop'unu tanımlıyoruz
+  onClose?: () => void;
 }): React.ReactNode {
   return items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
     if (!canUserAccess(item, userRoles)) {
@@ -155,13 +155,11 @@ function renderNavItems({
           isOpen={openGroup === item.key}
           onToggle={() => handleGroupToggle(item.key)}
         >
-          {/* onClose'u iç içe elemanlara da iletiyoruz */}
           {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle, onClose })}
         </NavGroup>
       );
     } else if (item.type === 'item') {
       const { key, ...restOfItem } = item;
-      // onClose'u NavItem'a prop olarak iletiyoruz
       acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} onClose={onClose} />);
     }
 
@@ -187,7 +185,7 @@ function NavGroup({
           primary={group.title}
           primaryTypographyProps={{
             variant: 'overline',
-            sx: { color: 'var(--mui-palette-neutral-400)' },
+            sx: { color: 'var(--mui-palette-neutral-500)' },
           }}
         />
         <CaretDownIcon
@@ -208,7 +206,7 @@ function NavGroup({
 
 interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key'> {
   pathname: string;
-  onClose?: () => void; // onClose prop'unu ekliyoruz
+  onClose?: () => void;
 }
 
 function NavItem({ disabled, external, href, icon, matcher, pathname, title, onClose }: NavItemProps): React.JSX.Element {
@@ -226,8 +224,6 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
               rel: external ? 'noreferrer' : undefined,
             }
           : { role: 'button' })}
-        // --- DEĞİŞİKLİK BURADA ---
-        // Tıklandığında onClose fonksiyonunu çağırıyoruz
         onClick={onClose}
         sx={{
           borderRadius: 1,
@@ -240,7 +236,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
             bgcolor: 'var(--NavItem-hover-background)',
           },
           ...(disabled && {
-            bgcolor: 'var(--NavItem-disabled-background)',
+            bgcolor: 'transparent',
             color: 'var(--NavItem-disabled-color)',
             cursor: 'not-allowed',
           }),
@@ -248,7 +244,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
         }}
       >
         {Icon && (
-          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5, color: 'inherit' }}>
+          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
             <Icon
               fill={active ? 'var(--NavItem-icon-active-color)' : 'var(--NavItem-icon-color)'}
               fontSize="var(--icon-fontSize-md)"

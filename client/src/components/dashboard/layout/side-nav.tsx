@@ -20,7 +20,6 @@ import { useUser } from '@/hooks/use-user';
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
 
-// --- TÜM DEĞİŞİKLİKLER BU DOSYADA ---
 
 function getActiveGroup(items: NavItemConfig[], pathname: string): string | undefined {
   for (const item of items) {
@@ -70,19 +69,20 @@ export function SideNav(): React.JSX.Element {
   return (
     <Box
       sx={{
-        // --- RENK DEĞİŞİKLİĞİ BURADA ---
-        '--SideNav-background': 'var(--mui-palette-neutral-900)', // Koyu yeşil tonu
-        '--SideNav-color': 'var(--mui-palette-common-white)',
-        '--NavItem-color': 'var(--mui-palette-neutral-300)',
-        '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
+        // --- RENK DEĞİŞİKLİKLERİ BURADA ---
+        '--SideNav-background': '#fdfae5', // Saman kağıdı / Kırık beyaz rengi
+        '--SideNav-color': 'var(--mui-palette-neutral-900)', // Arka plan açık olduğu için yazı rengi koyu
+        '--NavItem-color': 'var(--mui-palette-neutral-600)', // Menü elemanı yazı rengi
+        '--NavItem-hover-background': 'rgba(0, 0, 0, 0.04)',
         '--NavItem-active-background': 'var(--mui-palette-primary-main)',
         '--NavItem-active-color': 'var(--mui-palette-primary-contrastText)',
-        '--NavItem-disabled-color': 'var(--mui-palette-neutral-500)',
-        '--NavItem-icon-color': 'var(--mui-palette-neutral-400)',
+        '--NavItem-disabled-color': 'var(--mui-palette-neutral-400)',
+        '--NavItem-icon-color': 'var(--mui-palette-neutral-500)', // İkon rengi
         '--NavItem-icon-active-color': 'var(--mui-palette-primary-contrastText)',
-        '--NavItem-icon-disabled-color': 'var(--mui-palette-neutral-600)',
+        '--NavItem-icon-disabled-color': 'var(--mui-palette-neutral-400)',
         bgcolor: 'var(--SideNav-background)',
         color: 'var(--SideNav-color)',
+        borderRight: '1px solid var(--mui-palette-neutral-200)', // Sağ tarafa ince bir çizgi eklendi
         display: { xs: 'none', lg: 'flex' },
         flexDirection: 'column',
         height: '100%',
@@ -106,7 +106,7 @@ export function SideNav(): React.JSX.Element {
           />
         </Box>
       </Stack>
-      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
+      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-200)' }} />
       <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
         <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
           {renderNavItems({
@@ -178,7 +178,7 @@ function NavGroup({
           primary={group.title}
           primaryTypographyProps={{
             variant: 'overline',
-            sx: { color: 'var(--mui-palette-neutral-400)' },
+            sx: { color: 'var(--mui-palette-neutral-500)' }, // Grup başlığı rengi
           }}
         />
         <CaretDownIcon
@@ -227,7 +227,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
             bgcolor: 'var(--NavItem-hover-background)',
           },
           ...(disabled && {
-            bgcolor: 'var(--NavItem-disabled-background)',
+            bgcolor: 'transparent',
             color: 'var(--NavItem-disabled-color)',
             cursor: 'not-allowed',
           }),
@@ -235,7 +235,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
         }}
       >
         {Icon && (
-          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5, color: 'inherit' }}>
+          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
             <Icon
               fill={active ? 'var(--NavItem-icon-active-color)' : 'var(--NavItem-icon-color)'}
               fontSize="var(--icon-fontSize-md)"
