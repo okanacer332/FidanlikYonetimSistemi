@@ -4,37 +4,79 @@ import * as React from 'react';
 import RouterLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { ArrowSquareUpRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowSquareUpRight';
-import { CaretUpDownIcon } from '@phosphor-icons/react/dist/ssr/CaretUpDown';
+import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 
 import type { NavItemConfig } from '@/types/nav';
 import { paths } from '@/paths';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
-import { Logo } from '@/components/core/logo';
-
+import { useUser } from '@/hooks/use-user';
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
-import List from '@mui/material/List';
 
 export interface MobileNavProps {
   onClose?: () => void;
   open?: boolean;
-  items?: NavItemConfig[];
+}
+
+function getActiveGroup(items: NavItemConfig[], pathname: string): string | undefined {
+  for (const item of items) {
+    if (item.type === 'group') {
+      if (hasActiveChild(item.items, pathname)) {
+        return item.key;
+      }
+    }
+  }
+  return undefined;
+}
+
+function hasActiveChild(items: NavItemConfig[], pathname: string): boolean {
+  for (const item of items) {
+    if (item.type === 'item' && isNavItemActive({ ...item, pathname })) {
+      return true;
+    }
+    if (item.type === 'group' && hasActiveChild(item.items, pathname)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function canUserAccess(item: NavItemConfig, userRoles: Set<string>): boolean {
+  if (!item.roles || item.roles.length === 0) {
+    return true;
+  }
+  return item.roles.some((role) => userRoles.has(role));
 }
 
 export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element {
   const pathname = usePathname();
+  const { user } = useUser();
+  const userRoles = React.useMemo(() => new Set(user?.roles?.map((role) => role.name) || []), [user]);
+
+  const [openGroup, setOpenGroup] = React.useState<string | undefined>(() => getActiveGroup(navItems, pathname));
+
+  React.useEffect(() => {
+    setOpenGroup(getActiveGroup(navItems, pathname));
+  }, [pathname]);
+
+  const handleGroupToggle = React.useCallback((groupKey: string) => {
+    setOpenGroup((prevOpenGroup) => (prevOpenGroup === groupKey ? undefined : groupKey));
+  }, []);
 
   return (
     <Drawer
       PaperProps={{
         sx: {
-          '--MobileNav-background': 'var(--mui-palette-neutral-950)',
+          '--MobileNav-background': 'var(--mui-palette-neutral-900)',
           '--MobileNav-color': 'var(--mui-palette-common-white)',
           '--NavItem-color': 'var(--mui-palette-neutral-300)',
           '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
@@ -58,111 +100,124 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
       onClose={onClose}
       open={open}
     >
-      <Stack spacing={2} sx={{ p: 3 }}>
+      <Stack spacing={2} sx={{ p: 3, alignItems: 'center' }}>
         <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
-          <Logo color="light" height={32} width={122} />
-        </Box>
-        <Box
-          sx={{
-            alignItems: 'center',
-            backgroundColor: 'var(--mui-palette-neutral-950)',
-            border: '1px solid var(--mui-palette-neutral-700)',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            p: '4px 12px',
-          }}
-        >
-          <Box sx={{ flex: '1 1 auto' }}>
-            <Typography color="var(--mui-palette-neutral-400)" variant="body2">
-              Workspace
-            </Typography>
-            <Typography color="inherit" variant="subtitle1">
-              Devias
-            </Typography>
-          </Box>
-          <CaretUpDownIcon />
+          <Box
+              component="img"
+              alt="FidanFYS Logo"
+              src="/assets/acrtech-fidanfys-logo.png"
+              sx={{ height: '80px', width: 'auto' }}
+            />
         </Box>
       </Stack>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
-        {renderNavItems({ pathname, items: navItems })}
+        <List component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+          {renderNavItems({
+            items: navItems,
+            pathname,
+            userRoles,
+            openGroup,
+            handleGroupToggle,
+            onClose, // onClose fonksiyonunu render fonksiyonuna iletiyoruz
+          })}
+        </List>
       </Box>
-      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
-      <Stack spacing={2} sx={{ p: '12px' }}>
-        <div>
-          <Typography color="var(--mui-palette-neutral-100)" variant="subtitle2">
-            Need more features?
-          </Typography>
-          <Typography color="var(--mui-palette-neutral-400)" variant="body2">
-            Check out our Pro solution template.
-          </Typography>
-        </div>
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Box
-            component="img"
-            alt="Pro version"
-            src="/assets/devias-kit-pro.png"
-            sx={{ height: 'auto', width: '160px' }}
-          />
-        </Box>
-        <Button
-          component="a"
-          endIcon={<ArrowSquareUpRightIcon fontSize="var(--icon-fontSize-md)" />}
-          fullWidth
-          href="https://material-kit-pro-react.devias.io/"
-          sx={{ mt: 2 }}
-          target="_blank"
-          variant="contained"
-        >
-          Pro version
-        </Button>
-      </Stack>
     </Drawer>
   );
 }
 
-function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
-  const children = items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
-    // Correctly handle groups
+function renderNavItems({
+  items = [],
+  pathname,
+  userRoles,
+  openGroup,
+  handleGroupToggle,
+  onClose, // onClose prop'unu alıyoruz
+}: {
+  items?: NavItemConfig[];
+  pathname: string;
+  userRoles: Set<string>;
+  openGroup?: string;
+  handleGroupToggle: (key: string) => void;
+  onClose?: () => void; // onClose prop'unu tanımlıyoruz
+}): React.ReactNode {
+  return items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
+    if (!canUserAccess(item, userRoles)) {
+      return acc;
+    }
+
     if (item.type === 'group') {
       acc.push(
-        <Box component="li" key={item.key} sx={{ py: 1.5 }}>
-          <Typography color="var(--mui-palette-neutral-500)" sx={{ fontSize: '0.75rem', fontWeight: 600, px: '16px', textTransform: 'uppercase' }}>
-            {item.title}
-          </Typography>
-          <List component="ul" disablePadding sx={{ pl: '12px' }}>
-            {renderNavItems({ items: item.items, pathname })}
-          </List>
-        </Box>
+        <NavGroup
+          key={item.key}
+          group={item}
+          isOpen={openGroup === item.key}
+          onToggle={() => handleGroupToggle(item.key)}
+        >
+          {/* onClose'u iç içe elemanlara da iletiyoruz */}
+          {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle, onClose })}
+        </NavGroup>
       );
-    } 
-    // Correctly handle single items
-    else if (item.type === 'item') {
+    } else if (item.type === 'item') {
       const { key, ...restOfItem } = item;
-      acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} />);
+      // onClose'u NavItem'a prop olarak iletiyoruz
+      acc.push(<NavItem key={key} pathname={pathname} {...restOfItem} onClose={onClose} />);
     }
+
     return acc;
   }, []);
+}
 
+function NavGroup({
+  group,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  group: Extract<NavItemConfig, { type: 'group' }>;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
   return (
-    <Stack component="ul" spacing={1} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-      {children}
-    </Stack>
+    <li style={{ paddingBottom: '8px' }}>
+      <ListItemButton onClick={onToggle} sx={{ borderRadius: 1, py: '6px' }}>
+        <ListItemText
+          primary={group.title}
+          primaryTypographyProps={{
+            variant: 'overline',
+            sx: { color: 'var(--mui-palette-neutral-400)' },
+          }}
+        />
+        <CaretDownIcon
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0)',
+            transition: 'transform 0.2s',
+          }}
+        />
+      </ListItemButton>
+      <Collapse in={isOpen} timeout="auto" unmountOnExit>
+        <List component="ul" disablePadding sx={{ pl: '12px', pt: '8px' }}>
+          {children}
+        </List>
+      </Collapse>
+    </li>
   );
 }
 
-interface NavItemProps extends Extract<NavItemConfig, { type: 'item' }> {
+interface NavItemProps extends Omit<Extract<NavItemConfig, { type: 'item' }>, 'key'> {
   pathname: string;
+  onClose?: () => void; // onClose prop'unu ekliyoruz
 }
 
-function NavItem({ disabled, external, href, icon, matcher, pathname, title }: NavItemProps): React.JSX.Element {
+function NavItem({ disabled, external, href, icon, matcher, pathname, title, onClose }: NavItemProps): React.JSX.Element {
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
   const Icon = icon ? navIcons[icon] : null;
 
   return (
     <li>
-      <Box
+      <ListItemButton
         {...(href
           ? {
               component: external ? 'a' : RouterLink,
@@ -171,18 +226,19 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
               rel: external ? 'noreferrer' : undefined,
             }
           : { role: 'button' })}
+        // --- DEĞİŞİKLİK BURADA ---
+        // Tıklandığında onClose fonksiyonunu çağırıyoruz
+        onClick={onClose}
         sx={{
-          alignItems: 'center',
           borderRadius: 1,
           color: 'var(--NavItem-color)',
           cursor: 'pointer',
-          display: 'flex',
-          flex: '0 0 auto',
-          gap: 1,
-          p: '6px 16px',
-          position: 'relative',
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
+          py: '6px',
+          px: '12px',
+          transition: 'background-color 0.1s, color 0.1s',
+          '&:hover': {
+            bgcolor: 'var(--NavItem-hover-background)',
+          },
           ...(disabled && {
             bgcolor: 'var(--NavItem-disabled-background)',
             color: 'var(--NavItem-disabled-color)',
@@ -191,24 +247,26 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
           ...(active && { bgcolor: 'var(--NavItem-active-background)', color: 'var(--NavItem-active-color)' }),
         }}
       >
-        <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', flex: '0 0 auto' }}>
-          {Icon ? (
+        {Icon && (
+          <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5, color: 'inherit' }}>
             <Icon
               fill={active ? 'var(--NavItem-icon-active-color)' : 'var(--NavItem-icon-color)'}
               fontSize="var(--icon-fontSize-md)"
-              weight={active ? 'fill' : undefined}
+              weight={active ? 'fill' : 'regular'}
             />
-          ) : null}
-        </Box>
-        <Box sx={{ flex: '1 1 auto' }}>
-          <Typography
-            component="span"
-            sx={{ color: 'inherit', fontSize: '0.875rem', fontWeight: 500, lineHeight: '28px' }}
-          >
-            {title}
-          </Typography>
-        </Box>
-      </Box>
+          </ListItemIcon>
+        )}
+        <ListItemText
+          primary={title}
+          primaryTypographyProps={{
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            lineHeight: '28px',
+            variant: 'body1',
+            sx: { color: 'inherit' },
+          }}
+        />
+      </ListItemButton>
     </li>
   );
 }
