@@ -1,209 +1,211 @@
+// Dosya Yolu: client/src/app/dashboard/customers/page.tsx
 'use client';
 
 import * as React from 'react';
-import { Button, Stack, Typography, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
-import { Plus as PlusIcon } from '@phosphor-icons/react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z as zod } from 'zod';
+import {
+  Alert,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Stack,
+  Typography,
+} from '@mui/material';
 
-import { CustomersTable } from '@/components/dashboard/customer/customers-table';
-import { CustomerCreateForm } from '@/components/dashboard/customer/customer-create-form';
-import { CustomerEditForm } from '@/components/dashboard/customer/customer-edit-form';
-import type { Customer } from '@/types/nursery';
 import { useUser } from '@/hooks/use-user';
+import type { Customer } from '@/types/nursery';
+import { CustomerCreateInline, type CustomerFormValues } from '@/components/dashboard/customer/customer-create-inline';
+import { CustomerEditForm } from '@/components/dashboard/customer/customer-edit-form';
+import { CustomersTable } from '@/components/dashboard/customer/customers-table';
+
+// Yeni modele göre Zod şemasını güncelliyoruz
+const schema = zod.object({
+  firstName: zod.string().min(2, { message: 'Müşteri adı en az 2 karakter olmalıdır.' }),
+  lastName: zod.string().min(2, { message: 'Müşteri soyadı en az 2 karakter olmalıdır.' }),
+  companyName: zod.string().optional(),
+  phone: zod.string().min(10, { message: 'Geçerli bir telefon numarası giriniz.' }).max(20),
+  email: zod.string().email({ message: 'Geçerli bir e-posta adresi giriniz.' }),
+  address: zod.string().min(5, { message: 'Adres en az 5 karakter olmalıdır.' }),
+});
 
 export default function Page(): React.JSX.Element {
-  const { user: currentUser, isLoading: isUserLoading } = useUser();
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => setIsClient(true), []);
+
+  const { user: currentUser } = useUser();
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [page, setPage] = React.useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
-  const [totalCustomers, setTotalCustomers] = React.useState<number>(0);
+  const [pageError, setPageError] = React.useState<string | null>(null);
 
-  const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
   const [isEditModalOpen, setEditModalOpen] = React.useState(false);
-  const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
-  
   const [itemToEdit, setItemToEdit] = React.useState<Customer | null>(null);
+  const [isConfirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   const [itemToDeleteId, setItemToDeleteId] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
-  // UPDATED: Check for standardized role names
-  const canListCustomers = currentUser?.roles?.some(role =>
-    role.name === 'ADMIN' || role.name === 'SALES' || role.name === 'WAREHOUSE_STAFF'
-  );
-  const canCreateEditCustomers = currentUser?.roles?.some(role =>
-    role.name === 'ADMIN' || role.name === 'SALES'
-  );
-  const canDeleteCustomers = currentUser?.roles?.some(role =>
-    role.name === 'ADMIN'
-  );
+  const canManageCustomers = currentUser?.roles?.some(role => ['ADMIN', 'SALES_PERSON', 'WAREHOUSE_STAFF'].includes(role.name));
+  const canDeleteCustomers = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
-  const fetchCustomers = React.useCallback(async () => {
-      if (!canListCustomers) {
-          setError('Müşterileri listeleme yetkiniz bulunmamaktadır.');
-          setLoading(false);
-          return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-          const token = localStorage.getItem('authToken');
-          if (!token) throw new Error('Oturum bulunamadı.');
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(schema),
+    // Yeni modele göre varsayılan değerleri güncelliyoruz
+    defaultValues: { firstName: '', lastName: '', companyName: '', phone: '', email: '', address: '' },
+  });
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-          });
+  const fetchData = React.useCallback(async () => {
+    if (!canManageCustomers) {
+      setPageError('Bu sayfayı görüntüleme yetkiniz yok.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setPageError(null);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('Oturum bulunamadı.');
 
-          if (!response.ok) {
-              const errData = await response.json();
-              throw new Error(errData.message || 'Müşteriler yüklenemedi.');
-          }
-          const data = await response.json();
-          setCustomers(data);
-          setTotalCustomers(data.length);
-      } catch (err: any) {
-          setError(err.message);
-      } finally {
-          setLoading(false);
-      }
-  }, [canListCustomers]);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error((await response.json()).message || 'Müşteriler yüklenemedi.');
+      setCustomers(await response.json());
+    } catch (err) {
+      setPageError(err instanceof Error ? err.message : 'Bir hata oluştu.');
+    } finally {
+      setLoading(false);
+    }
+  }, [canManageCustomers]);
 
   React.useEffect(() => {
     if (currentUser) {
-        fetchCustomers();
+      fetchData();
     }
-  }, [currentUser, fetchCustomers]);
+  }, [currentUser, fetchData]);
 
-  const handlePageChange = React.useCallback((event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setPage(newPage);
-  }, []);
+  const onSubmit = React.useCallback(
+    async (values: CustomerFormValues) => {
+      setError('root', {});
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('Oturum bulunamadı.');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(values),
+        });
+        if (!response.ok) throw new Error((await response.json()).message || 'Müşteri oluşturulamadı.');
+        reset();
+        await fetchData();
+      } catch (err) {
+        setError('root', { type: 'server', message: err instanceof Error ? err.message : 'Bir hata oluştu.' });
+      }
+    },
+    [fetchData, reset, setError]
+  );
 
-  const handleRowsPerPageChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  }, []);
-
-  const handleCreateSuccess = () => {
-      setCreateModalOpen(false);
-      fetchCustomers();
-  };
-  
   const handleEditClick = (customer: Customer) => {
-      setItemToEdit(customer);
-      setEditModalOpen(true);
+    setItemToEdit(customer);
+    setEditModalOpen(true);
   };
 
   const handleEditSuccess = () => {
-      setEditModalOpen(false);
-      setItemToEdit(null);
-      fetchCustomers();
+    setEditModalOpen(false);
+    setItemToEdit(null);
+    fetchData();
   };
 
   const handleDeleteClick = (customerId: string) => {
-      setItemToDeleteId(customerId);
-      setConfirmDeleteOpen(true);
+    setItemToDeleteId(customerId);
+    setConfirmDeleteOpen(true);
   };
-  
+
   const handleConfirmDelete = async () => {
-      if (!itemToDeleteId) return;
-      setError(null);
-      try {
-          const token = localStorage.getItem('authToken');
-          if (!token) throw new Error('Oturum bulunamadı.');
-          
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers/${itemToDeleteId}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          if (!response.ok) {
-               const errData = await response.json();
-               throw new Error(errData.message || 'Müşteri silinemedi.');
-          }
-          
-          setConfirmDeleteOpen(false);
-          setItemToDeleteId(null);
-          fetchCustomers();
-      } catch (err: any) {
-          setError(err.message);
-          setConfirmDeleteOpen(false);
-      }
+    if (!itemToDeleteId) return;
+    setDeleteError(null);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('Oturum bulunamadı.');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers/${itemToDeleteId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error((await response.json()).message || 'Müşteri silinemedi.');
+      setConfirmDeleteOpen(false);
+      setItemToDeleteId(null);
+      fetchData();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Silme işlemi sırasında bir hata oluştu.');
+    }
   };
 
-  const paginatedCustomers = React.useMemo(() => {
-    return customers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [customers, page, rowsPerPage]);
-
-  if (isUserLoading) {
-    return <CircularProgress />;
-  }
-      
-  return (
+  if (!isClient || loading) {
+    return (
       <Stack spacing={3}>
-          <Stack direction="row" spacing={3}>
-              <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-                  <Typography variant="h4">Müşteriler</Typography>
-              </Stack>
-              <div>
-                  {canCreateEditCustomers && (
-                      <Button
-                          startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
-                          variant="contained"
-                          onClick={() => setCreateModalOpen(true)}
-                      >
-                          Yeni Müşteri Ekle
-                      </Button>
-                  )}
-              </div>
-          </Stack>
-
-          {loading ? (
-              <Stack sx={{ alignItems: 'center', mt: 3 }}><CircularProgress /></Stack>
-          ) : !canListCustomers ? (
-              <Alert severity="error">{error || 'Müşteri listeleme yetkiniz bulunmamaktadır.'}</Alert>
-          ) : error ? (
-              <Alert severity="error">{error}</Alert>
-          ) : (
-              <CustomersTable
-                  count={totalCustomers}
-                  page={page}
-                  rows={paginatedCustomers}
-                  rowsPerPage={rowsPerPage}
-                  onPageChange={handlePageChange}
-                  onRowsPerPageChange={handleRowsPerPageChange}
-                  onEdit={canCreateEditCustomers ? handleEditClick : undefined}
-                  onDelete={canDeleteCustomers ? handleDeleteClick : undefined}
-              />
-          )}
-          
-          {canCreateEditCustomers && (
-              <CustomerCreateForm
-                  open={isCreateModalOpen}
-                  onClose={() => setCreateModalOpen(false)}
-                  onSuccess={handleCreateSuccess}
-              />
-          )}
-          
-          {canCreateEditCustomers && (
-              <CustomerEditForm
-                  open={isEditModalOpen}
-                  onClose={() => setEditModalOpen(false)}
-                  onSuccess={handleEditSuccess}
-                  customer={itemToEdit}
-              />
-          )}
-
-          <Dialog open={isConfirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
-              <DialogTitle>Müşteriyi Silmek İstediğinize Emin Misiniz?</DialogTitle>
-              <DialogContent>
-                  <DialogContentText>
-                      Bu işlem geri alınamaz. Müşteri kalıcı olarak silinecektir.
-                  </DialogContentText>
-              </DialogContent>
-              <DialogActions>
-                  <Button onClick={() => setConfirmDeleteOpen(false)}>İptal</Button>
-                  <Button onClick={handleConfirmDelete} color="error">Sil</Button>
-              </DialogActions>
-          </Dialog>
+        <Typography variant="h4">Müşteri Yönetimi</Typography>
+        <Stack sx={{ alignItems: 'center', mt: 3 }}>
+          <CircularProgress />
+        </Stack>
       </Stack>
+    );
+  }
+  
+  return (
+    <Stack spacing={3}>
+      <Typography variant="h4">Müşteri Yönetimi</Typography>
+
+      {pageError ? (
+        <Alert severity="error">{pageError}</Alert>
+      ) : (
+        <>
+          {canManageCustomers && (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <CustomerCreateInline control={control} errors={errors} isSubmitting={isSubmitting} />
+            </form>
+          )}
+
+          <CustomersTable
+            rows={customers}
+            onEdit={canManageCustomers ? handleEditClick : undefined}
+            onDelete={canDeleteCustomers ? handleDeleteClick : undefined}
+          />
+        </>
+      )}
+
+      {canManageCustomers && itemToEdit && (
+        <CustomerEditForm
+          open={isEditModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={handleEditSuccess}
+          customer={itemToEdit}
+        />
+      )}
+
+      <Dialog open={isConfirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
+        <DialogTitle>Müşteriyi Sil</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Bu müşteriyi kalıcı olarak silmek istediğinizden emin misiniz?</DialogContentText>
+          {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{deleteError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteOpen(false)}>İptal</Button>
+          <Button onClick={handleConfirmDelete} color="error" disabled={!!deleteError}>
+            Sil
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Stack>
   );
 }
