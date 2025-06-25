@@ -1,6 +1,6 @@
 import type { ColorSystemOptions } from '@mui/material/styles';
 
-import { california, kepple, neonBlue, nevada, redOrange, shakespeare, stormGrey } from './colors';
+import { amber, forestGreen, nevada, redOrange, shakespeare } from './colors';
 import type { ColorScheme } from './types';
 
 export const colorSchemes = {
@@ -34,11 +34,11 @@ export const colorSchemes = {
         contrastText: 'var(--mui-palette-common-black)',
       },
       neutral: { ...nevada },
-      primary: {
-        ...neonBlue,
-        light: neonBlue[300],
-        main: neonBlue[400],
-        dark: neonBlue[500],
+      primary: { // Koyu mod için ana rengi Forest Green yaptık
+        ...forestGreen,
+        light: forestGreen[300],
+        main: forestGreen[400],
+        dark: forestGreen[500],
         contrastText: 'var(--mui-palette-common-black)',
       },
       secondary: {
@@ -48,11 +48,11 @@ export const colorSchemes = {
         dark: nevada[300],
         contrastText: 'var(--mui-palette-common-black)',
       },
-      success: {
-        ...kepple,
-        light: kepple[300],
-        main: kepple[400],
-        dark: kepple[500],
+      success: { // Başarı rengini de yeşil tonu yaptık
+        ...forestGreen,
+        light: forestGreen[300],
+        main: forestGreen[400],
+        dark: forestGreen[500],
         contrastText: 'var(--mui-palette-common-black)',
       },
       text: {
@@ -62,11 +62,11 @@ export const colorSchemes = {
         secondaryChannel: '159 166 173',
         disabled: 'var(--mui-palette-neutral-600)',
       },
-      warning: {
-        ...california,
-        light: california[300],
-        main: california[400],
-        dark: california[500],
+      warning: { // Uyarı rengini amber yaptık
+        ...amber,
+        light: amber[300],
+        main: amber[400],
+        dark: amber[500],
         contrastText: 'var(--mui-palette-common-black)',
       },
     },
@@ -79,13 +79,13 @@ export const colorSchemes = {
         defaultChannel: '255 255 255',
         paper: 'var(--mui-palette-common-white)',
         paperChannel: '255 255 255',
-        level1: 'var(--mui-palette-neutral-50)',
-        level2: 'var(--mui-palette-neutral-100)',
-        level3: 'var(--mui-palette-neutral-200)',
+        level1: '#f8f9fa', // Hafif gri bir ton
+        level2: '#f1f3f5', // Biraz daha koyu gri
+        level3: '#e9ecef',
       },
       common: { black: '#000000', white: '#ffffff' },
-      divider: 'var(--mui-palette-neutral-200)',
-      dividerChannel: '220 223 228',
+      divider: '#dee2e6', // Daha belirgin bir ayırıcı rengi
+      dividerChannel: '222 226 230',
       error: {
         ...redOrange,
         light: redOrange[400],
@@ -100,12 +100,12 @@ export const colorSchemes = {
         dark: shakespeare[600],
         contrastText: 'var(--mui-palette-common-white)',
       },
-      neutral: { ...stormGrey },
-      primary: {
-        ...neonBlue,
-        light: neonBlue[400],
-        main: neonBlue[500],
-        dark: neonBlue[600],
+      neutral: { ...nevada },
+      primary: { // Açık mod için ana rengi Forest Green yaptık
+        ...forestGreen,
+        light: forestGreen[400],
+        main: forestGreen[500],
+        dark: forestGreen[600],
         contrastText: 'var(--mui-palette-common-white)',
       },
       secondary: {
@@ -115,25 +115,25 @@ export const colorSchemes = {
         dark: nevada[800],
         contrastText: 'var(--mui-palette-common-white)',
       },
-      success: {
-        ...kepple,
-        light: kepple[400],
-        main: kepple[500],
-        dark: kepple[600],
+      success: { // Başarı rengini de ana yeşil tonuna yakın yaptık
+        ...forestGreen,
+        light: forestGreen[400],
+        main: forestGreen[500],
+        dark: forestGreen[600],
         contrastText: 'var(--mui-palette-common-white)',
       },
       text: {
-        primary: 'var(--mui-palette-neutral-900)',
-        primaryChannel: '33 38 54',
-        secondary: 'var(--mui-palette-neutral-500)',
-        secondaryChannel: '102 112 133',
-        disabled: 'var(--mui-palette-neutral-400)',
+        primary: '#212529',
+        primaryChannel: '33 37 41',
+        secondary: '#6c757d',
+        secondaryChannel: '108 117 125',
+        disabled: '#adb5bd',
       },
-      warning: {
-        ...california,
-        light: california[400],
-        main: california[500],
-        dark: california[600],
+      warning: { // Uyarı rengini amber yaptık
+        ...amber,
+        light: amber[400],
+        main: amber[500],
+        dark: amber[600],
         contrastText: 'var(--mui-palette-common-white)',
       },
     },

@@ -14,7 +14,7 @@ export default function Page(): React.JSX.Element {
   const { user } = useUser();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  
+
   const [overviewData, setOverviewData] = React.useState<OverviewReportDto | null>(null);
   const [topPlantsData, setTopPlantsData] = React.useState<TopSellingPlantReport[]>([]);
   const [customerSalesData, setCustomerSalesData] = React.useState<CustomerSalesReport[]>([]);
@@ -60,20 +60,20 @@ export default function Page(): React.JSX.Element {
       <Container maxWidth="xl">
         <Stack spacing={3}>
           <Typography variant="h4">Hoş Geldiniz, {user?.username || 'Kullanıcı'}!</Typography>
-          
+
           {loading ? (
             <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>
           ) : error ? (
             <Alert severity="error">{error}</Alert>
           ) : (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {/* DÜZELTME: <Grid> yerine <Box> ve flexbox kullanıldı. */}
+              {/* --- DEĞİŞİKLİKLER BURADA --- */}
               <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
                 <OverviewCard
                   title="Toplam Satış"
                   value={overviewData?.totalSales?.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) || '₺0.00'}
                   icon={CreditCardIcon}
-                  color="success.main"
+                  color="success.main" // Temadan gelen yeni yeşil
                 />
               </Box>
               <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
@@ -81,7 +81,7 @@ export default function Page(): React.JSX.Element {
                   title="Toplam Müşteri"
                   value={overviewData?.totalCustomers?.toString() || '0'}
                   icon={UsersIcon}
-                  color="info.main"
+                  color="primary.main" // Temadan gelen yeni ana yeşil
                 />
               </Box>
               <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
@@ -89,7 +89,7 @@ export default function Page(): React.JSX.Element {
                   title="Toplam Sipariş"
                   value={overviewData?.totalOrders?.toString() || '0'}
                   icon={ShoppingCartIcon}
-                  color="warning.main"
+                  color="warning.main" // Temadan gelen yeni amber/sarı
                 />
               </Box>
               <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
@@ -97,9 +97,11 @@ export default function Page(): React.JSX.Element {
                   title="Stoktaki Fidan"
                   value={overviewData?.totalPlantsInStock?.toString() || '0'}
                   icon={TreeIcon}
-                  color="error.main"
+                  color="success.dark" // Temadan gelen yeni koyu yeşil
                 />
               </Box>
+              {/* --- DEĞİŞİKLİKLERİN SONU --- */}
+
               <Box sx={{ flex: '1 1 auto', width: { xs: '100%', lg: 'calc(66.66% - 12px)' } }}>
                 <TopSellingPlantsChart data={topPlantsData} />
               </Box>
