@@ -60,15 +60,6 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
   const { user } = useUser();
   const userRoles = React.useMemo(() => new Set(user?.roles?.map((role) => role.name) || []), [user]);
 
-  const [openGroup, setOpenGroup] = React.useState<string | undefined>(() => getActiveGroup(navItems, pathname));
-
-  React.useEffect(() => {
-    setOpenGroup(getActiveGroup(navItems, pathname));
-  }, [pathname]);
-
-  const handleGroupToggle = React.useCallback((groupKey: string) => {
-    setOpenGroup((prevOpenGroup) => (prevOpenGroup === groupKey ? undefined : groupKey));
-  }, []);
 
   return (
     <Drawer
@@ -115,8 +106,6 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
             items: navItems,
             pathname,
             userRoles,
-            openGroup,
-            handleGroupToggle,
             onClose,
           })}
         </List>
@@ -129,15 +118,11 @@ function renderNavItems({
   items = [],
   pathname,
   userRoles,
-  openGroup,
-  handleGroupToggle,
   onClose,
 }: {
   items?: NavItemConfig[];
   pathname: string;
   userRoles: Set<string>;
-  openGroup?: string;
-  handleGroupToggle: (key: string) => void;
   onClose?: () => void;
 }): React.ReactNode {
   return items.reduce((acc: React.ReactNode[], item: NavItemConfig): React.ReactNode[] => {
@@ -150,10 +135,9 @@ function renderNavItems({
         <NavGroup
           key={item.key}
           group={item}
-          isOpen={openGroup === item.key}
-          onToggle={() => handleGroupToggle(item.key)}
+          pathname={pathname}
         >
-          {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle, onClose })}
+          {renderNavItems({ items: item.items, pathname, userRoles, onClose })}
         </NavGroup>
       );
     } else if (item.type === 'item') {
@@ -167,18 +151,28 @@ function renderNavItems({
 
 function NavGroup({
   group,
-  isOpen,
-  onToggle,
+  pathname,
   children,
 }: {
   group: Extract<NavItemConfig, { type: 'group' }>;
-  isOpen: boolean;
-  onToggle: () => void;
+  pathname: string;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const [isOpen, setIsOpen] = React.useState<boolean>(() => hasActiveChild(group.items, pathname));
+
+  const handleToggle = React.useCallback((): void => {
+    setIsOpen((prev) => !prev);
+  }, []);
+
+  React.useEffect(() => {
+    if (hasActiveChild(group.items, pathname)) {
+      setIsOpen(true);
+    }
+  }, [pathname, group.items]);
+
   return (
     <li style={{ paddingBottom: '8px' }}>
-      <ListItemButton onClick={onToggle} sx={{ borderRadius: 1, py: '6px' }}>
+      <ListItemButton onClick={handleToggle} sx={{ borderRadius: 1, py: '6px' }}>
         <ListItemText
           primary={group.title}
           primaryTypographyProps={{
@@ -225,9 +219,6 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
         onClick={() => {
           if (href) {
             NProgress.start();
-          }
-          if (onClose) { /* FIXED: Uncommented this line */
-            onClose();   /* FIXED: Uncommented this line */
           }
         }}
 
