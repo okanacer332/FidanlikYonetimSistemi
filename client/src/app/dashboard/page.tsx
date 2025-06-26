@@ -1,117 +1,129 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Container, Typography, CircularProgress, Alert, Stack } from '@mui/material';
-import { CreditCard as CreditCardIcon, ShoppingCart as ShoppingCartIcon, Users as UsersIcon, Tree as TreeIcon } from '@phosphor-icons/react';
+import { Card, CardContent, Container, Grid, Stack, Typography, Box } from '@mui/material';
+import {
+  Tree as TreeIcon,
+  Users as UsersIcon,
+  Package as PackageIcon,
+  ChartBar as ChartBarIcon,
+  Bank as BankIcon,
+  Wrench as WrenchIcon,
+} from '@phosphor-icons/react';
 
-import { useUser } from '@/hooks/use-user';
-import type { OverviewReportDto, TopSellingPlantReport, CustomerSalesReport } from '@/types/nursery';
-import { OverviewCard } from '@/components/dashboard/overview/overview-card';
-import { TopSellingPlantsChart } from '@/components/dashboard/reporting/top-selling-plants-chart';
-import { CustomerSalesTable } from '@/components/dashboard/reporting/customer-sales-table';
+// Her bir adım için veri yapısı
+interface StepInfo {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}
 
-export default function Page(): React.JSX.Element {
-  const { user } = useUser();
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+// Rehber adımlarının içeriği
+const steps: StepInfo[] = [
+  {
+    icon: WrenchIcon,
+    title: 'Fidanlık Kurulumu',
+    description: 'Ayarlar menüsünden şirket bilgilerinizi, fidan türlerinizi ve çeşitlerinizi tanımlayarak başlayın.',
+  },
+  {
+    icon: TreeIcon,
+    title: 'Stokları Ekleyin',
+    description: 'Mal Kabul modülüyle elinizdeki fidanları alış fiyatlarıyla sisteme kaydedin, envanterinizi oluşturun.',
+  },
+  {
+    icon: UsersIcon,
+    title: 'Müşterileri Tanımlayın',
+    description: 'Müşteriler menüsünden cari hesaplarınızı oluşturarak satış sürecini hızlandırın.',
+  },
+  {
+    icon: PackageIcon,
+    title: 'İlk Siparişi Oluşturun',
+    description: 'Siparişler bölümünden yeni bir satış oluşturun, müşterinizi ve fidanlarınızı seçerek işlemi tamamlayın.',
+  },
+  {
+    icon: BankIcon,
+    title: 'Finans Yönetimi',
+    description: 'Muhasebe modülüyle ödemelerinizi, tahsilatlarınızı ve giderlerinizi kolayca takip edin.',
+  },
+  {
+    icon: ChartBarIcon,
+    title: 'Raporları İnceleyin',
+    description: 'Karlılık ve satış raporları ile işletmeniz hakkında kritik bilgiler edinerek büyümenizi izleyin.',
+  },
+];
 
-  const [overviewData, setOverviewData] = React.useState<OverviewReportDto | null>(null);
-  const [topPlantsData, setTopPlantsData] = React.useState<TopSellingPlantReport[]>([]);
-  const [customerSalesData, setCustomerSalesData] = React.useState<CustomerSalesReport[]>([]);
-
-  React.useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı.');
-
-        const [overviewRes, topPlantsRes, customerSalesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/overview`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/top-selling-plants`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/customer-sales`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-
-        if (!overviewRes.ok || !topPlantsRes.ok || !customerSalesRes.ok) {
-          throw new Error('Anasayfa verileri yüklenirken bir hata oluştu.');
-        }
-
-        setOverviewData(await overviewRes.json());
-        setTopPlantsData(await topPlantsRes.json());
-        setCustomerSalesData(await customerSalesRes.json());
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, []);
-
+// Her bir adım kartını oluşturacak bileşen
+function StepCard({ icon: Icon, stepNumber, title, description }: { icon: React.ElementType, stepNumber: number, title: string, description: string }): React.JSX.Element {
   return (
-    <Box
+    <Card
       sx={{
-        flexGrow: 1,
-        py: 8,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        textAlign: 'center',
+        p: 2,
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': {
+          transform: 'translateY(-5px)',
+          boxShadow: 6,
+        },
       }}
     >
-      <Container maxWidth="xl">
-        <Stack spacing={3}>
-          <Typography variant="h4">Hoş Geldiniz, {user?.username || 'Kullanıcı'}!</Typography>
-
-          {loading ? (
-            <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>
-          ) : error ? (
-            <Alert severity="error">{error}</Alert>
-          ) : (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {/* --- DEĞİŞİKLİKLER BURADA --- */}
-              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
-                <OverviewCard
-                  title="Toplam Satış"
-                  value={overviewData?.totalSales?.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) || '₺0.00'}
-                  icon={CreditCardIcon}
-                  color="success.main" // Temadan gelen yeni yeşil
-                />
-              </Box>
-              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
-                <OverviewCard
-                  title="Toplam Müşteri"
-                  value={overviewData?.totalCustomers?.toString() || '0'}
-                  icon={UsersIcon}
-                  color="primary.main" // Temadan gelen yeni ana yeşil
-                />
-              </Box>
-              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
-                <OverviewCard
-                  title="Toplam Sipariş"
-                  value={overviewData?.totalOrders?.toString() || '0'}
-                  icon={ShoppingCartIcon}
-                  color="warning.main" // Temadan gelen yeni amber/sarı
-                />
-              </Box>
-              <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', sm: 'calc(50% - 12px)', lg: 'calc(25% - 18px)' } }}>
-                <OverviewCard
-                  title="Stoktaki Fidan"
-                  value={overviewData?.totalPlantsInStock?.toString() || '0'}
-                  icon={TreeIcon}
-                  color="success.dark" // Temadan gelen yeni koyu yeşil
-                />
-              </Box>
-              {/* --- DEĞİŞİKLİKLERİN SONU --- */}
-
-              <Box sx={{ flex: '1 1 auto', width: { xs: '100%', lg: 'calc(66.66% - 12px)' } }}>
-                <TopSellingPlantsChart data={topPlantsData} />
-              </Box>
-              <Box sx={{ flex: '1 1 auto', width: { xs: '100%', lg: 'calc(33.33% - 12px)' } }}>
-                 <CustomerSalesTable data={customerSalesData} />
-              </Box>
-            </Box>
-          )}
+      <CardContent>
+        <Stack spacing={2} alignItems="center">
+          <Box
+            sx={{
+              width: 60,
+              height: 60,
+              borderRadius: '50%',
+              backgroundColor: 'primary.main',
+              color: 'primary.contrastText',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 1,
+            }}
+          >
+            <Icon size={32} />
+          </Box>
+          <Typography variant="h6" component="h3">
+            <Typography component="span" variant="h6" color="text.secondary" sx={{ mr: 1 }}>
+              {stepNumber}.
+            </Typography>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {description}
+          </Typography>
         </Stack>
-      </Container>
-    </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+export default function Page(): React.JSX.Element {
+  return (
+    <Container maxWidth="lg">
+      <Stack spacing={1} sx={{ mb: 5, textAlign: 'center' }}>
+        <Typography variant="h4" component="h1">
+          Fidanlık Yönetim Sistemine Hoş Geldiniz!
+        </Typography>
+      </Stack>
+
+      {/* Grid kullanımı düzeltildi */}
+      <Grid container spacing={4}>
+        {steps.map((step, index) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={step.title}>
+            <StepCard
+              stepNumber={index + 1}
+              icon={step.icon}
+              title={step.title}
+              description={step.description}
+            />
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
   );
 }
