@@ -220,6 +220,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
           if (href) {
             NProgress.start();
           }
+          onClose?.();
         }}
 
         sx={{
