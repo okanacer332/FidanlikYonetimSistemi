@@ -287,16 +287,36 @@ export function SideNav(): React.JSX.Element {
           </Box>
         </Stack>
         <Divider sx={{ borderColor: 'var(--mui-palette-neutral-200)' }} />
-        <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
-          {renderNavItems({
-            items: navItems,
-            pathname,
-            userRoles,
-            isTopLevel: true,
-            activeTopGroup: activeTopGroup,
-            handleTopGroupToggle: handleTopGroupToggle,
-          })}
-        </Box>
+        <Box
+  component="nav"
+  sx={{
+    flex: '1 1 auto',
+    p: '12px',
+    overflowY: 'auto', // Gerektiğinde dikey scrollbar çıkar
+    '&::-webkit-scrollbar': {
+      width: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(0, 0, 0, 0.05)',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+      borderRadius: '3px',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      background: 'rgba(0, 0, 0, 0.3)',
+    },
+  }}
+>
+  {renderNavItems({
+    items: navItems,
+    pathname,
+    userRoles,
+    isTopLevel: true,
+    activeTopGroup: activeTopGroup,
+    handleTopGroupToggle: handleTopGroupToggle,
+  })}
+</Box>
       </Box>
   );
 }
