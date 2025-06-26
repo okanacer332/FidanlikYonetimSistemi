@@ -21,3 +21,9 @@ export type NavItemConfig =
       items: NavItemConfig[];
       roles?: string[]; // Roles that can see this group
     };
+
+
+    export interface MobileNavProps {
+  onClose?: () => void;
+  open?: boolean;
+}

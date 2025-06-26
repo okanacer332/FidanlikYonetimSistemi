@@ -17,17 +17,13 @@ import Stack from '@mui/material/Stack';
 import NProgress from 'nprogress';
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 
-import type { NavItemConfig } from '@/types/nav';
+// FIXED: Imported MobileNavProps from '@/types/nav'
+import type { NavItemConfig, MobileNavProps } from '@/types/nav';
 import { paths } from '@/paths';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
 import { useUser } from '@/hooks/use-user';
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
-
-export interface MobileNavProps {
-  onClose?: () => void;
-  open?: boolean;
-}
 
 function getActiveGroup(items: NavItemConfig[], pathname: string): string | undefined {
   for (const item of items) {
@@ -99,7 +95,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
           '&::-webkit-scrollbar': { display: 'none' },
         },
       }}
-      //onClose={undefined}
+      onClose={onClose} /* FIXED: Set onClose to the prop */
       open={open}
     >
       <Stack spacing={2} sx={{ p: 3, alignItems: 'center' }}>
@@ -154,7 +150,7 @@ function renderNavItems({
         <NavGroup
           key={item.key}
           group={item}
-          isOpen={openGroup === item.key} 
+          isOpen={openGroup === item.key}
           onToggle={() => handleGroupToggle(item.key)}
         >
           {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle, onClose })}
@@ -227,13 +223,13 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
             }
           : { role: 'button' })}
         onClick={() => {
-    if (href) {
-      NProgress.start();
-    }
-    // if (onClose) { // BU SATIRI VE BİR ALTINDAKİNİ YORUM SATIRI YAPIN
-    //   onClose();   // BU SATIRI YORUM SATIRI YAPIN
-    // }
-  }}
+          if (href) {
+            NProgress.start();
+          }
+          if (onClose) { /* FIXED: Uncommented this line */
+            onClose();   /* FIXED: Uncommented this line */
+          }
+        }}
 
         sx={{
           borderRadius: 1,
