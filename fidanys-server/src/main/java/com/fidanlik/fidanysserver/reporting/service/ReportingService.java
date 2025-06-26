@@ -1,5 +1,6 @@
 package com.fidanlik.fidanysserver.reporting.service;
 
+import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -50,24 +52,59 @@ public class ReportingService {
         private BigDecimal averageCost;
     }
 
-    // Bu metotlarda değişiklik yok
-    public OverviewReportDto getOverviewReport(String tenantId) {
-        long totalCustomers = customerRepository.countByTenantId(tenantId);
-        long totalOrders = orderRepository.countByTenantId(tenantId);
-        long totalPlantsInStock = stockRepository.findAllByTenantId(tenantId).stream().mapToLong(stock -> (long) stock.getQuantity()).sum();
+    public OverviewReportDto getDashboardOverview(String tenantId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        Criteria dateCriteria = Criteria.where("orderDate").gte(startDateTime).lte(endDateTime);
+        Criteria deliveredStatusCriteria = Criteria.where("status").is(Order.OrderStatus.DELIVERED);
+        Criteria tenantCriteria = Criteria.where("tenantId").is(tenantId);
+
+        // *** HATANIN DÜZELTİLDİĞİ KISIM: Toplam Satış Hesaplaması ***
+        // Burada quantity ve salePrice alanları, çarpılmadan önce Decimal'e çevriliyor.
         Aggregation salesAggregation = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(Order.OrderStatus.DELIVERED)),
+                Aggregation.match(new Criteria().andOperator(tenantCriteria, deliveredStatusCriteria, dateCriteria)),
                 Aggregation.unwind("items"),
-                Aggregation.group().sum(ArithmeticOperators.Multiply.valueOf(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.quantity").then(0))).multiplyBy(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.salePrice").then(new BigDecimal(0))))).as("totalSales")
+                Aggregation.group().sum(
+                        ArithmeticOperators.Multiply.valueOf(
+                                ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.quantity").then(0))
+                        ).multiplyBy(
+                                ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.salePrice").then(BigDecimal.ZERO))
+                        )
+                ).as("totalSales")
         );
         AggregationResults<TotalSalesResult> salesResult = mongoTemplate.aggregate(salesAggregation, Order.class, TotalSalesResult.class);
         BigDecimal totalSales = salesResult.getUniqueMappedResult() != null ? salesResult.getUniqueMappedResult().getTotalSales() : BigDecimal.ZERO;
-        return OverviewReportDto.builder().totalCustomers(totalCustomers).totalSales(totalSales).totalOrders(totalOrders).totalPlantsInStock(totalPlantsInStock).build();
+
+        // 2. Net Kar
+        List<ProfitabilityReportDto> profitabilityData = getProfitabilityReport(tenantId, startDate, endDate);
+        BigDecimal netProfit = profitabilityData.stream().map(ProfitabilityReportDto::getTotalProfit).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 3. Toplam Sipariş
+        long totalOrders = mongoTemplate.count(new org.springframework.data.mongodb.core.query.Query(new Criteria().andOperator(tenantCriteria, dateCriteria)), Order.class);
+
+        // 4. Yeni Müşteri
+        Criteria customerDateCriteria = Criteria.where("createdAt").gte(startDateTime).lte(endDateTime);
+        long newCustomers = mongoTemplate.count(new org.springframework.data.mongodb.core.query.Query(new Criteria().andOperator(tenantCriteria, customerDateCriteria)), Customer.class);
+
+        return OverviewReportDto.builder()
+                .totalSales(totalSales)
+                .netProfit(netProfit)
+                .totalOrders(totalOrders)
+                .newCustomers(newCustomers)
+                .build();
     }
-    public List<TopSellingPlantReport> getTopSellingPlants(String tenantId) {
-        // Bu metot da ileride tarih filtresi alabilir ama şimdilik aynı bırakıyoruz.
+
+    public List<TopSellingPlantReport> getTopSellingPlants(String tenantId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
         Aggregation plantAggregation = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(Order.OrderStatus.DELIVERED)),
+                Aggregation.match(new Criteria().andOperator(
+                        Criteria.where("tenantId").is(tenantId),
+                        Criteria.where("status").is(Order.OrderStatus.DELIVERED),
+                        Criteria.where("orderDate").gte(startDateTime).lte(endDateTime)
+                )),
                 Aggregation.unwind("items"),
                 Aggregation.group("items.plantId").sum("items.quantity").as("totalQuantitySold"),
                 Aggregation.sort(Sort.Direction.DESC, "totalQuantitySold"),
@@ -86,17 +123,28 @@ public class ReportingService {
             return report;
         }).collect(Collectors.toList());
     }
-    public List<CustomerSalesReport> getCustomerSales(String tenantId) {
-        // Bu metot da ileride tarih filtresi alabilir ama şimdilik aynı bırakıyoruz.
+
+    public List<CustomerSalesReport> getCustomerSales(String tenantId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
         Aggregation customerAggregation = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(Order.OrderStatus.DELIVERED)),
-                Aggregation.unwind("items"),
-                Aggregation.group("customerId").sum(ArithmeticOperators.Multiply.valueOf(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.quantity").then(0))).multiplyBy(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.salePrice").then(new BigDecimal(0))))).as("totalSalesAmount").addToSet("_id").as("orderIds"),
-                Aggregation.project("totalSalesAmount").and("_id").as("customerId").and("orderIds").size().as("orderCount"),
+                Aggregation.match(new Criteria().andOperator(
+                        Criteria.where("tenantId").is(tenantId),
+                        Criteria.where("status").is(Order.OrderStatus.DELIVERED),
+                        Criteria.where("orderDate").gte(startDateTime).lte(endDateTime)
+                )),
+                Aggregation.group("customerId")
+                        .sum("totalAmount").as("totalSalesAmount")
+                        .count().as("orderCount"),
+                Aggregation.project("totalSalesAmount", "orderCount")
+                        .and("_id").as("customerId"),
                 Aggregation.sort(Sort.Direction.DESC, "totalSalesAmount")
         );
+
         AggregationResults<CustomerSaleResult> customerResults = mongoTemplate.aggregate(customerAggregation, Order.class, CustomerSaleResult.class);
         if (customerResults.getMappedResults().isEmpty()) { return Collections.emptyList(); }
+
         return customerResults.getMappedResults().stream().map(result -> {
             CustomerSalesReport report = new CustomerSalesReport();
             customerRepository.findById(result.getCustomerId()).ifPresent(customer -> {
@@ -109,19 +157,30 @@ public class ReportingService {
         }).collect(Collectors.toList());
     }
 
-    // --- BU METOT GÜNCELLENDİ ---
-    public List<ProfitabilityReportDto> getProfitabilityReport(String tenantId, LocalDate startDate, LocalDate endDate) {
-        // Tarih filtresini MongoDB'nin anlayacağı formata çeviriyoruz.
-        // Başlangıç tarihinin başlangıcından, bitiş tarihinin sonuna kadar olan aralığı alıyoruz.
-        Criteria dateCriteria = Criteria.where("orderDate")
-                .gte(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant())
-                .lte(endDate.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
+    public OverviewReportDto getOverviewReport(String tenantId) {
+        long totalCustomers = customerRepository.countByTenantId(tenantId);
+        long totalOrders = orderRepository.countByTenantId(tenantId);
+        long totalPlantsInStock = stockRepository.findAllByTenantId(tenantId).stream().mapToLong(stock -> (long) stock.getQuantity()).sum();
+        Aggregation salesAggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(Order.OrderStatus.DELIVERED)),
+                Aggregation.unwind("items"),
+                Aggregation.group().sum(ArithmeticOperators.Multiply.valueOf(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.quantity").then(0))).multiplyBy(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("items.salePrice").then(new BigDecimal(0))))).as("totalSales")
+        );
+        AggregationResults<TotalSalesResult> salesResult = mongoTemplate.aggregate(salesAggregation, Order.class, TotalSalesResult.class);
+        BigDecimal totalSales = salesResult.getUniqueMappedResult() != null ? salesResult.getUniqueMappedResult().getTotalSales() : BigDecimal.ZERO;
+        return OverviewReportDto.builder().totalCustomers(totalCustomers).totalSales(totalSales).totalOrders(totalOrders).totalPlantsInStock(totalPlantsInStock).build();
+    }
 
-        // Adım 1: Satışları hesaplarken tarih kriterini ekliyoruz.
+    public List<ProfitabilityReportDto> getProfitabilityReport(String tenantId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        Criteria dateCriteria = Criteria.where("orderDate").gte(startDateTime).lte(endDateTime);
+
         Aggregation salesAggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("tenantId").is(tenantId)
                         .and("status").is(Order.OrderStatus.DELIVERED)
-                        .andOperator(dateCriteria)), // TARİH FİLTRESİ BURAYA EKLENDİ
+                        .andOperator(dateCriteria)),
                 Aggregation.unwind("$items"),
                 Aggregation.group("$items.plantId")
                         .sum("items.quantity").as("totalQuantitySold")
@@ -138,7 +197,6 @@ public class ReportingService {
         Map<String, AggregationResult> salesMap = salesResults.getMappedResults().stream()
                 .collect(Collectors.toMap(AggregationResult::getPlantId, result -> result));
 
-        // Adım 2: Maliyetleri hesaplarken tarih filtresine gerek yok, ortalama maliyet tüm zamanlar için aynıdır.
         Aggregation costAggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(GoodsReceipt.GoodsReceiptStatus.COMPLETED)),
                 Aggregation.unwind("$items"),
@@ -154,7 +212,6 @@ public class ReportingService {
                         CostAggregationResult::getAverageCost
                 ));
 
-        // Adım 3: İki veriyi birleştir ve karlılığı hesapla
         return salesMap.values().stream()
                 .map(sale -> {
                     BigDecimal averageCost = costMap.getOrDefault(sale.getPlantId(), BigDecimal.ZERO);

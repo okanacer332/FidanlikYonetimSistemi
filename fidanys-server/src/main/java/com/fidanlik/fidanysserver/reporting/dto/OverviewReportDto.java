@@ -14,6 +14,10 @@ public class OverviewReportDto {
     private long totalOrders;
     private long totalPlantsInStock;
 
-    // Anasayfadaki "Son Siparişler" tablosu için de bu DTO'yu kullanabiliriz
-    // veya daha sonra ayrı bir endpoint oluşturabiliriz.
+    // --- YENİ EKLENEN ALANLAR ---
+    private BigDecimal netProfit;
+    private long newCustomers;
+
+    // Not: Bu DTO, hem anasayfa (/dashboard) hem de yeni raporlar sayfası (/dashboard/reports)
+    // için gerekli tüm özet metrikleri içerecek şekilde genişletilebilir.
 }
