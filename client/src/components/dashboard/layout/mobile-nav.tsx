@@ -1,3 +1,5 @@
+// client/src/components/dashboard/layout/mobile-nav.tsx
+
 'use client';
 
 import * as React from 'react';
@@ -76,9 +78,8 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
     <Drawer
       PaperProps={{
         sx: {
-          // --- RENK DEĞİŞİKLİKLERİ BURADA ---
-          '--MobileNav-background': '#fdfae5', // Saman kağıdı / Kırık beyaz rengi
-          '--MobileNav-color': 'var(--mui-palette-neutral-900)', // Arka plan açık olduğu için yazı rengi koyu
+          '--MobileNav-background': '#fdfae5',
+          '--MobileNav-color': 'var(--mui-palette-neutral-900)',
           '--NavItem-color': 'var(--mui-palette-neutral-600)',
           '--NavItem-hover-background': 'rgba(0, 0, 0, 0.04)',
           '--NavItem-active-background': 'var(--mui-palette-primary-main)',
@@ -98,7 +99,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
           '&::-webkit-scrollbar': { display: 'none' },
         },
       }}
-      onClose={onClose}
+      //onClose={undefined}
       open={open}
     >
       <Stack spacing={2} sx={{ p: 3, alignItems: 'center' }}>
@@ -153,7 +154,7 @@ function renderNavItems({
         <NavGroup
           key={item.key}
           group={item}
-          isOpen={openGroup === item.key}
+          isOpen={openGroup === item.key} 
           onToggle={() => handleGroupToggle(item.key)}
         >
           {renderNavItems({ items: item.items, pathname, userRoles, openGroup, handleGroupToggle, onClose })}
@@ -197,7 +198,7 @@ function NavGroup({
         />
       </ListItemButton>
       <Collapse in={isOpen} timeout="auto" unmountOnExit>
-        <List component="ul" disablePadding sx={{ pl: '12px', pt: '8px' }}>
+        <List component="ul" disablePadding sx={{ pl: '12px', pt: '8px', listStyle: 'none' }}>
           {children}
         </List>
       </Collapse>
@@ -226,13 +227,14 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title, onC
             }
           : { role: 'button' })}
         onClick={() => {
-          if (href) {
-            NProgress.start();
-          }
-          if (onClose) {
-            onClose();
-          }
-        }}
+    if (href) {
+      NProgress.start();
+    }
+    // if (onClose) { // BU SATIRI VE BİR ALTINDAKİNİ YORUM SATIRI YAPIN
+    //   onClose();   // BU SATIRI YORUM SATIRI YAPIN
+    // }
+  }}
+
         sx={{
           borderRadius: 1,
           color: 'var(--NavItem-color)',
