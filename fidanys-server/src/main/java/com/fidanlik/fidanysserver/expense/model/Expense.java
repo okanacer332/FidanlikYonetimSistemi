@@ -24,4 +24,7 @@ public class Expense {
     private ExpenseCategory category;
 
     private String paymentId; // Giderin hangi ödeme ile yapıldığını belirtir
+
+    // YENİ EKLENEN ALAN
+    private String productionBatchId; // Bu giderin ilişkili olduğu üretim partisinin ID'si
 }

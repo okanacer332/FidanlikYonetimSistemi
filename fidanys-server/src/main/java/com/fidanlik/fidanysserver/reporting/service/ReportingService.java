@@ -3,15 +3,25 @@ package com.fidanlik.fidanysserver.reporting.service;
 import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
+import com.fidanlik.fidanysserver.fidan.model.ProductionBatch;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
+import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository;
 import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt;
+import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceiptItem;
+import com.fidanlik.fidanysserver.goodsreceipt.repository.GoodsReceiptRepository;
 import com.fidanlik.fidanysserver.order.model.Order;
 import com.fidanlik.fidanysserver.order.repository.OrderRepository;
 import com.fidanlik.fidanysserver.reporting.dto.CustomerSalesReport;
 import com.fidanlik.fidanysserver.reporting.dto.OverviewReportDto;
 import com.fidanlik.fidanysserver.reporting.dto.ProfitabilityReportDto;
 import com.fidanlik.fidanysserver.reporting.dto.TopSellingPlantReport;
+import com.fidanlik.fidanysserver.stock.model.StockMovement;
 import com.fidanlik.fidanysserver.stock.repository.StockRepository;
+import com.fidanlik.fidanysserver.stock.repository.StockMovementRepository;
+import com.fidanlik.fidanysserver.common.service.InflationService;
+import com.fidanlik.fidanysserver.expense.model.Expense;
+import com.fidanlik.fidanysserver.expense.repository.ExpenseRepository;
+
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -21,12 +31,14 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +50,13 @@ public class ReportingService {
     private final CustomerRepository customerRepository;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
+
+    // YENİ ENJEKTE EDİLEN BAĞIMLILIKLAR
+    private final GoodsReceiptRepository goodsReceiptRepository;
+    private final ExpenseRepository expenseRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final ProductionBatchRepository productionBatchRepository;
+    private final InflationService inflationService;
 
     @Data private static class PlantSaleResult { String plantId; int totalQuantitySold; }
     @Data private static class CustomerSaleResult { String customerId; BigDecimal totalSalesAmount; int orderCount; }
@@ -60,8 +79,6 @@ public class ReportingService {
         Criteria deliveredStatusCriteria = Criteria.where("status").is(Order.OrderStatus.DELIVERED);
         Criteria tenantCriteria = Criteria.where("tenantId").is(tenantId);
 
-        // *** HATANIN DÜZELTİLDİĞİ KISIM: Toplam Satış Hesaplaması ***
-        // Burada quantity ve salePrice alanları, çarpılmadan önce Decimal'e çevriliyor.
         Aggregation salesAggregation = Aggregation.newAggregation(
                 Aggregation.match(new Criteria().andOperator(tenantCriteria, deliveredStatusCriteria, dateCriteria)),
                 Aggregation.unwind("items"),
@@ -76,14 +93,11 @@ public class ReportingService {
         AggregationResults<TotalSalesResult> salesResult = mongoTemplate.aggregate(salesAggregation, Order.class, TotalSalesResult.class);
         BigDecimal totalSales = salesResult.getUniqueMappedResult() != null ? salesResult.getUniqueMappedResult().getTotalSales() : BigDecimal.ZERO;
 
-        // 2. Net Kar
         List<ProfitabilityReportDto> profitabilityData = getProfitabilityReport(tenantId, startDate, endDate);
-        BigDecimal netProfit = profitabilityData.stream().map(ProfitabilityReportDto::getTotalProfit).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal netProfit = profitabilityData.stream().map(ProfitabilityReportDto::getRealProfit).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. Toplam Sipariş
         long totalOrders = mongoTemplate.count(new org.springframework.data.mongodb.core.query.Query(new Criteria().andOperator(tenantCriteria, dateCriteria)), Order.class);
 
-        // 4. Yeni Müşteri
         Criteria customerDateCriteria = Criteria.where("createdAt").gte(startDateTime).lte(endDateTime);
         long newCustomers = mongoTemplate.count(new org.springframework.data.mongodb.core.query.Query(new Criteria().andOperator(tenantCriteria, customerDateCriteria)), Customer.class);
 
@@ -172,15 +186,19 @@ public class ReportingService {
     }
 
     public List<ProfitabilityReportDto> getProfitabilityReport(String tenantId, LocalDate startDate, LocalDate endDate) {
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        // Tüm gerekli verileri tek seferde çekelim
+        List<GoodsReceipt> allGoodsReceipts = goodsReceiptRepository.findAllByTenantId(tenantId);
+        List<Expense> allExpenses = expenseRepository.findAllByTenantIdOrderByExpenseDateDesc(tenantId);
+        List<ProductionBatch> allProductionBatches = productionBatchRepository.findAllByTenantId(tenantId);
+        Map<String, Plant> allPlantsMap = plantRepository.findAllByTenantId(tenantId)
+                .stream()
+                .collect(Collectors.toMap(Plant::getId, plant -> plant));
 
-        Criteria dateCriteria = Criteria.where("orderDate").gte(startDateTime).lte(endDateTime);
-
+        // Satış verilerini topla (mevcut mantıkla aynı)
         Aggregation salesAggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("tenantId").is(tenantId)
                         .and("status").is(Order.OrderStatus.DELIVERED)
-                        .andOperator(dateCriteria)),
+                        .and("orderDate").gte(startDate.atStartOfDay()).lte(endDate.atTime(23, 59, 59))),
                 Aggregation.unwind("$items"),
                 Aggregation.group("$items.plantId")
                         .sum("items.quantity").as("totalQuantitySold")
@@ -197,38 +215,122 @@ public class ReportingService {
         Map<String, AggregationResult> salesMap = salesResults.getMappedResults().stream()
                 .collect(Collectors.toMap(AggregationResult::getPlantId, result -> result));
 
-        Aggregation costAggregation = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("tenantId").is(tenantId).and("status").is(GoodsReceipt.GoodsReceiptStatus.COMPLETED)),
-                Aggregation.unwind("$items"),
-                Aggregation.group("$items.plantId")
-                        .avg(ConvertOperators.ToDecimal.toDecimal(ConditionalOperators.ifNull("$items.purchasePrice").then(new BigDecimal(0))))
-                        .as("averageCost"),
-                Aggregation.project("averageCost").and("_id").as("plantId")
-        );
-        AggregationResults<CostAggregationResult> costResults = mongoTemplate.aggregate(costAggregation, GoodsReceipt.class, CostAggregationResult.class);
-        Map<String, BigDecimal> costMap = costResults.getMappedResults().stream()
-                .collect(Collectors.toMap(
-                        CostAggregationResult::getPlantId,
-                        CostAggregationResult::getAverageCost
-                ));
 
         return salesMap.values().stream()
                 .map(sale -> {
-                    BigDecimal averageCost = costMap.getOrDefault(sale.getPlantId(), BigDecimal.ZERO);
-                    BigDecimal totalCost = averageCost.multiply(new BigDecimal(sale.getTotalQuantitySold()));
-                    BigDecimal totalProfit = sale.getTotalRevenue().subtract(totalCost);
-                    String plantName = plantRepository.findById(sale.getPlantId())
-                            .map(plant -> plant.getPlantType().getName() + " - " + plant.getPlantVariety().getName())
-                            .orElse("Bilinmeyen Fidan");
+                    Plant soldPlantDefinition = allPlantsMap.get(sale.getPlantId());
+                    String plantName = (soldPlantDefinition != null && soldPlantDefinition.getPlantType() != null && soldPlantDefinition.getPlantVariety() != null)
+                            ? soldPlantDefinition.getPlantType().getName() + " - " + soldPlantDefinition.getPlantVariety().getName()
+                            : "Bilinmeyen Fidan";
+
+                    BigDecimal nominalCostPerUnit = BigDecimal.ZERO;
+                    BigDecimal realCostPerUnit = BigDecimal.ZERO;
+
+                    // Bu fidanın (PlantId) bir üretim partisine ait olup olmadığını anlamaya çalışalım.
+                    // Plant modeli doğrudan productionBatchId tutmadığı için, PlantType ve PlantVariety ID'leri üzerinden eşleştirelim.
+                    Optional<ProductionBatch> matchingBatch = Optional.empty();
+                    if (soldPlantDefinition != null) {
+                        matchingBatch = allProductionBatches.stream()
+                                .filter(pb -> soldPlantDefinition.getPlantType() != null && pb.getPlantTypeId().equals(soldPlantDefinition.getPlantType().getId()) &&
+                                        soldPlantDefinition.getPlantVariety() != null && pb.getPlantVarietyId().equals(soldPlantDefinition.getPlantVariety().getId()))
+                                .findFirst(); // Birden fazla olabilir, şimdilik ilk uyanı alalım.
+                    }
+
+                    if (matchingBatch.isPresent()) {
+                        // Fidan bir Üretim Partisine aitse
+                        ProductionBatch batch = matchingBatch.get();
+
+                        BigDecimal batchNominalCost = batch.getCostPool();
+                        BigDecimal batchCurrentQuantity = new BigDecimal(batch.getCurrentQuantity());
+
+                        if (batchCurrentQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                            nominalCostPerUnit = batchNominalCost.divide(batchCurrentQuantity, MathContext.DECIMAL128);
+                        } else {
+                            nominalCostPerUnit = BigDecimal.ZERO;
+                        }
+
+                        // Reel maliyet için partinin tüm gider ve mal kabul kalemlerini topla
+                        BigDecimal totalRealCostForBatch = BigDecimal.ZERO;
+
+                        // Partiye bağlı giderleri topla
+                        for (Expense expense : allExpenses) {
+                            if (expense.getProductionBatchId() != null && expense.getProductionBatchId().equals(batch.getId())) {
+                                BigDecimal inflationFactor = inflationService.calculateInflationFactor(expense.getExpenseDate(), endDate, tenantId);
+                                totalRealCostForBatch = totalRealCostForBatch.add(expense.getAmount().multiply(inflationFactor));
+                            }
+                        }
+                        // Partiye bağlı mal kabul kalemlerini topla (isCommercial false olanlar)
+                        for (GoodsReceipt gr : allGoodsReceipts) {
+                            for (GoodsReceiptItem item : gr.getItems()) {
+                                if (!item.isCommercial() && item.getProductionBatchId() != null && item.getProductionBatchId().equals(batch.getId())) {
+                                    BigDecimal inflationFactor = inflationService.calculateInflationFactor(gr.getReceiptDate().toLocalDate(), endDate, tenantId);
+                                    totalRealCostForBatch = totalRealCostForBatch.add(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())).multiply(inflationFactor));
+                                }
+                            }
+                        }
+
+                        if (batchCurrentQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                            realCostPerUnit = totalRealCostForBatch.divide(batchCurrentQuantity, MathContext.DECIMAL128);
+                        } else {
+                            realCostPerUnit = BigDecimal.ZERO;
+                        }
+
+                    } else {
+                        // Fidan Ticari Malsa (Al-Sat)
+                        BigDecimal totalNominalPurchaseCostForPlant = BigDecimal.ZERO;
+                        BigDecimal totalRealPurchaseCostForPlant = BigDecimal.ZERO;
+                        long totalPurchasedQuantityForPlant = 0;
+
+                        for (GoodsReceipt gr : allGoodsReceipts) {
+                            for (GoodsReceiptItem item : gr.getItems()) {
+                                if (item.getPlantId().equals(sale.getPlantId()) && item.isCommercial()) {
+                                    totalNominalPurchaseCostForPlant = totalNominalPurchaseCostForPlant.add(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())));
+
+                                    LocalDate itemDate = gr.getReceiptDate().toLocalDate();
+                                    BigDecimal inflationFactor = inflationService.calculateInflationFactor(itemDate, endDate, tenantId);
+                                    totalRealPurchaseCostForPlant = totalRealPurchaseCostForPlant.add(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())).multiply(inflationFactor));
+
+                                    totalPurchasedQuantityForPlant += item.getQuantity();
+                                }
+                            }
+                        }
+                        if (totalPurchasedQuantityForPlant > 0) {
+                            nominalCostPerUnit = totalNominalPurchaseCostForPlant.divide(new BigDecimal(totalPurchasedQuantityForPlant), MathContext.DECIMAL128);
+                            realCostPerUnit = totalRealPurchaseCostForPlant.divide(new BigDecimal(totalPurchasedQuantityForPlant), MathContext.DECIMAL128);
+                        } else {
+                            nominalCostPerUnit = BigDecimal.ZERO;
+                            realCostPerUnit = BigDecimal.ZERO;
+                        }
+                    }
+
+                    // Toplam maliyetleri satılan miktar ile çarp
+                    BigDecimal finalNominalCost = nominalCostPerUnit.multiply(new BigDecimal(sale.getTotalQuantitySold()));
+                    BigDecimal finalRealCost = realCostPerUnit.multiply(new BigDecimal(sale.getTotalQuantitySold()));
+
+                    // Karlılık hesaplamaları
+                    BigDecimal nominalProfit = sale.getTotalRevenue().subtract(finalNominalCost);
+                    BigDecimal realProfit = sale.getTotalRevenue().subtract(finalRealCost);
+                    BigDecimal erodedValue = finalRealCost.subtract(finalNominalCost);
+
+
                     return ProfitabilityReportDto.builder()
                             .plantId(sale.getPlantId())
                             .plantName(plantName)
                             .totalQuantitySold(sale.getTotalQuantitySold())
                             .totalRevenue(sale.getTotalRevenue())
-                            .totalCost(totalCost)
-                            .totalProfit(totalProfit)
+                            .nominalCost(finalNominalCost)
+                            .realCost(finalRealCost)
+                            .nominalProfit(nominalProfit)
+                            .realProfit(realProfit)
+                            .erodedValue(erodedValue)
+                            .totalCost(finalNominalCost) // Mevcut totalCost alanı için nominal maliyeti kullanabiliriz
+                            .totalProfit(nominalProfit) // Mevcut totalProfit alanı için nominal karı kullanabiliriz
                             .build();
                 })
                 .collect(Collectors.toList());
     }
+
+    // Mevcut diğer metodlar (getDashboardOverview, getTopSellingPlants, getCustomerSales, getOverviewReport)
+    // Bu metodların içerikleri daha önce paylaşıldığı gibidir, burada tekrar yazılmamıştır.
+    // Lütfen kopyalarken bu açıklama kısmını dikkate alınız.
 }

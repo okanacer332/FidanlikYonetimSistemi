@@ -6,6 +6,8 @@ import com.fidanlik.fidanysserver.expense.model.Expense;
 import com.fidanlik.fidanysserver.expense.model.ExpenseCategory;
 import com.fidanlik.fidanysserver.expense.repository.ExpenseCategoryRepository;
 import com.fidanlik.fidanysserver.expense.repository.ExpenseRepository;
+import com.fidanlik.fidanysserver.fidan.model.ProductionBatch; // Yeni import
+import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository; // Yeni import
 import com.fidanlik.fidanysserver.payment.model.Payment;
 import com.fidanlik.fidanysserver.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final ExpenseCategoryRepository categoryRepository;
     private final PaymentService paymentService;
+    private final ProductionBatchRepository productionBatchRepository; // YENİ: ProductionBatchRepository enjekte edildi
 
     // --- Expense Category Methods ---
 
@@ -53,8 +56,20 @@ public class ExpenseService {
         expense.setAmount(request.getAmount());
         expense.setExpenseDate(request.getExpenseDate());
         expense.setCategory(category);
+        expense.setProductionBatchId(request.getProductionBatchId()); // YENİ: ProductionBatchId set edildi
 
         Expense savedExpense = expenseRepository.save(expense);
+
+        // Eğer gider bir üretim partisiyle ilişkiliyse, partinin maliyet havuzunu güncelle
+        if (request.getProductionBatchId() != null && !request.getProductionBatchId().isEmpty()) {
+            ProductionBatch batch = productionBatchRepository.findById(request.getProductionBatchId())
+                    .filter(b -> b.getTenantId().equals(tenantId))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz üretim partisi ID'si."));
+
+            // Maliyet havuzuna gider tutarını ekle
+            batch.setCostPool(batch.getCostPool().add(request.getAmount()));
+            productionBatchRepository.save(batch);
+        }
 
         Payment payment = paymentService.createPaymentForExpense(savedExpense, request.getPaymentMethod(), userId, tenantId);
 

@@ -2,7 +2,9 @@ package com.fidanlik.fidanysserver.goodsreceipt.service;
 
 import com.fidanlik.fidanysserver.accounting.model.Transaction;
 import com.fidanlik.fidanysserver.accounting.service.TransactionService;
+import com.fidanlik.fidanysserver.fidan.model.ProductionBatch; // Yeni import
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
+import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository; // Yeni import
 import com.fidanlik.fidanysserver.goodsreceipt.dto.GoodsReceiptRequest;
 import com.fidanlik.fidanysserver.goodsreceipt.dto.ReceiptItemDto;
 import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt;
@@ -32,7 +34,8 @@ public class GoodsReceiptService {
     private final WarehouseRepository warehouseRepository;
     private final SupplierRepository supplierRepository;
     private final PlantRepository plantRepository;
-    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
+    private final TransactionService transactionService;
+    private final ProductionBatchRepository productionBatchRepository; // YENİ: ProductionBatchRepository enjekte edildi
 
     @Transactional
     public GoodsReceipt createGoodsReceipt(GoodsReceiptRequest request, String userId, String tenantId) {
@@ -50,37 +53,58 @@ public class GoodsReceiptService {
         goodsReceipt.setUserId(userId);
         goodsReceipt.setTenantId(tenantId);
         goodsReceipt.setReceiptDate(LocalDateTime.now());
+        // mapDtoToItem metodunu güncellediğimiz için burası otomatik olarak isCommercial ve productionBatchId'yi set edecek.
         goodsReceipt.setItems(request.getItems().stream().map(this::mapDtoToItem).collect(Collectors.toList()));
         goodsReceipt.setStatus(GoodsReceipt.GoodsReceiptStatus.COMPLETED);
 
-        BigDecimal totalValue = goodsReceipt.getItems().stream()
-                .map(item -> item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        goodsReceipt.setTotalValue(totalValue);
+        BigDecimal totalValue = BigDecimal.ZERO;
 
-        GoodsReceipt savedGoodsReceipt = goodsReceiptRepository.save(goodsReceipt);
+        for (GoodsReceiptItem item : goodsReceipt.getItems()) {
+            plantRepository.findById(item.getPlantId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz fidan ID'si: " + item.getPlantId()));
 
-        for (ReceiptItemDto itemDto : request.getItems()) {
-            plantRepository.findById(itemDto.getPlantId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz fidan ID'si: " + itemDto.getPlantId()));
+            // YENİ MANTIK: Mal kabul kalemi ticari mal mı yoksa üretim partisi girişi mi?
+            if (item.isCommercial()) {
+                // Ticari Mal: Doğrudan stoğa ekle
+                String description = "Mal Kabul - İrsaliye No: " + request.getReceiptNumber();
+                stockService.changeStock(
+                        item.getPlantId(),
+                        request.getWarehouseId(),
+                        item.getQuantity(),
+                        StockMovement.MovementType.GOODS_RECEIPT,
+                        goodsReceipt.getId(),
+                        description,
+                        userId,
+                        tenantId
+                );
+            } else {
+                // Üretim Partisi Girişi: Partinin miktarını ve maliyet havuzunu güncelle
+                if (item.getProductionBatchId() == null || item.getProductionBatchId().isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Üretim partisi girişi için productionBatchId zorunludur.");
+                }
 
-            String description = "Mal Kabul - İrsaliye No: " + request.getReceiptNumber();
-            stockService.changeStock(
-                    itemDto.getPlantId(),
-                    request.getWarehouseId(),
-                    itemDto.getQuantity(),
-                    StockMovement.MovementType.GOODS_RECEIPT,
-                    savedGoodsReceipt.getId(),
-                    description,
-                    userId,
-                    tenantId
-            );
+                ProductionBatch batch = productionBatchRepository.findById(item.getProductionBatchId())
+                        .filter(b -> b.getTenantId().equals(tenantId))
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz üretim partisi ID'si."));
+
+                // Partinin mevcut fidan adedini artır
+                batch.setCurrentQuantity(batch.getCurrentQuantity() + item.getQuantity());
+                // Partinin maliyet havuzuna bu kalemin toplam alış fiyatını ekle
+                batch.setCostPool(batch.getCostPool().add(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity()))));
+                productionBatchRepository.save(batch);
+
+                // Bu durumda PlantRepository'deki genel stoğa ekleme yapılmaz, çünkü fidanlar parti içinde yönetiliyor.
+            }
+            totalValue = totalValue.add(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity())));
         }
+        goodsReceipt.setTotalValue(totalValue); // TotalValue'yu döngüden sonra tekrar set ettik
 
-        // --- YENİ: CARİ HESABA ALACAK KAYDI OLUŞTURMA ---
+        GoodsReceipt savedGoodsReceipt = goodsReceiptRepository.save(goodsReceipt); // Mal kabulü kaydet
+
+        // Cari hesaba alacak kaydı oluşturma (Bu kısım aynı kalabilir)
         transactionService.createSupplierTransaction(
                 savedGoodsReceipt.getSupplierId(),
-                Transaction.TransactionType.CREDIT, // Tedarikçi Alacaklandırılıyor
+                Transaction.TransactionType.CREDIT,
                 savedGoodsReceipt.getTotalValue(),
                 "#" + savedGoodsReceipt.getReceiptNumber() + " nolu irsaliye ile mal alımı.",
                 savedGoodsReceipt.getId(),
@@ -110,22 +134,38 @@ public class GoodsReceiptService {
 
         for (GoodsReceiptItem item : goodsReceipt.getItems()) {
             String description = "İptal - İrsaliye No: " + goodsReceipt.getReceiptNumber();
-            stockService.changeStock(
-                    item.getPlantId(),
-                    goodsReceipt.getWarehouseId(),
-                    -item.getQuantity(), // Stoktan düş
-                    StockMovement.MovementType.GOODS_RECEIPT_CANCEL,
-                    goodsReceipt.getId(),
-                    description,
-                    userId,
-                    tenantId
-            );
+
+            // İptal işlemi de ticari mal / üretim partisi ayrımına göre yapılmalı
+            if (item.isCommercial()) {
+                // Ticari mal ise genel stoktan düş (negatif miktar ile)
+                stockService.changeStock(
+                        item.getPlantId(),
+                        goodsReceipt.getWarehouseId(),
+                        -item.getQuantity(), // Stoktan düş
+                        StockMovement.MovementType.GOODS_RECEIPT_CANCEL,
+                        goodsReceipt.getId(),
+                        description,
+                        userId,
+                        tenantId
+                );
+            } else {
+                // Üretim partisi ise partinin miktarını ve maliyet havuzunu geri al
+                ProductionBatch batch = productionBatchRepository.findById(item.getProductionBatchId())
+                        .filter(b -> b.getTenantId().equals(tenantId))
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Üretim partisi bulunamadı."));
+
+                // Partinin mevcut fidan adedini azalt
+                batch.setCurrentQuantity(batch.getCurrentQuantity() - item.getQuantity());
+                // Partinin maliyet havuzundan bu kalemin toplam alış fiyatını çıkar
+                batch.setCostPool(batch.getCostPool().subtract(item.getPurchasePrice().multiply(new BigDecimal(item.getQuantity()))));
+                productionBatchRepository.save(batch);
+            }
         }
 
-        // --- YENİ: CARİ HESAPTAN ALACAĞI SİLME (BORÇ KAYDI) ---
+        // Cari hesaptan alacağı silme (Borç kaydı) (Bu kısım aynı kalabilir)
         transactionService.createSupplierTransaction(
                 goodsReceipt.getSupplierId(),
-                Transaction.TransactionType.DEBIT, // Alacak iptali için Borç kaydı
+                Transaction.TransactionType.DEBIT,
                 goodsReceipt.getTotalValue(),
                 "#" + goodsReceipt.getReceiptNumber() + " nolu irsaliyenin iptali.",
                 goodsReceipt.getId(),
@@ -142,6 +182,8 @@ public class GoodsReceiptService {
         item.setPlantId(dto.getPlantId());
         item.setQuantity(dto.getQuantity());
         item.setPurchasePrice(dto.getPurchasePrice());
+        item.setCommercial(dto.isCommercial()); // YENİ: isCommercial set edildi
+        item.setProductionBatchId(dto.getProductionBatchId()); // YENİ: productionBatchId set edildi
         return item;
     }
 }
