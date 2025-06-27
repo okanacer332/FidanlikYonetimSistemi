@@ -1,9 +1,11 @@
 package com.fidanlik.fidanysserver.production.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty; // YENİ IMPORT
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
+import java.math.RoundingMode; // YENİ IMPORT
 import java.time.LocalDate;
 
 @Data
@@ -24,5 +26,16 @@ public class ProductionBatch {
     public enum BatchStatus {
         ACTIVE,
         COMPLETED
+    }
+
+    // --- YENİ EKLENEN METOT ---
+    @JsonProperty("unitCost") // API yanıtında bu isimle görünmesini sağlar
+    public BigDecimal getUnitCost() {
+        // Eğer miktar 0 ise veya maliyet 0 ise, sıfıra bölme hatasını önlemek için 0 dön.
+        if (currentQuantity <= 0 || totalCost == null || totalCost.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        // Toplam Maliyeti / Güncel Miktara böl. Virgülden sonra 2 hane al ve en yakına yuvarla.
+        return totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
     }
 }
