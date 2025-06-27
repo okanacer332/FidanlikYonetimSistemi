@@ -1,6 +1,6 @@
 package com.fidanlik.fidanysserver.stock.service;
 
-import com.fidanlik.fidanysserver.common.exception.InsufficientStockException; // YENİ IMPORT
+import com.fidanlik.fidanysserver.common.exception.InsufficientStockException;
 import com.fidanlik.fidanysserver.stock.model.Stock;
 import com.fidanlik.fidanysserver.stock.model.StockMovement;
 import com.fidanlik.fidanysserver.stock.repository.StockMovementRepository;
@@ -24,16 +24,18 @@ public class StockService {
     private final StockMovementRepository stockMovementRepository;
     private final MongoTemplate mongoTemplate;
 
+    // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
     @Transactional
-    public void changeStock(String plantId, String warehouseId, int quantity, StockMovement.MovementType type, String relatedDocumentId, String description, String userId, String tenantId) {
+    public void changeStock(String plantId, String warehouseId, int quantity, StockMovement.MovementType type,
+                            String relatedDocumentId, String description, String userId, String tenantId,
+                            // Yeni eklenen parametreler
+                            Stock.StockType stockType, String productionBatchId) {
 
-        // Stok düşürme işlemi ise, mevcut stok yeterli mi diye kontrol et.
         if (quantity < 0) {
             Stock currentStock = stockRepository.findByPlantIdAndWarehouseIdAndTenantId(plantId, warehouseId, tenantId)
                     .orElse(null);
 
             if (currentStock == null || currentStock.getQuantity() < Math.abs(quantity)) {
-                // DEĞİŞİKLİK: ResponseStatusException yerine kendi özel hatamızı fırlatıyoruz.
                 throw new InsufficientStockException("Yetersiz stok. İstenen: " + Math.abs(quantity) + ", Mevcut: " + (currentStock != null ? currentStock.getQuantity() : 0));
             }
         }
@@ -58,8 +60,18 @@ public class StockService {
 
         Update update = new Update().inc("quantity", quantity);
 
+        // Eğer bu bir 'upsert' (yoksa oluştur) ise, yeni alanları da ekle
+        update.setOnInsert("plantId", plantId);
+        update.setOnInsert("warehouseId", warehouseId);
+        update.setOnInsert("tenantId", tenantId);
+        update.setOnInsert("type", stockType); // Yeni alan
+        if (productionBatchId != null) {
+            update.setOnInsert("productionBatchId", productionBatchId); // Yeni alan
+        }
+
         mongoTemplate.upsert(query, update, Stock.class);
     }
+    // --- DEĞİŞİKLİK BURADA BİTİYOR ---
 
     public List<Stock> getAllStocksByTenant(String tenantId) {
         return stockRepository.findAllByTenantId(tenantId);

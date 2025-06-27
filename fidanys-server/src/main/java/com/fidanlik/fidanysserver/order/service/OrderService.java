@@ -8,6 +8,7 @@ import com.fidanlik.fidanysserver.order.dto.OrderCreateRequest;
 import com.fidanlik.fidanysserver.order.dto.OrderItemDto;
 import com.fidanlik.fidanysserver.order.model.Order;
 import com.fidanlik.fidanysserver.order.repository.OrderRepository;
+import com.fidanlik.fidanysserver.stock.model.Stock; // YENİ IMPORT
 import com.fidanlik.fidanysserver.stock.model.StockMovement;
 import com.fidanlik.fidanysserver.stock.service.StockService;
 import com.fidanlik.fidanysserver.user.model.User;
@@ -33,7 +34,7 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final WarehouseRepository warehouseRepository;
     private final PlantRepository plantRepository;
-    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
+    private final TransactionService transactionService;
 
     @Transactional
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
@@ -87,19 +88,21 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sadece 'Hazırlanıyor' durumundaki siparişler sevk edilebilir.");
         }
 
-        // Stok düşme işlemi
+        // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
         for (Order.OrderItem item : order.getItems()) {
             stockService.changeStock(
                     item.getPlantId(), order.getWarehouseId(), -item.getQuantity(),
                     StockMovement.MovementType.SALE, order.getId(),
-                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId
+                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId,
+                    Stock.StockType.COMMERCIAL, // Satılan ürünün tipini belirtiyoruz
+                    null                       // Bu aşamada hangi partiden satıldığını bilmiyoruz
             );
         }
+        // --- DEĞİŞİKLİK BURADA BİTİYOR ---
 
-        // --- YENİ: CARİ HESABA BORÇ KAYDI OLUŞTURMA ---
         transactionService.createCustomerTransaction(
                 order.getCustomerId(),
-                Transaction.TransactionType.DEBIT, // Müşteri Borçlandırılıyor
+                Transaction.TransactionType.DEBIT,
                 order.getTotalAmount(),
                 "#" + order.getOrderNumber() + " nolu sipariş sevkiyatı.",
                 order.getId(),
@@ -127,19 +130,22 @@ public class OrderService {
     public Order cancelOrder(String orderId, String userId, String tenantId) {
         Order order = findOrderForUpdate(orderId, tenantId);
 
-        // Eğer sipariş sevk edildiyse, stokları iade et.
         if (order.getStatus() == Order.OrderStatus.SHIPPED) {
+            // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
             for (Order.OrderItem item : order.getItems()) {
                 stockService.changeStock(
-                        item.getPlantId(), order.getWarehouseId(), item.getQuantity(), // Pozitif miktar ile stoğa iade
+                        item.getPlantId(), order.getWarehouseId(), item.getQuantity(),
                         StockMovement.MovementType.SALE_CANCEL, order.getId(),
-                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId
+                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId,
+                        Stock.StockType.COMMERCIAL, // İade edilen ürünün tipini belirtiyoruz
+                        null
                 );
             }
-            // --- YENİ: CARİ HESAPTAN BORCU SİLME (ALACAK KAYDI) ---
+            // --- DEĞİŞİKLİK BURADA BİTİYOR ---
+
             transactionService.createCustomerTransaction(
                     order.getCustomerId(),
-                    Transaction.TransactionType.CREDIT, // Borç iptali için Alacak kaydı
+                    Transaction.TransactionType.CREDIT,
                     order.getTotalAmount(),
                     "#" + order.getOrderNumber() + " nolu siparişin iptali.",
                     order.getId(),
