@@ -156,6 +156,7 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'ACCOUNTANT'],
         items: [
           { type: 'item', key: 'profitability', title: 'Karlılık Raporu', href: paths.dashboard.reports.financial.profitability, icon: 'chart-line', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.profitability } }, // Added matcher
+          { type: 'item', key: 'real-profitability', title: 'Reel Kârlılık Raporu', href: paths.dashboard.reports.financial.realProfitability, icon: 'chart-bar', roles: ['ADMIN'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.realProfitability } },
           { type: 'item', key: 'cash-flow', title: 'Nakit Akış Raporu', href: paths.dashboard.reports.financial.cashFlow, icon: 'swap', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.cashFlow } }, // Added matcher
           { type: 'item', key: 'expense-analysis', title: 'Gider Analiz Raporu', href: paths.dashboard.reports.financial.expenseAnalysis, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.expenseAnalysis } }, // Added matcher
           { type: 'item', key: 'receivables-aging', title: 'Vade Geçmiş Analizi', href: paths.dashboard.reports.financial.receivablesAging, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.receivablesAging } }, // Added matcher

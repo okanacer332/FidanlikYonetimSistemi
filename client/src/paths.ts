@@ -25,6 +25,7 @@ export const paths = {
       overview: '/dashboard/reports',
       // Finansal
       financial: {
+        realProfitability: '/dashboard/reports/financial/real-profitability',
         profitability: '/dashboard/reports/profitability',
         cashFlow: '/dashboard/reports/financial/cash-flow',
         expenseAnalysis: '/dashboard/reports/financial/expense-analysis',

@@ -307,3 +307,21 @@ export interface ProfitabilityReportDto {
   totalCost: number;
   totalProfit: number;
 }
+
+export interface RealProfitabilityReportDto {
+  orderId: string;
+  orderNumber: string;
+  saleDate: string;
+  plantId: string;
+  plantName: string;
+  quantitySold: number;
+  salePrice: number;
+  totalRevenue: number;
+  nominalUnitCost: number;
+  realUnitCost: number;
+  totalNominalCost: number;
+  totalRealCost: number;
+  nominalProfit: number;
+  realProfit: number;
+  inflationDifference: number;
+}
