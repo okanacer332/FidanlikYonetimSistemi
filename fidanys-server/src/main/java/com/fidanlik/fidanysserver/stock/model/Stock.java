@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/model/Stock.java
 package com.fidanlik.fidanysserver.stock.model;
 
 import lombok.Data;
@@ -16,4 +15,14 @@ public class Stock {
     private String warehouseId;
     private int quantity;
     private String tenantId;
+
+    // --- YENİ EKLENEN ALANLAR ---
+    private StockType type;
+    private String productionBatchId; // Eğer type = IN_PRODUCTION ise dolu olacak
+
+    public enum StockType {
+        COMMERCIAL,       // Ticari Mal (Al-Sat)
+        IN_PRODUCTION     // Üretim Partisi
+    }
+    // --- BİTİŞ ---
 }
