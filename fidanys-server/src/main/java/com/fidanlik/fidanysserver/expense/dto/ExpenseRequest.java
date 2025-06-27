@@ -12,5 +12,8 @@ public class ExpenseRequest {
     private BigDecimal amount;
     private LocalDate expenseDate;
     private String categoryId;
-    private Payment.PaymentMethod paymentMethod; // Giderin nasıl ödendiğini belirtir
+    private Payment.PaymentMethod paymentMethod;
+
+    // --- YENİ EKLENEN ALAN ---
+    private String productionBatchId; // Bu masrafın hangi üretim partisine ait olduğunu belirtir. Opsiyoneldir.
 }
