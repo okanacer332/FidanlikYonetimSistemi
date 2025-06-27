@@ -325,3 +325,10 @@ export interface RealProfitabilityReportDto {
   realProfit: number;
   inflationDifference: number;
 }
+
+export interface InflationRate {
+  id: string;
+  year: number;
+  month: number;
+  rate: number;
+}

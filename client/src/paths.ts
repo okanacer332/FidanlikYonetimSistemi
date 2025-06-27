@@ -8,11 +8,18 @@ export const paths = {
     goodsReceipts: '/dashboard/goods-receipts',
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
-    plants: '/dashboard/plants',
     settings: '/dashboard/settings',
     suppliers: '/dashboard/suppliers',
     userManagement: '/dashboard/user-management',
-    warehouses: '/dashboard/warehouses',
+
+    // --- TANIMLAMALAR GRUPLANDI VE YENİ YOL EKLENDİ ---
+    definitions: {
+      plants: '/dashboard/plants',
+      warehouses: '/dashboard/warehouses',
+      inflationRates: '/dashboard/definitions/inflation-rates', // Yeni yol
+    },
+    // --- BİTİŞ ---
+
     accounting: {
       currentAccounts: '/dashboard/accounting/current-accounts',
       suppliers: '/dashboard/accounting/suppliers',
@@ -20,10 +27,9 @@ export const paths = {
       payments: '/dashboard/accounting/payments',
       expenses: '/dashboard/accounting/expenses',
     },
-    // --- YENİ RAPOR ROTALARI ---
+    
     reports: {
       overview: '/dashboard/reports',
-      // Finansal
       financial: {
         realProfitability: '/dashboard/reports/financial/real-profitability',
         profitability: '/dashboard/reports/profitability',
@@ -31,13 +37,11 @@ export const paths = {
         expenseAnalysis: '/dashboard/reports/financial/expense-analysis',
         receivablesAging: '/dashboard/reports/financial/receivables-aging',
       },
-      // Satış
       sales: {
         detailedSales: '/dashboard/reports/sales/detailed-sales',
         salesByCustomer: '/dashboard/reports/sales/by-customer',
         salesByProduct: '/dashboard/reports/sales/by-product',
       },
-      // Stok
       inventory: {
         valuation: '/dashboard/reports/inventory/valuation',
         stockMovements: '/dashboard/reports/inventory/movements',
