@@ -332,3 +332,21 @@ export interface InflationRate {
   month: number;
   rate: number;
 }
+
+export interface ProductionBatch {
+  batchName: string;
+  id: string;
+  batchCode: string;
+  plantId: string;
+  plantName: string;
+  initialQuantity: number;
+  currentQuantity: number;
+  totalCost: number;
+  unitCost: number;
+  birthDate: string; // ISO Date String
+}
+
+export enum StockType {
+  COMMERCIAL = 'COMMERCIAL',
+  IN_PRODUCTION = 'IN_PRODUCTION'
+}

@@ -3,15 +3,17 @@
 import * as React from 'react';
 import { z as zod } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm, useFieldArray } from 'react-hook-form';
+import { Controller, useForm, useFieldArray, useWatch } from 'react-hook-form';
 import {
   Alert, Autocomplete, Box, Button, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Grid, IconButton, Paper, Stack,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography
+  DialogContent, DialogTitle, Divider, FormControl, FormControlLabel, FormLabel,
+  Grid, IconButton, Paper, Radio, RadioGroup, Stack, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TextField, Typography
 } from '@mui/material';
 import { Plus as PlusIcon, Trash as TrashIcon } from '@phosphor-icons/react';
 
 import type { Plant, Warehouse, Supplier } from '@/types/nursery';
+import { StockType } from '@/types/nursery';
 
 const receiptItemSchema = zod.object({
   plantId: zod.string().min(1, 'Fidan seçimi zorunludur.'),
@@ -23,8 +25,21 @@ const formSchema = zod.object({
   receiptNumber: zod.string().min(1, 'İrsaliye numarası zorunludur.'),
   supplierId: zod.string().min(1, 'Tedarikçi seçimi zorunludur.'),
   warehouseId: zod.string().min(1, 'Depo seçimi zorunludur.'),
+  entryType: zod.nativeEnum(StockType),
+  batchName: zod.string().optional(),
   items: zod.array(receiptItemSchema).min(1, 'En az bir fidan girişi yapılmalıdır.'),
-});
+}).refine(data => {
+    if (data.entryType === StockType.IN_PRODUCTION) {
+        return !!data.batchName && data.batchName.length > 0;
+    }
+    return true;
+}, { message: "Üretim partisi için parti adı zorunludur.", path: ["batchName"] })
+.refine(data => {
+    if (data.entryType === StockType.IN_PRODUCTION && data.items.length > 1) {
+        return false;
+    }
+    return true;
+}, { message: "Üretim partisi başlangıcında sadece tek bir tür fidan girişi yapılabilir.", path: ["items"] });
 
 type FormValues = zod.infer<typeof formSchema>;
 
@@ -51,44 +66,57 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
       receiptNumber: '',
       supplierId: '',
       warehouseId: '',
+      entryType: StockType.COMMERCIAL,
+      batchName: '',
       items: [{ plantId: '', quantity: 1, purchasePrice: 0 }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "items"
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const entryType = useWatch({ control, name: 'entryType' });
 
+  // --- HATA AYIKLAMA İÇİN GÜNCELLENMİŞ FETCHDATA ---
   const fetchData = React.useCallback(async () => {
     setIsLoadingData(true);
+    setFormError(null);
+    console.log("Veri çekme işlemi başladı...");
     const token = localStorage.getItem('authToken');
     if (!token) {
-        setFormError('Oturum bulunamadı.');
+        const errorMsg = 'Oturum bulunamadı. Lütfen tekrar giriş yapın.';
+        setFormError(errorMsg);
+        console.error(errorMsg);
         setIsLoadingData(false);
         return;
     }
     try {
-        const [plantsRes, warehousesRes, suppliersRes] = await Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/warehouses`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        ]);
+        console.log("1. Fidanlar (plants) çekiliyor...");
+        const plantsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!plantsRes.ok) throw new Error(`Fidanlar yüklenemedi. Sunucu yanıtı: ${plantsRes.status}`);
+        const plants = await plantsRes.json();
+        console.log("Fidanlar başarıyla çekildi.");
 
-        if (!plantsRes.ok || !warehousesRes.ok || !suppliersRes.ok) {
-            throw new Error('Gerekli veriler yüklenemedi.');
-        }
+        console.log("2. Depolar (warehouses) çekiliyor...");
+        const warehousesRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/warehouses`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!warehousesRes.ok) throw new Error(`Depolar yüklenemedi. Sunucu yanıtı: ${warehousesRes.status}`);
+        const warehouses = await warehousesRes.json();
+        console.log("Depolar başarıyla çekildi.");
+
+        console.log("3. Tedarikçiler (suppliers) çekiliyor...");
+        const suppliersRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!suppliersRes.ok) throw new Error(`Tedarikçiler yüklenemedi. Sunucu yanıtı: ${suppliersRes.status}`);
+        const suppliers = await suppliersRes.json();
+        console.log("Tedarikçiler başarıyla çekildi.");
         
-        const data: FetchedData = {
-            plants: await plantsRes.json(),
-            warehouses: await warehousesRes.json(),
-            suppliers: await suppliersRes.json(),
-        };
-        setFetchedData(data);
+        setFetchedData({ plants, warehouses, suppliers });
+        console.log("Tüm veriler başarıyla state'e aktarıldı.");
+
     } catch (err) {
-        setFormError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+        const errorMsg = err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.';
+        setFormError(errorMsg); // Hatayı ekranda göster
+        console.error("Veri çekme sırasında KRİTİK HATA:", err);
     } finally {
         setIsLoadingData(false);
+        console.log("Veri çekme işlemi tamamlandı.");
     }
   }, []);
 
@@ -99,6 +127,8 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
         receiptNumber: '',
         supplierId: '',
         warehouseId: '',
+        entryType: StockType.COMMERCIAL,
+        batchName: '',
         items: [{ plantId: '', quantity: 1, purchasePrice: 0 }],
       });
       setFormError(null);
@@ -130,7 +160,6 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
   const getPlantLabel = (plant: Plant) => 
     `${plant.plantType.name} - ${plant.plantVariety.name} / ${plant.rootstock.name} (${plant.plantSize.name} - ${plant.plantAge.name})`;
 
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
       <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -138,9 +167,23 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
       </DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
-          {isLoadingData ? (
-            <Stack sx={{ alignItems: 'center', p: 3, minHeight: '400px', justifyContent: 'center' }}><CircularProgress /></Stack>
-          ) : (
+            {/* Hata mesajı veya yükleme ekranı */}
+            {isLoadingData ? (
+                <Stack sx={{ alignItems: 'center', p: 3, minHeight: '400px', justifyContent: 'center' }}>
+                    <CircularProgress />
+                    <Typography sx={{mt: 2}}>Veriler yükleniyor...</Typography>
+                </Stack>
+            ) : formError ? (
+                <Stack sx={{ alignItems: 'center', p: 3, minHeight: '400px', justifyContent: 'center' }}>
+                     <Alert severity="error" sx={{width: '100%'}}>
+                        <strong>Veri Yükleme Hatası:</strong> {formError}
+                        <Typography variant="body2" sx={{mt: 1}}>
+                            Lütfen tarayıcı konsolunu (F12) kontrol edin ve hatanın detayını geliştiriciye bildirin.
+                        </Typography>
+                     </Alert>
+                </Stack>
+            ) : (
+            // Formun kendisi
             <Grid container spacing={4}>
               {/* LEFT COLUMN - RECEIPT DETAILS */}
               <Grid size={{ xs: 12, md: 4 }}>
@@ -177,6 +220,29 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                           />
                       )}
                   />
+                  <Divider />
+                   <Controller
+                      name="entryType"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControl>
+                          <FormLabel>Giriş Tipi</FormLabel>
+                          <RadioGroup {...field} row>
+                            <FormControlLabel value={StockType.COMMERCIAL} control={<Radio />} label="Ticari Mal" />
+                            <FormControlLabel value={StockType.IN_PRODUCTION} control={<Radio />} label="Üretim Partisi Başlangıcı" />
+                          </RadioGroup>
+                        </FormControl>
+                      )}
+                    />
+                    {entryType === StockType.IN_PRODUCTION && (
+                      <Controller
+                        name="batchName"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Parti Adı" fullWidth required={entryType === StockType.IN_PRODUCTION} error={Boolean(errors.batchName)} helperText={errors.batchName?.message} />
+                        )}
+                      />
+                    )}
                 </Stack>
               </Grid>
 
@@ -254,10 +320,10 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                 </Stack>
               </Grid>
 
-              {(errors.items || formError) && (
+              {(errors.items || errors.root) && (
                 <Grid size={{ xs: 12 }}>
                   {errors.items?.root && <Alert severity="error" sx={{mt: 2}}>{errors.items.root.message}</Alert>}
-                  {formError && <Alert severity="error" sx={{mt: 2}}>{formError}</Alert>}
+                  {errors.root && <Alert severity="error" sx={{mt: 2}}>{errors.root.message}</Alert>}
                 </Grid>
               )}
               
@@ -266,7 +332,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
         </DialogContent>
         <DialogActions sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
           <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting || isLoadingData}>
+          <Button type="submit" variant="contained" disabled={isSubmitting || isLoadingData || !!formError}>
             {isSubmitting ? <CircularProgress size={24} /> : 'Mal Girişini Kaydet'}
           </Button>
         </DialogActions>

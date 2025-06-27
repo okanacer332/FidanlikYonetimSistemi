@@ -8,9 +8,9 @@ import com.fidanlik.fidanysserver.goodsreceipt.dto.ReceiptItemDto;
 import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt;
 import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceiptItem;
 import com.fidanlik.fidanysserver.goodsreceipt.repository.GoodsReceiptRepository;
-import com.fidanlik.fidanysserver.production.model.ProductionBatch; // YENİ IMPORT
-import com.fidanlik.fidanysserver.production.repository.ProductionBatchRepository; // YENİ IMPORT
-import com.fidanlik.fidanysserver.stock.model.Stock; // YENİ IMPORT
+import com.fidanlik.fidanysserver.production.model.ProductionBatch;
+import com.fidanlik.fidanysserver.production.repository.ProductionBatchRepository;
+import com.fidanlik.fidanysserver.stock.model.Stock;
 import com.fidanlik.fidanysserver.stock.model.StockMovement;
 import com.fidanlik.fidanysserver.stock.service.StockService;
 import com.fidanlik.fidanysserver.supplier.repository.SupplierRepository;
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate; // YENİ IMPORT
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,7 +37,7 @@ public class GoodsReceiptService {
     private final SupplierRepository supplierRepository;
     private final PlantRepository plantRepository;
     private final TransactionService transactionService;
-    private final ProductionBatchRepository productionBatchRepository; // YENİ REPOSITORY
+    private final ProductionBatchRepository productionBatchRepository;
 
     @Transactional
     public GoodsReceipt createGoodsReceipt(GoodsReceiptRequest request, String userId, String tenantId) {
@@ -48,10 +48,8 @@ public class GoodsReceiptService {
                 .filter(s -> s.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz tedarikçi ID'si."));
 
-        // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
-        String batchId = null; // Üretim partisi ID'sini tutacak değişken
+        String batchId = null;
 
-        // 1. Eğer giriş tipi "Üretim Partisi" ise, önce partiyi oluştur.
         if (request.getEntryType() == Stock.StockType.IN_PRODUCTION) {
             if (request.getItems().size() != 1) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Üretim partisi başlangıcında sadece tek bir tür fidan girişi yapılabilir.");
@@ -67,8 +65,9 @@ public class GoodsReceiptService {
             newBatch.setPlantId(firstItem.getPlantId());
             newBatch.setInitialQuantity(firstItem.getQuantity());
             newBatch.setCurrentQuantity(firstItem.getQuantity());
-            newBatch.setBirthDate(LocalDate.now());
-            // Başlangıç maliyetini, fidanların alış fiyatı üzerinden hesapla
+
+            newBatch.setBirthDate(LocalDate.now()); // setCreationDate -> setBirthDate olarak geri değiştirildi.
+
             newBatch.setTotalCost(firstItem.getPurchasePrice().multiply(new BigDecimal(firstItem.getQuantity())));
             newBatch.setStatus(ProductionBatch.BatchStatus.ACTIVE);
             newBatch.setTenantId(tenantId);
@@ -76,7 +75,6 @@ public class GoodsReceiptService {
             ProductionBatch savedBatch = productionBatchRepository.save(newBatch);
             batchId = savedBatch.getId();
         }
-        // --- DEĞİŞİKLİK BURADA BİTİYOR ---
 
         GoodsReceipt goodsReceipt = new GoodsReceipt();
         goodsReceipt.setReceiptNumber(request.getReceiptNumber());
@@ -95,7 +93,6 @@ public class GoodsReceiptService {
 
         GoodsReceipt savedGoodsReceipt = goodsReceiptRepository.save(goodsReceipt);
 
-        // --- DEĞİŞİKLİK BURADA ---
         for (ReceiptItemDto itemDto : request.getItems()) {
             plantRepository.findById(itemDto.getPlantId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz fidan ID'si: " + itemDto.getPlantId()));
@@ -110,11 +107,10 @@ public class GoodsReceiptService {
                     description,
                     userId,
                     tenantId,
-                    request.getEntryType(), // YENİ: İsteğin tipini gönder
-                    batchId                // YENİ: Oluşturulan parti ID'sini veya null gönder
+                    request.getEntryType(),
+                    batchId
             );
         }
-        // --- DEĞİŞİKLİK SONU ---
 
         transactionService.createSupplierTransaction(
                 savedGoodsReceipt.getSupplierId(),
@@ -135,8 +131,6 @@ public class GoodsReceiptService {
 
     @Transactional
     public void cancelGoodsReceipt(String receiptId, String userId, String tenantId) {
-        // Bu metodda şimdilik bir değişiklik yapmıyoruz.
-        // İleride iptal edilen bir işlemin bir üretim partisini de etkileyip etkilemeyeceğini düşünebiliriz.
         GoodsReceipt goodsReceipt = goodsReceiptRepository.findById(receiptId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mal giriş kaydı bulunamadı."));
 
@@ -148,11 +142,7 @@ public class GoodsReceiptService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bu kayıt zaten iptal edilmiş.");
         }
 
-        // --- DEĞİŞİKLİK: İptal işlemi için stockService.changeStock çağrısı güncellenmeli ---
         for (GoodsReceiptItem item : goodsReceipt.getItems()) {
-            // İptal edilen stoğun tipini bulmalıyız. Bu, gelecekteki bir iyileştirme olabilir.
-            // Şimdilik varsayılan olarak COMMERCIAL kabul ediyoruz, çünkü hangi partiye ait olduğunu
-            // sadece mal giriş kaydından bilemeyiz. Bu, Faz 2'nin konusu olacak.
             String description = "İptal - İrsaliye No: " + goodsReceipt.getReceiptNumber();
             stockService.changeStock(
                     item.getPlantId(),
@@ -163,11 +153,10 @@ public class GoodsReceiptService {
                     description,
                     userId,
                     tenantId,
-                    Stock.StockType.COMMERCIAL, // Şimdilik varsayılan
-                    null                       // Şimdilik varsayılan
+                    Stock.StockType.COMMERCIAL,
+                    null
             );
         }
-        // --- DEĞİŞİKLİK SONU ---
 
         transactionService.createSupplierTransaction(
                 goodsReceipt.getSupplierId(),

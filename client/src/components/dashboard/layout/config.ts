@@ -143,6 +143,15 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
         matcher: { type: 'startsWith', href: paths.dashboard.goodsReceipts },
       },
+      {
+        type: 'item',
+        key: 'production-batches',
+        title: 'Üretim Partileri',
+        href: paths.dashboard.productionBatches,
+        icon: 'stack', // 'stack' ikonu partileri/yığınları temsil etmek için uygun
+        roles: ['ADMIN', 'WAREHOUSE_STAFF'],
+        matcher: { type: 'startsWith', href: paths.dashboard.productionBatches },
+      },
     ],
   },
   {

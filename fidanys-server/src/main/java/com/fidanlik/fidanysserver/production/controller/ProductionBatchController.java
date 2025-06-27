@@ -1,5 +1,6 @@
 package com.fidanlik.fidanysserver.production.controller;
 
+import com.fidanlik.fidanysserver.production.dto.ProductionBatchUpdateRequest;
 import com.fidanlik.fidanysserver.production.dto.WastageRecordRequest;
 import com.fidanlik.fidanysserver.production.model.ProductionBatch;
 import com.fidanlik.fidanysserver.production.service.ProductionBatchService;
@@ -37,14 +38,33 @@ public class ProductionBatchController {
         return ResponseEntity.ok(batch);
     }
 
-    // --- YENİ ENDPOINT ---
-    @PostMapping("/{batchId}/record-wastage")
+    // --- HATA VEREN ENDPOINT DÜZELTİLDİ ---
+    @PostMapping("/{id}/wastage") // Path ve @PathVariable adı loglardaki hatayı çözecek şekilde düzeltildi.
     public ResponseEntity<ProductionBatch> recordWastage(
-            @PathVariable String batchId,
+            @PathVariable String id,
             @RequestBody WastageRecordRequest request,
             Authentication authentication) {
         User authenticatedUser = (User) authentication.getPrincipal();
-        ProductionBatch updatedBatch = productionBatchService.recordWastage(batchId, request, authenticatedUser.getId(), authenticatedUser.getTenantId());
+        ProductionBatch updatedBatch = productionBatchService.recordWastage(id, request, authenticatedUser.getId(), authenticatedUser.getTenantId());
         return ResponseEntity.ok(updatedBatch);
+    }
+
+    // --- YENİ EKLENEN GÜNCELLEME (UPDATE) ENDPOINT'İ ---
+    @PutMapping("/{id}")
+    public ResponseEntity<ProductionBatch> updateBatch(
+            @PathVariable String id,
+            @RequestBody ProductionBatchUpdateRequest request,
+            Authentication authentication) {
+        User authenticatedUser = (User) authentication.getPrincipal();
+        ProductionBatch updatedBatch = productionBatchService.updateBatch(id, request, authenticatedUser.getTenantId());
+        return ResponseEntity.ok(updatedBatch);
+    }
+
+    // --- YENİ EKLENEN SİLME (DELETE) ENDPOINT'İ ---
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBatch(@PathVariable String id, Authentication authentication) {
+        User authenticatedUser = (User) authentication.getPrincipal();
+        productionBatchService.deleteBatch(id, authenticatedUser.getTenantId());
+        return ResponseEntity.noContent().build();
     }
 }

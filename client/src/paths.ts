@@ -11,6 +11,7 @@ export const paths = {
     settings: '/dashboard/settings',
     suppliers: '/dashboard/suppliers',
     userManagement: '/dashboard/user-management',
+    productionBatches: '/dashboard/production-batches',
 
     // --- TANIMLAMALAR GRUPLANDI VE YENİ YOL EKLENDİ ---
     definitions: {
