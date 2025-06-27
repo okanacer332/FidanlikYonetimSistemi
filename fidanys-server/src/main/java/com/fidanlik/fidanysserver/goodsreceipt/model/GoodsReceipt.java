@@ -24,6 +24,7 @@ public class GoodsReceipt {
 
     // ADD THIS ENUM
     public enum GoodsReceiptStatus {
+        PENDING,
         COMPLETED,
         CANCELED
     }
