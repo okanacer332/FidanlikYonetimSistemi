@@ -1,9 +1,6 @@
 package com.fidanlik.fidanysserver.reporting.controller;
 
-import com.fidanlik.fidanysserver.reporting.dto.CustomerSalesReport;
-import com.fidanlik.fidanysserver.reporting.dto.OverviewReportDto;
-import com.fidanlik.fidanysserver.reporting.dto.ProfitabilityReportDto;
-import com.fidanlik.fidanysserver.reporting.dto.TopSellingPlantReport;
+import com.fidanlik.fidanysserver.reporting.dto.*; // DTO'ları tek seferde almak için güncellendi
 import com.fidanlik.fidanysserver.reporting.service.ReportingService;
 import com.fidanlik.fidanysserver.user.model.User;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +23,8 @@ public class ReportingController {
 
     private final ReportingService reportingService;
 
-    // --- YENİ ENDPOINT ---
-    // Yeni profesyonel raporlama panosu için tüm özet verileri tek seferde getirir.
+    // --- MEVCUT ENDPOINT'LER (Aynen kaldı) ---
+
     @GetMapping("/dashboard-overview")
     public ResponseEntity<OverviewReportDto> getDashboardOverview(
             Authentication authentication,
@@ -38,9 +35,6 @@ public class ReportingController {
         LocalDate endDate = LocalDate.parse(endDateStr);
         return ResponseEntity.ok(reportingService.getDashboardOverview(user.getTenantId(), startDate, endDate));
     }
-
-
-    // --- GÜNCELLENMİŞ ENDPOINT'LER (Tarih filtresi eklendi) ---
 
     @GetMapping("/top-selling-plants")
     public ResponseEntity<List<TopSellingPlantReport>> getTopSellingPlants(
@@ -75,10 +69,24 @@ public class ReportingController {
         return ResponseEntity.ok(reportingService.getProfitabilityReport(user.getTenantId(), startDate, endDate));
     }
 
-    // --- ESKİ ENDPOINT (Artık dashboard için kullanılmıyor, isteğe bağlı olarak silinebilir) ---
     @GetMapping("/overview")
     public ResponseEntity<OverviewReportDto> getOverviewReport(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(reportingService.getOverviewReport(user.getTenantId()));
+    }
+
+
+    // --- VİZYONUMUZUN NİHAİ ÇIKTISI: YENİ REEL KÂRLILIK ENDPOINT'İ ---
+    @GetMapping("/real-profitability")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Bu özel raporu sadece Admin görebilsin
+    public ResponseEntity<List<RealProfitabilityReportDto>> getRealProfitabilityReport(
+            Authentication authentication,
+            @RequestParam("startDate") String startDateStr,
+            @RequestParam("endDate") String endDateStr) {
+        User user = (User) authentication.getPrincipal();
+        LocalDate startDate = LocalDate.parse(startDateStr);
+        LocalDate endDate = LocalDate.parse(endDateStr);
+        List<RealProfitabilityReportDto> report = reportingService.getRealProfitabilityReport(user.getTenantId(), startDate, endDate);
+        return ResponseEntity.ok(report);
     }
 }

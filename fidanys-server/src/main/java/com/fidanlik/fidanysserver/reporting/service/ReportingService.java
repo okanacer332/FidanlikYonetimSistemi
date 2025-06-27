@@ -1,16 +1,19 @@
 package com.fidanlik.fidanysserver.reporting.service;
 
+import com.fidanlik.fidanysserver.accounting.service.InflationAdjustmentService;
 import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
+import com.fidanlik.fidanysserver.expense.model.Expense;
+import com.fidanlik.fidanysserver.expense.repository.ExpenseRepository;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
 import com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt;
 import com.fidanlik.fidanysserver.order.model.Order;
 import com.fidanlik.fidanysserver.order.repository.OrderRepository;
-import com.fidanlik.fidanysserver.reporting.dto.CustomerSalesReport;
-import com.fidanlik.fidanysserver.reporting.dto.OverviewReportDto;
-import com.fidanlik.fidanysserver.reporting.dto.ProfitabilityReportDto;
-import com.fidanlik.fidanysserver.reporting.dto.TopSellingPlantReport;
+import com.fidanlik.fidanysserver.production.model.ProductionBatch;
+import com.fidanlik.fidanysserver.production.repository.ProductionBatchRepository;
+import com.fidanlik.fidanysserver.reporting.dto.*;
+import com.fidanlik.fidanysserver.stock.model.Stock;
 import com.fidanlik.fidanysserver.stock.repository.StockRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +27,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +43,10 @@ public class ReportingService {
     private final CustomerRepository customerRepository;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
+
+    private final ProductionBatchRepository productionBatchRepository;
+    private final ExpenseRepository expenseRepository;
+    private final InflationAdjustmentService inflationAdjustmentService;
 
     @Data private static class PlantSaleResult { String plantId; int totalQuantitySold; }
     @Data private static class CustomerSaleResult { String customerId; BigDecimal totalSalesAmount; int orderCount; }
@@ -230,5 +239,80 @@ public class ReportingService {
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<RealProfitabilityReportDto> getRealProfitabilityReport(String tenantId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        // DÜZELTİLDİ: Repository'ye eklediğimiz yeni metot çağrılıyor.
+        List<Order> deliveredOrders = orderRepository.findAllByTenantIdAndStatusAndOrderDateBetween(
+                tenantId, Order.OrderStatus.DELIVERED, startDateTime, endDateTime
+        );
+
+        List<RealProfitabilityReportDto> report = new ArrayList<>();
+
+        for (Order order : deliveredOrders) {
+            for (Order.OrderItem item : order.getItems()) {
+
+                // Satışın yapıldığı depodaki stok kaydını bul.
+                Stock stock = stockRepository.findByPlantIdAndWarehouseIdAndTenantId(item.getPlantId(), order.getWarehouseId(), tenantId)
+                        .orElse(null);
+
+                if (stock == null || stock.getType() != Stock.StockType.IN_PRODUCTION || stock.getProductionBatchId() == null) {
+                    continue;
+                }
+
+                ProductionBatch batch = productionBatchRepository.findById(stock.getProductionBatchId()).orElse(null);
+                if (batch == null) continue;
+
+                // DÜZELTİLDİ: Repository'ye eklediğimiz yeni metot çağrılıyor.
+                List<Expense> batchExpenses = expenseRepository.findAllByProductionBatchIdAndTenantId(batch.getId(), tenantId);
+
+                // Reel Maliyeti Hesapla
+                BigDecimal totalRealCostForBatch = batchExpenses.stream()
+                        .map(expense -> inflationAdjustmentService.adjustCostForInflation(
+                                expense.getAmount(),
+                                expense.getExpenseDate(), // DÜZELTİLDİ: .toLocalDate() kaldırıldı
+                                order.getOrderDate().toLocalDate(),
+                                tenantId
+                        ))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add); // DÜZELTİLDİ: Tip uyumlu hale getirildi
+
+                BigDecimal realUnitCost = BigDecimal.ZERO;
+                // Satış anındaki miktar, zayiat sonrası güncel miktardır.
+                if (batch.getCurrentQuantity() > 0) {
+                    // DÜZELTİLDİ: RoundingMode importu sayesinde çalışacak
+                    realUnitCost = totalRealCostForBatch.divide(new BigDecimal(batch.getCurrentQuantity()), 2, RoundingMode.HALF_UP);
+                }
+
+                String plantName = plantRepository.findById(item.getPlantId())
+                        .map(p -> p.getPlantType().getName() + " " + p.getPlantVariety().getName())
+                        .orElse("Bilinmeyen Fidan");
+
+                BigDecimal totalRevenue = item.getSalePrice().multiply(new BigDecimal(item.getQuantity()));
+                BigDecimal totalNominalCost = batch.getUnitCost().multiply(new BigDecimal(item.getQuantity()));
+                BigDecimal totalRealCostValue = realUnitCost.multiply(new BigDecimal(item.getQuantity()));
+
+                report.add(RealProfitabilityReportDto.builder()
+                        .orderId(order.getId())
+                        .orderNumber(order.getOrderNumber())
+                        .saleDate(order.getOrderDate())
+                        .plantId(item.getPlantId())
+                        .plantName(plantName)
+                        .quantitySold(item.getQuantity())
+                        .salePrice(item.getSalePrice())
+                        .totalRevenue(totalRevenue)
+                        .nominalUnitCost(batch.getUnitCost())
+                        .realUnitCost(realUnitCost)
+                        .totalNominalCost(totalNominalCost)
+                        .totalRealCost(totalRealCostValue)
+                        .nominalProfit(totalRevenue.subtract(totalNominalCost))
+                        .realProfit(totalRevenue.subtract(totalRealCostValue))
+                        .inflationDifference(totalRealCostValue.subtract(totalNominalCost))
+                        .build());
+            }
+        }
+        return report;
     }
 }
