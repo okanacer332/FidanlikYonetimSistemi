@@ -399,3 +399,15 @@ export interface ProductionBatchCreateFormValues {
   plantAgeId: string;
   landId: string;
 }
+
+export interface Expense {
+    paymentMethod: string;
+    id: string;
+    description: string;
+    amount: number;
+    category: ExpenseCategory;
+    expenseDate: string;
+    userId: string;
+    paymentId: string;
+    productionBatchId?: string; // YENİ EKLENEN ALAN
+}
