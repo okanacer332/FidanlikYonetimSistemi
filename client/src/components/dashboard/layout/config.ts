@@ -37,6 +37,15 @@ export const navItems: NavItemConfig[] = [
       },
       {
         type: 'item',
+        key: 'production-batches', // Benzersiz bir anahtar
+        title: 'Üretim Partileri', // Menüde görünecek başlık
+        href: '/dashboard/production-batches', // Yeni sayfamızın yolu
+        icon: 'stack', // Uygun bir ikon seçebilirsiniz, örnek olarak 'stack'
+        roles: ['ADMIN', 'WAREHOUSE_STAFF'], // Bu sayfayı kimler görebilir?
+        matcher: { type: 'startsWith', href: '/dashboard/production-batches' },
+      },
+      {
+        type: 'item',
         key: 'customers',
         title: 'Müşteri Yönetimi',
         href: paths.dashboard.customers,

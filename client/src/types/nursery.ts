@@ -360,3 +360,42 @@ export interface InflationRate {
     rate: number; // Yüzde olarak (örn. 0.05 = %5)
     tenantId: string;
 }
+
+export interface ProductionBatch {
+  id: string;
+  name: string;
+  birthDate: string; // ISO Date String olarak gelecek
+  initialPlantQuantity: number;
+  currentPlantQuantity: number;
+  currentCostPool: number; // BigDecimal olarak gelecek, frontend'de number olarak ele alabiliriz
+  tenantId: string;
+
+  // Fidan Kimliği Referans ID'leri (backend'den gelebilir)
+  plantTypeId: string;
+  plantVarietyId: string;
+  rootstockId: string;
+  plantSizeId: string;
+  plantAgeId: string;
+  landId: string;
+
+  // DBRef ile ilişkili objeler (backend'den dolu gelebilir, opsiyonel)
+  plantType?: PlantType;
+  plantVariety?: PlantVariety;
+  rootstock?: Rootstock;
+  plantSize?: PlantSize;
+  plantAge?: PlantAge;
+  land?: Land;
+}
+
+// Yeni üretim partisi oluşturmak için form değerleri
+export interface ProductionBatchCreateFormValues {
+  name: string;
+  birthDate: string;
+  initialPlantQuantity: number;
+  plantTypeId: string;
+  plantVarietyId: string;
+  rootstockId: string;
+  plantSizeId: string;
+  plantAgeId: string;
+  landId: string;
+}
