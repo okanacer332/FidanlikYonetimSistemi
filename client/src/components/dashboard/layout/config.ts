@@ -81,6 +81,15 @@ export const navItems: NavItemConfig[] = [
       },
       {
         type: 'item',
+        key: 'inflation-rates', // Benzersiz bir anahtar
+        title: 'Enflasyon Oranları', // Menüde görünecek başlık
+        href: '/dashboard/accounting/inflation-rates', // Yeni sayfamızın yolu
+        icon: 'chart-line', // Uygun bir ikon seçebilirsiniz, örnek olarak 'chart-line'
+        roles: ['ADMIN', 'ACCOUNTANT'], // Bu sayfayı kimler görebilir?
+        matcher: { type: 'startsWith', href: '/dashboard/accounting/inflation-rates' },
+      },
+      {
+        type: 'item',
         key: 'invoices',
         title: 'Faturalar',
         href: paths.dashboard.accounting.invoices,

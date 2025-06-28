@@ -31,6 +31,7 @@ export interface ExpenseCategory {
 }
 
 export interface Expense {
+    paymentMethod: string;
     id: string;
     description: string;
     amount: number;
@@ -306,4 +307,56 @@ export interface ProfitabilityReportDto {
   totalRevenue: number;
   totalCost: number;
   totalProfit: number;
+}
+
+export interface RealProfitabilityReportDto {
+  orderId: string;
+  orderNumber: string;
+  saleDate: string;
+  plantId: string;
+  plantName: string;
+  quantitySold: number;
+  salePrice: number;
+  totalRevenue: number;
+  nominalUnitCost: number;
+  realUnitCost: number;
+  totalNominalCost: number;
+  totalRealCost: number;
+  nominalProfit: number;
+  realProfit: number;
+  inflationDifference: number;
+}
+
+export interface InflationRate {
+  id: string;
+  year: number;
+  month: number;
+  rate: number;
+}
+
+export interface ProductionBatch {
+  name: string;
+  batchName: string;
+  id: string;
+  batchCode: string;
+  plantId: string;
+  plantName: string;
+  initialQuantity: number;
+  currentQuantity: number;
+  totalCost: number;
+  unitCost: number;
+  birthDate: string; // ISO Date String
+}
+
+export enum StockType {
+  COMMERCIAL = 'COMMERCIAL',
+  IN_PRODUCTION = 'IN_PRODUCTION'
+}
+
+export interface InflationRate {
+    id: string;
+    year: number;
+    month: number;
+    rate: number; // Yüzde olarak (örn. 0.05 = %5)
+    tenantId: string;
 }
