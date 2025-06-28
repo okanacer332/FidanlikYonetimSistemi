@@ -1,143 +1,124 @@
 'use client';
 
 import * as React from 'react';
-import { Button, Stack, Typography, CircularProgress, Alert, Tabs, Tab, Box } from '@mui/material';
+import { Button, Stack, Typography, CircularProgress, Alert } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 
 import { useUser } from '@/hooks/use-user';
-import type { Expense, ExpenseCategory } from '@/types/nursery';
-import { ExpensesTable } from '@/components/dashboard/expense/expenses-table'
+import { ExpensesTable } from '@/components/dashboard/expense/expenses-table';
 import { ExpenseCreateForm } from '@/components/dashboard/expense/expense-create-form';
-import { ExpenseCategoryList } from '@/components/dashboard/expense/expense-category-list';
-
-function a11yProps(index: number) {
-  return {
-    id: `simple-tab-${index}`,
-    'aria-controls': `simple-tabpanel-${index}`,
-  };
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
+import type { Expense, ExpenseCategory, ProductionBatch } from '@/types/nursery';
 
 export default function Page(): React.JSX.Element {
-  const { user: currentUser } = useUser();
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  const [categories, setCategories] = React.useState<ExpenseCategory[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
+    const { user: currentUser, isLoading: isUserLoading } = useUser();
+    const [expenses, setExpenses] = React.useState<Expense[]>([]);
+    const [categories, setCategories] = React.useState<ExpenseCategory[]>([]);
+    const [productionBatches, setProductionBatches] = React.useState<ProductionBatch[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
 
-  const [tabValue, setTabValue] = React.useState(0);
+    const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+    const canManageExpenses = currentUser?.roles?.some(
+        role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT'
+    );
+    const canViewExpenses = currentUser?.roles?.some(
+        role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT' || role.name === 'SALES'
+    );
 
-  const canView = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
+    const fetchData = React.useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            setError('Oturum bulunamadı.');
+            setLoading(false);
+            return;
+        }
 
-  const fetchData = React.useCallback(async () => {
-    if (!canView) {
-      setError('Bu sayfayı görüntüleme yetkiniz yok.');
-      setLoading(false);
-      return;
+        try {
+            // Expenses, categories, ve production batches'i paralel olarak çekelim
+            const [expensesRes, categoriesRes, productionBatchesRes] = await Promise.all([
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                // DÜZELTME: Kategori API yolu /expenses altına alındı
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses/categories`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/production-batches`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            ]);
+
+            if (!expensesRes.ok || !categoriesRes.ok || !productionBatchesRes.ok) {
+                if (!expensesRes.ok) console.error('Giderler çekilirken hata:', await expensesRes.text());
+                // Hata mesajını düzeltelim, artık doğru URL'ye gidiyor
+                if (!categoriesRes.ok) console.error('Kategoriler çekilirken hata (URL hatası düzeltildi, backend kontrol edilmeli):', await categoriesRes.text());
+                if (!productionBatchesRes.ok) console.error('Üretim Partileri çekilirken hata:', await productionBatchesRes.text());
+                throw new Error('Veriler yüklenirken bir hata oluştu.');
+            }
+
+            setExpenses(await expensesRes.json());
+            setCategories(await categoriesRes.json());
+            setProductionBatches(await productionBatchesRes.json());
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        if (canViewExpenses) {
+            fetchData();
+        } else if (!isUserLoading) {
+            setLoading(false);
+            setError('Giderleri görüntüleme yetkiniz bulunmamaktadır.');
+        }
+    }, [canViewExpenses, fetchData, isUserLoading]);
+
+    const handleCreateSuccess = () => {
+        setCreateModalOpen(false);
+        fetchData();
+    };
+
+    if (isUserLoading) {
+        return <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Oturum bulunamadı.');
 
-      const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses/categories`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      
-      if (!expensesRes.ok || !categoriesRes.ok) throw new Error('Veriler yüklenemedi.');
+    return (
+        <Stack spacing={3}>
+            <Stack direction="row" spacing={3}>
+                <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
+                    <Typography variant="h4">Giderler</Typography>
+                    <Typography variant="body1">
+                        İşletmenizin tüm giderlerini burada yönetin.
+                    </Typography>
+                </Stack>
+                <div>
+                    {canManageExpenses && (
+                        <Button
+                            startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
+                            variant="contained"
+                            onClick={() => setCreateModalOpen(true)}
+                        >
+                            Yeni Gider Ekle
+                        </Button>
+                    )}
+                </div>
+            </Stack>
 
-      setExpenses(await expensesRes.json());
-      setCategories(await categoriesRes.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-    } finally {
-      setLoading(false);
-    }
-  }, [canView]);
+            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
 
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+            {loading ? (
+                <Stack sx={{justifyContent: 'center', alignItems: 'center', minHeight: '300px'}}><CircularProgress /></Stack>
+            ) : (
+                <ExpensesTable rows={expenses} categories={categories} />
+            )}
 
-  const handleSuccess = () => {
-    setCreateModalOpen(false);
-    fetchData();
-  };
-
-  return (
-    <Stack spacing={3}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h4">Gider Yönetimi</Typography>
-            <Button
-                startIcon={<PlusIcon />}
-                variant="contained"
-                onClick={() => setCreateModalOpen(true)}
-                disabled={!canView}
-            >
-                Yeni Gider Ekle
-            </Button>
+            <ExpenseCreateForm
+                open={isCreateModalOpen}
+                onClose={() => setCreateModalOpen(false)}
+                onSuccess={handleCreateSuccess}
+                categories={categories}
+                productionBatches={productionBatches}
+            />
         </Stack>
-        
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="gider yönetimi sekmesi">
-                <Tab label="Giderler" {...a11yProps(0)} />
-                <Tab label="Gider Kategorileri" {...a11yProps(1)} />
-            </Tabs>
-        </Box>
-        
-        {loading ? (
-            <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>
-        ) : error ? (
-            <Alert severity="error">{error}</Alert>
-        ) : (
-            <>
-                <CustomTabPanel value={tabValue} index={0}>
-                    <ExpensesTable expenses={expenses} />
-                </CustomTabPanel>
-                <CustomTabPanel value={tabValue} index={1}>
-                    <ExpenseCategoryList categories={categories} onUpdate={fetchData} />
-                </CustomTabPanel>
-            </>
-        )}
-        
-        <ExpenseCreateForm
-            open={isCreateModalOpen}
-            onClose={() => setCreateModalOpen(false)}
-            onSuccess={handleSuccess}
-            categories={categories}
-        />
-    </Stack>
-  );
+    );
 }

@@ -7,11 +7,11 @@ import { Controller, useForm } from 'react-hook-form';
 import {
   Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack,
-  TextField, CircularProgress
+  TextField, CircularProgress, Autocomplete
 } from '@mui/material';
 import dayjs from 'dayjs';
 
-import type { ExpenseCategory } from '@/types/nursery';
+import type { ExpenseCategory, ProductionBatch } from '@/types/nursery';
 import { PaymentMethod } from '@/types/nursery';
 
 const schema = zod.object({
@@ -20,6 +20,7 @@ const schema = zod.object({
   categoryId: zod.string().min(1, 'Kategori seçimi zorunludur.'),
   paymentMethod: zod.nativeEnum(PaymentMethod),
   description: zod.string().min(1, 'Açıklama zorunludur.'),
+  productionBatchId: zod.string().optional(),
 });
 
 type FormValues = zod.infer<typeof schema>;
@@ -29,9 +30,10 @@ interface ExpenseCreateFormProps {
   onClose: () => void;
   onSuccess: () => void;
   categories: ExpenseCategory[];
+  productionBatches: ProductionBatch[];
 }
 
-export function ExpenseCreateForm({ open, onClose, onSuccess, categories }: ExpenseCreateFormProps): React.JSX.Element {
+export function ExpenseCreateForm({ open, onClose, onSuccess, categories, productionBatches }: ExpenseCreateFormProps): React.JSX.Element {
   const [formError, setFormError] = React.useState<string | null>(null);
 
   const defaultValues = React.useMemo(() => ({
@@ -40,12 +42,14 @@ export function ExpenseCreateForm({ open, onClose, onSuccess, categories }: Expe
     categoryId: '',
     paymentMethod: PaymentMethod.CASH,
     description: '',
+    productionBatchId: undefined,
   }), []);
 
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues });
 
@@ -56,16 +60,30 @@ export function ExpenseCreateForm({ open, onClose, onSuccess, categories }: Expe
     }
   }, [open, reset, defaultValues]);
 
+  // Eklenen console.log: productionBatches verisini kontrol etmek için
+  React.useEffect(() => {
+    console.log('ExpenseCreateForm: productionBatches prop değeri:', productionBatches);
+    if (productionBatches.length === 0) {
+      console.log('ExpenseCreateForm: Üretim partisi verisi boş veya gelmiyor.');
+    }
+  }, [productionBatches]);
+
+
   const onSubmit = React.useCallback(async (values: FormValues) => {
     setFormError(null);
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum bulunamadı.');
 
+      const dataToSend = {
+        ...values,
+        productionBatchId: values.productionBatchId === '' ? undefined : values.productionBatchId,
+      };
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!response.ok) {
@@ -146,6 +164,45 @@ export function ExpenseCreateForm({ open, onClose, onSuccess, categories }: Expe
                 </FormControl>
               )}
             />
+
+            <Controller
+              name="productionBatchId"
+              control={control}
+              render={({ field }) => (
+                <Autocomplete
+                  // value prop'u, field.value'nun ProductionBatch objesine eşleşmesi için güncellendi
+                  // Eğer field.value bir ID ise, productionBatches dizisinde bu ID'ye sahip objeyi arar.
+                  value={
+                    field.value
+                      ? productionBatches.find((batch) => batch.id === field.value) || null
+                      : null
+                  }
+                  onChange={(_, newValue) => {
+                    setValue('productionBatchId', newValue?.id || '');
+                  }}
+                  options={productionBatches}
+                  // getOptionLabel artık 'batchName' özelliğini kullanıyor
+                  // Her bir seçeneğin benzersiz bir 'key'e sahip olması için 'option.id' kullanıldı
+                  getOptionLabel={(option) => option.batchName || ''}
+                  // isOptionEqualToValue null kontrolü için güncellendi
+                  isOptionEqualToValue={(option, value) => option.id === (value ? value.id : '')}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="İlgili Üretim Partisi (Opsiyonel)"
+                      placeholder="Parti Seçin"
+                      error={Boolean(errors.productionBatchId)}
+                      helperText={errors.productionBatchId?.message}
+                    />
+                  )}
+                  // Autocomplete bileşenine benzersiz key vermek için getOptionKey kullanıldı
+                  // Bu, "Encountered two children with the same key" hatasını önler.
+                  // options dizisindeki her öğenin benzersiz bir 'id'ye sahip olduğunu varsayarız.
+                  getOptionKey={(option) => option.id}
+                />
+              )}
+            />
+
             <Controller
               name="description"
               control={control}
