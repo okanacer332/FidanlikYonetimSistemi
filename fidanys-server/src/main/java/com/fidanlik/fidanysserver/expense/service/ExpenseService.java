@@ -8,6 +8,8 @@ import com.fidanlik.fidanysserver.expense.repository.ExpenseCategoryRepository;
 import com.fidanlik.fidanysserver.expense.repository.ExpenseRepository;
 import com.fidanlik.fidanysserver.payment.model.Payment;
 import com.fidanlik.fidanysserver.payment.service.PaymentService;
+import com.fidanlik.fidanysserver.production.model.ProductionBatch; // YENİ IMPORT
+import com.fidanlik.fidanysserver.production.repository.ProductionBatchRepository; // YENİ IMPORT
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final ExpenseCategoryRepository categoryRepository;
     private final PaymentService paymentService;
+    private final ProductionBatchRepository productionBatchRepository; // YENİ BAĞIMLILIK
 
     // --- Expense Category Methods ---
 
@@ -54,12 +57,24 @@ public class ExpenseService {
         expense.setExpenseDate(request.getExpenseDate());
         expense.setCategory(category);
 
+        // Üretim partisi ID'si varsa, gideri ilgili partiye ata ve maliyet havuzunu güncelle
+        if (request.getProductionBatchId() != null && !request.getProductionBatchId().isEmpty()) {
+            ProductionBatch productionBatch = productionBatchRepository.findById(request.getProductionBatchId())
+                    .filter(pb -> pb.getTenantId().equals(tenantId))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geçersiz veya başka şirkete ait üretim partisi ID'si."));
+
+            productionBatch.setCurrentCostPool(productionBatch.getCurrentCostPool().add(request.getAmount()));
+            productionBatchRepository.save(productionBatch);
+
+            expense.setProductionBatchId(request.getProductionBatchId()); // Gider objesine partinin ID'sini set et
+        }
+
         Expense savedExpense = expenseRepository.save(expense);
 
         Payment payment = paymentService.createPaymentForExpense(savedExpense, request.getPaymentMethod(), userId, tenantId);
 
         savedExpense.setPaymentId(payment.getId());
-        return expenseRepository.save(savedExpense);
+        return expenseRepository.save(savedExpense); // Güncellenmiş Expense'i (productionBatchId ile) tekrar kaydet
     }
 
     public List<Expense> getAllExpenses(String tenantId) {

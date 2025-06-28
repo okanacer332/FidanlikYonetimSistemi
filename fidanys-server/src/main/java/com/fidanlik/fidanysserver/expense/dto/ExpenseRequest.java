@@ -13,4 +13,5 @@ public class ExpenseRequest {
     private LocalDate expenseDate;
     private String categoryId;
     private Payment.PaymentMethod paymentMethod; // Giderin nasıl ödendiğini belirtir
+    private String productionBatchId; // YENİ EKLENEN ALAN
 }

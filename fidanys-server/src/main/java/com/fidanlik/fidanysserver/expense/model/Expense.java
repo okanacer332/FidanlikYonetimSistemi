@@ -24,4 +24,5 @@ public class Expense {
     private ExpenseCategory category;
 
     private String paymentId; // Giderin hangi ödeme ile yapıldığını belirtir
+    private String productionBatchId; // YENİ EKLENEN ALAN
 }
