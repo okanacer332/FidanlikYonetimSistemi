@@ -1,4 +1,3 @@
-// Dosya Yolu: fidanys-server/src/main/java/com/fidanlik/fidanysserver/goodsreceipt/model/GoodsReceiptItem.java
 package com.fidanlik.fidanysserver.goodsreceipt.model;
 
 import lombok.Data;
@@ -9,4 +8,5 @@ public class GoodsReceiptItem {
     private String plantId;
     private int quantity;
     private BigDecimal purchasePrice;
+    private BigDecimal totalPrice; // YENİ EKLENEN ALAN: Toplam Fiyat
 }

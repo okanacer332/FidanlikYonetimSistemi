@@ -33,7 +33,7 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final WarehouseRepository warehouseRepository;
     private final PlantRepository plantRepository;
-    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
+    private final TransactionService transactionService;
 
     @Transactional
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
@@ -90,16 +90,22 @@ public class OrderService {
         // Stok düşme işlemi
         for (Order.OrderItem item : order.getItems()) {
             stockService.changeStock(
-                    item.getPlantId(), order.getWarehouseId(), -item.getQuantity(),
-                    StockMovement.MovementType.SALE, order.getId(),
-                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId
+                    item.getPlantId(),
+                    order.getWarehouseId(),
+                    -item.getQuantity(),
+                    StockMovement.MovementType.SALE,
+                    order.getId(),
+                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(),
+                    userId,
+                    tenantId,
+                    null // YENİ: productionBatchId için null geçiyoruz
             );
         }
 
-        // --- YENİ: CARİ HESABA BORÇ KAYDI OLUŞTURMA ---
+        // Cari Hesaba Borç Kaydı Oluşturma
         transactionService.createCustomerTransaction(
                 order.getCustomerId(),
-                Transaction.TransactionType.DEBIT, // Müşteri Borçlandırılıyor
+                Transaction.TransactionType.DEBIT,
                 order.getTotalAmount(),
                 "#" + order.getOrderNumber() + " nolu sipariş sevkiyatı.",
                 order.getId(),
@@ -131,15 +137,21 @@ public class OrderService {
         if (order.getStatus() == Order.OrderStatus.SHIPPED) {
             for (Order.OrderItem item : order.getItems()) {
                 stockService.changeStock(
-                        item.getPlantId(), order.getWarehouseId(), item.getQuantity(), // Pozitif miktar ile stoğa iade
-                        StockMovement.MovementType.SALE_CANCEL, order.getId(),
-                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId
+                        item.getPlantId(),
+                        order.getWarehouseId(),
+                        item.getQuantity(), // Pozitif miktar ile stoğa iade
+                        StockMovement.MovementType.SALE_CANCEL,
+                        order.getId(),
+                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(),
+                        userId,
+                        tenantId,
+                        null // YENİ: productionBatchId için null geçiyoruz
                 );
             }
-            // --- YENİ: CARİ HESAPTAN BORCU SİLME (ALACAK KAYDI) ---
+            // Cari Hesaptan Borcu Silme (Alacak Kaydı)
             transactionService.createCustomerTransaction(
                     order.getCustomerId(),
-                    Transaction.TransactionType.CREDIT, // Borç iptali için Alacak kaydı
+                    Transaction.TransactionType.CREDIT,
                     order.getTotalAmount(),
                     "#" + order.getOrderNumber() + " nolu siparişin iptali.",
                     order.getId(),

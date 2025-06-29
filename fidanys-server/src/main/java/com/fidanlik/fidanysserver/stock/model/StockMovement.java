@@ -19,6 +19,8 @@ public class StockMovement {
     private String userId;
     private LocalDateTime timestamp;
     private String tenantId;
+    private String productionBatchId; // YENİ EKLENEN ALAN
+    // productionBatchId alanı, bu stok hareketinin hangi üretim partisiyle ilişkili olduğunu belirtir.
 
     public enum MovementType {
         GOODS_RECEIPT,      // Mal Kabul
