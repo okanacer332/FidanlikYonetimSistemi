@@ -136,57 +136,6 @@ export const navItems: NavItemConfig[] = [
   },
   {
     type: 'group',
-    key: 'reports',
-    title: 'Raporlar',
-    roles: ['ADMIN', 'ACCOUNTANT', 'SALES'],
-    items: [
-      {
-        type: 'item',
-        key: 'reports-overview',
-        title: 'Genel Bakış',
-        href: paths.dashboard.reports.overview,
-        icon: 'chart-bar',
-        roles: ['ADMIN', 'ACCOUNTANT', 'SALES'],
-        matcher: { type: 'startsWith', href: paths.dashboard.reports.overview }, // Added matcher
-      },
-      {
-        type: 'group',
-        key: 'financial-reports',
-        title: 'Finansal Raporlar',
-        roles: ['ADMIN', 'ACCOUNTANT'],
-        items: [
-          { type: 'item', key: 'profitability', title: 'Karlılık Raporu', href: paths.dashboard.reports.financial.profitability, icon: 'chart-line', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.profitability } }, // Added matcher
-          { type: 'item', key: 'cash-flow', title: 'Nakit Akış Raporu', href: paths.dashboard.reports.financial.cashFlow, icon: 'swap', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.cashFlow } }, // Added matcher
-          { type: 'item', key: 'expense-analysis', title: 'Gider Analiz Raporu', href: paths.dashboard.reports.financial.expenseAnalysis, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.expenseAnalysis } }, // Added matcher
-          { type: 'item', key: 'receivables-aging', title: 'Vade Geçmiş Analizi', href: paths.dashboard.reports.financial.receivablesAging, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'], matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.receivablesAging } }, // Added matcher
-        ]
-      },
-      {
-        type: 'group',
-        key: 'sales-reports',
-        title: 'Satış Raporları',
-        roles: ['ADMIN', 'SALES'],
-        items: [
-          { type: 'item', key: 'detailed-sales', title: 'Detaylı Satış Raporu', href: paths.dashboard.reports.sales.detailedSales, icon: 'chart-line', roles: ['ADMIN', 'SALES'], matcher: { type: 'startsWith', href: paths.dashboard.reports.sales.detailedSales } }, // Added matcher
-          { type: 'item', key: 'sales-by-customer', title: 'Müşteri Performansı', href: paths.dashboard.reports.sales.salesByCustomer, icon: 'chart-bar', roles: ['ADMIN', 'SALES'], matcher: { type: 'startsWith', href: paths.dashboard.reports.sales.salesByCustomer } }, // Added matcher
-          { type: 'item', key: 'sales-by-product', title: 'Ürün Performansı', href: paths.dashboard.reports.sales.salesByProduct, icon: 'chart-bar', roles: ['ADMIN', 'SALES'], matcher: { type: 'startsWith', href: paths.dashboard.reports.sales.salesByProduct } }, // Added matcher
-        ]
-      },
-      {
-        type: 'group',
-        key: 'inventory-reports',
-        title: 'Stok Raporları',
-        roles: ['ADMIN', 'WAREHOUSE_STAFF'],
-        items: [
-          { type: 'item', key: 'stock-valuation', title: 'Envanter Değer Raporu', href: paths.dashboard.reports.inventory.valuation, icon: 'chart-line', roles: ['ADMIN', 'WAREHOUSE_STAFF'], matcher: { type: 'startsWith', href: paths.dashboard.reports.inventory.valuation } }, // Added matcher
-          { type: 'item', key: 'stock-movements', title: 'Stok Hareket Dökümü', href: paths.dashboard.reports.inventory.stockMovements, icon: 'swap', roles: ['ADMIN', 'WAREHOUSE_STAFF'], matcher: { type: 'startsWith', href: paths.dashboard.reports.inventory.stockMovements } }, // Added matcher
-          { type: 'item', key: 'stock-aging', title: 'Stok Bekleme Süreleri', href: paths.dashboard.reports.inventory.stockAging, icon: 'chart-bar', roles: ['ADMIN', 'WAREHOUSE_STAFF'], matcher: { type: 'startsWith', href: paths.dashboard.reports.inventory.stockAging } }, // Added matcher
-        ]
-      },
-    ]
-  },
-  {
-    type: 'group',
     key: 'system',
     title: 'Sistem',
     roles: ['ADMIN'],
