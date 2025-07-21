@@ -9,7 +9,7 @@ export const navItems: NavItemConfig[] = [
     href: paths.dashboard.overview,
     icon: 'chart-pie',
     roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF', 'ACCOUNTANT'],
-    matcher: { type: 'startsWith', href: paths.dashboard.overview }, // Added matcher
+    matcher: { type: 'startsWith', href: paths.dashboard.overview },
   },
   {
     type: 'group',
@@ -24,7 +24,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.plants,
         icon: 'tree-evergreen',
         roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.plants }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.plants },
       },
       {
         type: 'item',
@@ -33,7 +33,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.warehouses,
         icon: 'buildings',
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.warehouses }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.warehouses },
       },
       {
         type: 'item',
@@ -42,7 +42,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.customers,
         icon: 'users',
         roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.customers }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.customers },
       },
       {
         type: 'item',
@@ -51,7 +51,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.suppliers,
         icon: 'package',
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.suppliers }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.suppliers },
       },
     ],
   },
@@ -68,7 +68,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.accounting.currentAccounts,
         icon: 'bank',
         roles: ['ADMIN', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.accounting.currentAccounts }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.accounting.currentAccounts },
       },
       {
         type: 'item',
@@ -77,7 +77,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.accounting.suppliers,
         icon: 'bank',
         roles: ['ADMIN', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.accounting.suppliers }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.accounting.suppliers },
       },
       {
         type: 'item',
@@ -86,7 +86,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.accounting.invoices,
         icon: 'receipt',
         roles: ['ADMIN', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.accounting.invoices }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.accounting.invoices },
       },
       {
         type: 'item',
@@ -95,7 +95,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.accounting.payments,
         icon: 'credit-card',
         roles: ['ADMIN', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.accounting.payments }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.accounting.payments },
       },
       {
         type: 'item',
@@ -104,7 +104,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.accounting.expenses,
         icon: 'chart-bar',
         roles: ['ADMIN', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.accounting.expenses }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.accounting.expenses },
       },
     ],
   },
@@ -121,7 +121,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.orders,
         icon: 'shopping-cart',
         roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.orders }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.orders },
       },
       {
         type: 'item',
@@ -130,7 +130,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.goodsReceipts,
         icon: 'package',
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
-        matcher: { type: 'startsWith', href: paths.dashboard.goodsReceipts }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.goodsReceipts },
       },
     ],
   },
@@ -147,16 +147,31 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.userManagement,
         icon: 'users',
         roles: ['ADMIN'],
-        matcher: { type: 'startsWith', href: paths.dashboard.userManagement }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.userManagement },
       },
       {
-        type: 'item',
+        type: 'group',
         key: 'settings',
         title: 'Ayarlar',
-        href: paths.dashboard.settings,
-        icon: 'gear-six',
         roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF', 'ACCOUNTANT'],
-        matcher: { type: 'startsWith', href: paths.dashboard.settings }, // Added matcher
+        items: [
+          {
+            type: 'item',
+            key: 'general-settings',
+            title: 'Genel Ayarlar',
+            href: paths.dashboard.settings.root,
+            icon: 'gear-six',
+            matcher: { type: 'equals', href: paths.dashboard.settings.root },
+          },
+          {
+            type: 'item',
+            key: 'inflation-data',
+            title: 'Enflasyon Verileri',
+            href: paths.dashboard.settings.inflation,
+            icon: 'chart-line', // DÜZELTİLEN KISIM
+            matcher: { type: 'equals', href: paths.dashboard.settings.inflation },
+          },
+        ],
       },
       {
         type: 'item',
@@ -165,7 +180,7 @@ export const navItems: NavItemConfig[] = [
         href: paths.dashboard.integrations,
         icon: 'plugs-connected',
         roles: ['ADMIN'],
-        matcher: { type: 'startsWith', href: paths.dashboard.integrations }, // Added matcher
+        matcher: { type: 'startsWith', href: paths.dashboard.integrations },
       },
     ],
   },
@@ -176,6 +191,6 @@ export const navItems: NavItemConfig[] = [
     href: paths.dashboard.account,
     icon: 'user',
     roles: ['ADMIN', 'SALES', 'WAREHOUSE_STAFF', 'ACCOUNTANT'],
-    matcher: { type: 'startsWith', href: paths.dashboard.account }, // Added matcher
+    matcher: { type: 'startsWith', href: paths.dashboard.account },
   },
 ];

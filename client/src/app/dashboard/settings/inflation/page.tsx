@@ -20,11 +20,11 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { useInflation, type InflationData } from '@/hooks/use-inflation';
 import { toast } from 'react-hot-toast';
 
-// ARTIK HİÇBİR İSTEMCİ IMPORT ETMİYORUZ VEYA URL TANIMLAMIYORUZ
-
 const Page = () => {
   const { data, isLoading, getInflationData, setIsLoading } = useInflation();
 
+  // DÜZELTME: Yorum satırını kaldırarak bu bloğu tekrar aktif hale getiriyoruz.
+  // Artık use-inflation.ts dosyasını düzelttiğimiz için bu kod sorun çıkarmayacak.
   useEffect(() => {
     getInflationData();
   }, [getInflationData]);
@@ -42,14 +42,16 @@ const Page = () => {
         return;
       }
       
-      // DEĞİŞEN KISIM: Global `fetch` fonksiyonunu göreceli URL ile kullanıyoruz.
-      // Bu, projenin geri kalanıyla aynı standartta çalışmasını sağlar.
-      await fetch('/api/v1/inflation/fetch', {
+      const response = await fetch('/api/v1/inflation/fetch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+
+      if (!response.ok) {
+        throw new Error('Backend isteği başarısız oldu.');
+      }
 
       toast.dismiss();
       toast.success('Veriler başarıyla çekildi ve kaydedildi. Liste güncelleniyor...');
@@ -64,6 +66,7 @@ const Page = () => {
     }
   };
 
+  // Geri kalan kodun hepsi aynı
   return (
     <Box component="main" sx={{ flexGrow: 1, py: 8 }}>
       <Container maxWidth="lg">

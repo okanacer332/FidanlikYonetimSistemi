@@ -9,7 +9,13 @@ export const paths = {
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
     plants: '/dashboard/plants',
-    settings: '/dashboard/settings',
+    // --- DÜZENLENEN KISIM BAŞLANGICI ---
+    settings: {
+      root: '/dashboard/settings',
+      // 'account' yolunu da bu yapıya uygun hale getirebiliriz, ama şimdilik ana path yeterli.
+      inflation: '/dashboard/settings/inflation',
+    },
+    // --- DÜZENLENEN KISIM SONU ---
     suppliers: '/dashboard/suppliers',
     userManagement: '/dashboard/user-management',
     warehouses: '/dashboard/warehouses',

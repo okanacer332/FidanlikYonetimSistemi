@@ -8,8 +8,6 @@ export interface InflationData {
   tenantId: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
 export const useInflation = () => {
   const [data, setData] = useState<InflationData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +20,7 @@ export const useInflation = () => {
         setIsLoading(false);
         return;
       }
-      const response = await fetch(`${API_URL}/api/v1/inflation`, {
+      const response = await fetch('/api/v1/inflation', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
       if (!response.ok) throw new Error('Veriler alınamadı.');
@@ -34,7 +32,9 @@ export const useInflation = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+    // DÜZELTME: useCallback'in bağımlılık dizisine state'leri güncelleyen
+    // fonksiyonları ekliyoruz. Bu, 'stale closure' sorununu çözer.
+  }, [setIsLoading, setData]);
 
   return { data, isLoading, getInflationData, setIsLoading, setData };
 };
