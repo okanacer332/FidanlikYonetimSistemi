@@ -9,14 +9,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // Geri ekledik
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional; // Geleneksel kontrol için
 
 @Service
 @RequiredArgsConstructor
@@ -29,8 +28,7 @@ public class InflationService {
     @Value("${tcmb.api.key}")
     private String apiKey;
 
-    // Bu metodun tamamı TEK BİR İŞLEM olarak çalışacak.
-    @Transactional
+    // @Transactional anotasyonunu ve ilgili importu tamamen kaldırdık.
     public void fetchAndSaveInflationData(LocalDate startDate, LocalDate endDate) {
 
         DateTimeFormatter tcmbApiFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
@@ -64,6 +62,8 @@ public class InflationService {
 
         log.info("{} adet veri kalemi bulundu. Veritabanı işleniyor...", items.size());
 
+        List<InflationData> toSave = new ArrayList<>();
+
         for (TcmbItem item : items) {
             if (item.getValue() == null || item.getValue().trim().isEmpty() || item.getValue().equalsIgnoreCase("null")) {
                 continue;
@@ -72,29 +72,24 @@ public class InflationService {
             LocalDate itemDate = LocalDate.parse(item.getDate(), dbFormatter);
             BigDecimal itemValue = new BigDecimal(item.getValue());
 
-            // DÜZELTME: Geleneksel if/else yapısı kullanıyoruz
-            Optional<InflationData> existingDataOpt = inflationDataRepository.findByDate(itemDate);
+            InflationData data = inflationDataRepository.findByDate(itemDate)
+                    .orElse(new InflationData()); // Varsa al, yoksa yeni oluştur
 
-            if (existingDataOpt.isPresent()) {
-                // Veri varsa güncelle
-                InflationData existingData = existingDataOpt.get();
-                log.debug("{} tarihi için veri güncelleniyor.", itemDate);
-                existingData.setValue(itemValue);
-                inflationDataRepository.save(existingData); // Değişikliği kaydet
-            } else {
-                // Veri yoksa yeni oluştur
-                log.debug("{} tarihi için yeni veri oluşturuluyor.", itemDate);
-                InflationData newData = new InflationData();
-                newData.setDate(itemDate);
-                newData.setValue(itemValue);
-                newData.setSeriesName(item.getSeriesCode());
-                inflationDataRepository.save(newData); // Yeni veriyi kaydet
-            }
+            data.setDate(itemDate);
+            data.setValue(itemValue);
+            data.setSeriesName(item.getSeriesCode());
+            toSave.add(data);
         }
+
+        if (!toSave.isEmpty()) {
+            log.info("Kaydedilecek {} adet veri var. Veritabanına yazılıyor...", toSave.size());
+            inflationDataRepository.saveAll(toSave); // Tüm verileri tek seferde kaydet
+            log.info("Veriler başarıyla veritabanına yazıldı.");
+        }
+
         log.info("Enflasyon verilerini çekme ve kaydetme işlemi başarıyla tamamlandı.");
     }
 
-    // Listeleme metodu
     public List<InflationData> getAllInflationData() {
         log.info("Tüm enflasyon verileri veritabanından getiriliyor...");
         return inflationDataRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
