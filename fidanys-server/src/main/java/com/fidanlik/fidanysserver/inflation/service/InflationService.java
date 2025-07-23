@@ -1,102 +1,102 @@
 package com.fidanlik.fidanysserver.inflation.service;
 
-import com.fidanlik.fidanysserver.inflation.dto.TcmbItemDto;
-import com.fidanlik.fidanysserver.inflation.dto.TcmbResponseDto;
+import com.fidanlik.fidanysserver.inflation.dto.TcmbItem;
+import com.fidanlik.fidanysserver.inflation.dto.TcmbResponse;
 import com.fidanlik.fidanysserver.inflation.model.InflationData;
 import com.fidanlik.fidanysserver.inflation.repository.InflationDataRepository;
-// DÜZELTME: Bu import, kullanıcı bilgilerini almak için eklendi
-import com.fidanlik.fidanysserver.user.model.User;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-// DÜZELTME: Bu import'lar SecurityContext'e erişim için eklendi
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional; // Geri ekledik
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional; // Geleneksel kontrol için
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class InflationService {
 
+    private static final Logger log = LoggerFactory.getLogger(InflationService.class);
     private final InflationDataRepository inflationDataRepository;
-    private final RestTemplate restTemplate;
+    private final WebClient.Builder webClientBuilder;
 
     @Value("${tcmb.api.key}")
-    private String tcmbApiKey;
+    private String apiKey;
 
-    /**
-     * Aktif kullanıcıya (tenant) ait, sisteme kayıtlı tüm enflasyon verilerini getirir.
-     * @return Veritabanındaki enflasyon verilerinin listesi.
-     */
-    public List<InflationData> getInflationDataForCurrentTenant() {
-        String tenantId = getCurrentTenantId(); // Metod çağrısı ile tenantId'yi al
-        return inflationDataRepository.findAllByTenantId(tenantId);
-    }
+    // Bu metodun tamamı TEK BİR İŞLEM olarak çalışacak.
+    @Transactional
+    public void fetchAndSaveInflationData(LocalDate startDate, LocalDate endDate) {
 
-    /**
-     * TCMB'nin EVDS API'sinden son 5 yıllık TÜFE verisini çeker ve veritabanına kaydeder.
-     * Sadece veritabanında mevcut olmayan verileri ekler.
-     */
-    public void fetchAndSaveInflationData() {
-        String tenantId = getCurrentTenantId();
-        log.info("Fetching inflation data from TCMB for tenant: {}", tenantId);
+        DateTimeFormatter tcmbApiFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        String formattedStartDate = startDate.format(tcmbApiFormatter);
+        String formattedEndDate = endDate.format(tcmbApiFormatter);
 
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusYears(5);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        log.info("{} ve {} tarihleri arasındaki enflasyon verileri çekiliyor...", formattedStartDate, formattedEndDate);
 
-        String url = String.format(
-                "https://evds2.tcmb.gov.tr/service/evds/series=TP.DK.CPI.A&startDate=%s&endDate=%s&type=json&key=%s",
-                startDate.format(formatter),
-                endDate.format(formatter),
-                tcmbApiKey
+        String finalUrl = String.format(
+                "https://evds2.tcmb.gov.tr/service/evds/series=TP.FG.J01&startDate=%s&endDate=%s&type=json&formulas=1&frequency=5",
+                formattedStartDate,
+                formattedEndDate
         );
 
-        try {
-            TcmbResponseDto response = restTemplate.getForObject(url, TcmbResponseDto.class);
+        TcmbResponse response = webClientBuilder.build()
+                .get()
+                .uri(finalUrl)
+                .header("key", apiKey)
+                .header("User-Agent", "Mozilla/5.0")
+                .retrieve()
+                .bodyToMono(TcmbResponse.class)
+                .block();
 
-            if (response != null && response.getItems() != null) {
-                for (TcmbItemDto item : response.getItems()) {
-                    String period = item.getDate().substring(6) + "-" + item.getDate().substring(3, 5);
-
-                    if (inflationDataRepository.findByTenantIdAndPeriod(tenantId, period).isEmpty()) {
-                        InflationData inflationData = new InflationData();
-                        inflationData.setTenantId(tenantId);
-                        inflationData.setPeriod(period);
-                        if (Objects.nonNull(item.getCpiValue()) && !item.getCpiValue().isBlank()) {
-                            inflationData.setCpiValue(Double.parseDouble(item.getCpiValue()));
-                            inflationDataRepository.save(inflationData);
-                            log.info("Saved inflation data for period: {}", period);
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to fetch or save inflation data from TCMB for tenant {}", tenantId, e);
-            throw new RuntimeException("TCMB API'sinden veri alınırken bir hata oluştu.", e);
+        if (response == null || response.getItems() == null) {
+            log.error("TCMB'den veri çekilemedi veya gelen yanıt boş.");
+            return;
         }
+
+        List<TcmbItem> items = response.getItems();
+        DateTimeFormatter dbFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        log.info("{} adet veri kalemi bulundu. Veritabanı işleniyor...", items.size());
+
+        for (TcmbItem item : items) {
+            if (item.getValue() == null || item.getValue().trim().isEmpty() || item.getValue().equalsIgnoreCase("null")) {
+                continue;
+            }
+
+            LocalDate itemDate = LocalDate.parse(item.getDate(), dbFormatter);
+            BigDecimal itemValue = new BigDecimal(item.getValue());
+
+            // DÜZELTME: Geleneksel if/else yapısı kullanıyoruz
+            Optional<InflationData> existingDataOpt = inflationDataRepository.findByDate(itemDate);
+
+            if (existingDataOpt.isPresent()) {
+                // Veri varsa güncelle
+                InflationData existingData = existingDataOpt.get();
+                log.debug("{} tarihi için veri güncelleniyor.", itemDate);
+                existingData.setValue(itemValue);
+                inflationDataRepository.save(existingData); // Değişikliği kaydet
+            } else {
+                // Veri yoksa yeni oluştur
+                log.debug("{} tarihi için yeni veri oluşturuluyor.", itemDate);
+                InflationData newData = new InflationData();
+                newData.setDate(itemDate);
+                newData.setValue(itemValue);
+                newData.setSeriesName(item.getSeriesCode());
+                inflationDataRepository.save(newData); // Yeni veriyi kaydet
+            }
+        }
+        log.info("Enflasyon verilerini çekme ve kaydetme işlemi başarıyla tamamlandı.");
     }
 
-    /**
-     * DÜZELTME: Bu yeni yardımcı metod, SecurityContext'ten mevcut kullanıcıyı
-     * ve onun tenantId'sini güvenli bir şekilde alır.
-     * @return Aktif kullanıcının tenantId'si.
-     */
-    private String getCurrentTenantId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException("Kullanıcı kimliği doğrulanamadı.");
-        }
-        // Spring Security, `authentication.getPrincipal()` metodunda genellikle UserDetails
-        // arayüzünü implemente eden bir nesne saklar. Projenizdeki User modeli bu görevi görüyor.
-        User userPrincipal = (User) authentication.getPrincipal();
-        return userPrincipal.getTenantId();
+    // Listeleme metodu
+    public List<InflationData> getAllInflationData() {
+        log.info("Tüm enflasyon verileri veritabanından getiriliyor...");
+        return inflationDataRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
     }
 }

@@ -1,119 +1,120 @@
 'use client';
 
-import { useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  Container,
-  Stack,
-  SvgIcon,
-  Typography,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-} from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
-import { useInflation, type InflationData } from '@/hooks/use-inflation';
-import { toast } from 'react-hot-toast';
+import * as React from 'react';
+import { Button, Card, CardContent, CardHeader, Typography, Stack, CircularProgress, Alert, Divider } from '@mui/material';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'; 
+import 'dayjs/locale/tr';
+import dayjs from 'dayjs';
 
-const Page = () => {
-  const { data, isLoading, getInflationData, setIsLoading } = useInflation();
+// API servisimizdeki her iki fonksiyonu da import ediyoruz
+import { fetchInflationData, getAllInflationData } from '@/api/inflation';
+import type { InflationData } from '@/types/inflation';
+// Yeni tablo bileşenimizi import ediyoruz
+import { InflationDataTable } from '@/components/dashboard/settings/inflation-data-table';
 
-  // DÜZELTME: Yorum satırını kaldırarak bu bloğu tekrar aktif hale getiriyoruz.
-  // Artık use-inflation.ts dosyasını düzelttiğimiz için bu kod sorun çıkarmayacak.
-  useEffect(() => {
-    getInflationData();
-  }, [getInflationData]);
 
-  const handleFetchClick = async () => {
-    setIsLoading(true);
-    toast.loading("TCMB'den veriler çekiliyor...");
-    
+export default function InflationSettingsPage(): React.JSX.Element {
+  const [startDate, setStartDate] = React.useState<Date | null>(new Date(new Date().getFullYear(), 0, 1));
+  const [endDate, setEndDate] = React.useState<Date | null>(new Date(new Date().getFullYear(), 11, 31));
+  
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
+
+  // Veri listesi için yeni bir state
+  const [data, setData] = React.useState<InflationData[]>([]);
+  const [listLoading, setListLoading] = React.useState(true);
+
+  // Verileri listeleyecek fonksiyon
+  const listData = React.useCallback(async () => {
     try {
-      const accessToken = window.localStorage.getItem('accessToken');
-      if (!accessToken) {
-        toast.dismiss();
-        toast.error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-        setIsLoading(false);
-        return;
-      }
+      setListLoading(true);
+      const inflationList = await getAllInflationData();
       
-      const response = await fetch('/api/v1/inflation/fetch', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Backend isteği başarısız oldu.');
-      }
-
-      toast.dismiss();
-      toast.success('Veriler başarıyla çekildi ve kaydedildi. Liste güncelleniyor...');
-      await getInflationData();
-
-    } catch (error) {
-      toast.dismiss();
-      console.error('Veri çekme işlemi sırasında bir hata oluştu:', error);
-      toast.error('Veri çekme işlemi sırasında bir hata oluştu.');
+      // --- YENİ EKLENEN LOG SATIRI ---
+      console.log("Backend'den gelen veri:", inflationList); 
+      
+      setData(inflationList);
+    } catch (err) {
+      console.error("Listeleme hatası:", err); // Hata varsa konsolda görelim
+      setError(err instanceof Error ? err.message : 'Veriler listelenirken bir hata oluştu.');
     } finally {
-      setIsLoading(false);
+      setListLoading(false);
     }
-  };
+  }, []);
 
-  // Geri kalan kodun hepsi aynı
+  // Sayfa ilk yüklendiğinde verileri listele
+  React.useEffect(() => {
+    listData();
+  }, [listData]);
+
+  const handleFetchData = React.useCallback(async () => {
+    if (!startDate || !endDate) {
+      setError('Lütfen başlangıç ve bitiş tarihlerini seçin.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const message = await fetchInflationData(startDate, endDate);
+      setSuccess(message);
+      await listData(); // Başarıyla veri çektikten sonra listeyi yenile
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, listData]);
+
   return (
-    <Box component="main" sx={{ flexGrow: 1, py: 8 }}>
-      <Container maxWidth="lg">
-        <Stack spacing={3}>
-          <Stack direction="row" justifyContent="space-between" spacing={4}>
-            <Stack spacing={1}>
-              <Typography variant="h4">Enflasyon Verileri</Typography>
-            </Stack>
-            <div>
+    <Stack spacing={3}>
+      <Card>
+        <CardHeader title="Enflasyon Veri Yönetimi" subheader="TCMB EVDS servisinden periyodik gıda enflasyonu verilerini çekin." />
+        <CardContent>
+          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
+            <Stack spacing={3} sx={{ maxWidth: 400 }}>
+              <Typography variant="subtitle1">Tarih Aralığı Seçin</Typography>
+              <DatePicker
+                label="Başlangıç Tarihi"
+                value={startDate ? dayjs(startDate) : null}
+                onChange={(newValue) => setStartDate(newValue ? newValue.toDate() : null)}
+              />
+              <DatePicker
+                label="Bitiş Tarihi"
+                value={endDate ? dayjs(endDate) : null}
+                onChange={(newValue) => setEndDate(newValue ? newValue.toDate() : null)}
+              />
+              
+              {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+              {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+
               <Button
-                startIcon={<SvgIcon fontSize="small"><DownloadIcon /></SvgIcon>}
                 variant="contained"
-                onClick={handleFetchClick}
-                disabled={isLoading}
+                color="primary"
+                onClick={handleFetchData}
+                disabled={loading || !startDate || !endDate}
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                sx={{ mt: 2 }}
               >
-                {isLoading ? 'Yükleniyor...' : "TCMB'den Veri Çek"}
+                {loading ? 'Veriler Çekiliyor...' : 'Verileri Çek ve Güncelle'}
               </Button>
-            </div>
-          </Stack>
-          <Card>
-            {isLoading && data.length === 0 ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Dönem (Yıl-Ay)</TableCell>
-                    <TableCell>TÜFE Değeri</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.map((item: InflationData) => (
-                    <TableRow hover key={item.id}>
-                      <TableCell>{item.period}</TableCell>
-                      <TableCell>{item.cpiValue}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </Card>
+            </Stack>
+          </LocalizationProvider>
+        </CardContent>
+      </Card>
+
+      <Divider />
+
+      <Typography variant="h6">Kaydedilmiş Enflasyon Verileri</Typography>
+      {listLoading ? (
+        <Stack sx={{ alignItems: 'center', mt: 3 }}>
+          <CircularProgress />
         </Stack>
-      </Container>
-    </Box>
+      ) : (
+        <InflationDataTable rows={data} />
+      )}
+    </Stack>
   );
 };
-
-export default Page;

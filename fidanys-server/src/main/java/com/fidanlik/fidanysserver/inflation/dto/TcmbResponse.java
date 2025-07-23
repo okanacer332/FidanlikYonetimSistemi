@@ -5,12 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.util.List;
 
-// TCMB'den gelen ana JSON yanıtını temsil eder.
-@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TcmbResponseDto {
+@Data
+public class TcmbResponse {
 
-    // JSON'daki "items" dizisini bu listeye map eder.
+    // JSON'daki "items" dizisini bu List<TcmbItem> listesine ata.
     @JsonProperty("items")
-    private List<TcmbItemDto> items;
+    private List<TcmbItem> items;
 }
