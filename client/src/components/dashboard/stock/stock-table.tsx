@@ -3,56 +3,84 @@
 
 import * as React from 'react';
 import { Card, CardContent, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Typography } from '@mui/material';
-import { getStockSummary } from '@/api/stock';
-import type { StockSummary } from '@/types/nursery';
+// API çağrılarını güncelliyoruz
+import { getStocks, getPlants, getWarehouses } from '@/api/stock';
+import type { Stock, Plant, Warehouse, StockSummary } from '@/types/nursery';
 import { useSelection } from '@/hooks/use-selection';
 
-export function StockTable(): React.JSX.Element {
-  console.log('StockTable Rendered'); // Bu logu şimdilik bırakalım, sorunu çözdüğümüzde kaldırabiliriz
+// Bu yardımcı fonksiyon, ham verileri birleştirerek tablonun beklediği formata dönüştürür
+const createStockSummary = (
+  stocks: Stock[],
+  plants: Plant[],
+  warehouses: Warehouse[]
+): StockSummary[] => {
+  const plantMap = new Map<string, Plant>(plants.map((p) => [p.id, p]));
+  const warehouseMap = new Map<string, Warehouse>(warehouses.map((w) => [w.id, w]));
 
-  const [stocks, setStocks] = React.useState<StockSummary[]>([]);
+  return stocks.map((stock) => {
+    const plant = plantMap.get(stock.plantId);
+    const warehouse = warehouseMap.get(stock.warehouseId);
+
+    return {
+      plantIdentityId: stock.plantId,
+      warehouseId: stock.warehouseId,
+      plantTypeName: plant?.plantType?.name ?? 'Bilinmiyor',
+      plantVarietyName: plant?.plantVariety?.name ?? 'Bilinmiyor',
+      rootstockName: plant?.rootstock?.name ?? 'Bilinmiyor',
+      plantSizeName: plant?.plantSize?.name ?? 'Bilinmiyor',
+      plantAgeName: plant?.plantAge?.name ?? 'Bilinmiyor',
+      warehouseName: warehouse?.name ?? 'Bilinmiyor',
+      totalQuantity: stock.quantity,
+      status: stock.quantity > 0 ? 'Stokta' : 'Tükendi',
+    };
+  });
+};
+
+export function StockTable(): React.JSX.Element {
+  const [summaryStocks, setSummaryStocks] = React.useState<StockSummary[]>([]);
   const [page, setPage] = React.useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = React.useState<number>(5);
-  const [totalCount, setTotalCount] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // **** BURADAKİ SATIRI DEĞİŞTİRİYORUZ ****
-  // stocks.map ile oluşturulan dizi referansını useMemo ile memoize ediyoruz
   const stockIds = React.useMemo(() => {
-    return stocks.map((stock) => `${stock.plantIdentityId}-${stock.warehouseId}`);
-  }, [stocks]); // Sadece 'stocks' değiştiğinde bu dizi yeniden hesaplansın
+    return summaryStocks.map((stock) => `${stock.plantIdentityId}-${stock.warehouseId}`);
+  }, [summaryStocks]);
 
-  const { selectAll, deselectAll, selectOne, deselectOne, selected } = useSelection<string>(stockIds);
-  // **** DEĞİŞİKLİK BİTTİ ****
+  // useSelection hook'unu çağırıyoruz, ancak dönen değerleri kullanmıyoruz.
+  // Bu hook'un bir yan etkisi yoksa ve sadece seçim mantığı içinse bu şekilde bırakılabilir.
+  useSelection<string>(stockIds);
 
-
-  const fetchStocks = React.useCallback(async () => {
-    console.log('fetchStocks called');
+  const fetchDataAndCombine = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getStockSummary();
-      console.log('API Response received', response.data.length);
-      setStocks(response.data);
-      setTotalCount(response.data.length);
+      // Promise.all ile tüm verileri aynı anda, paralel olarak çekiyoruz
+      const [stocksData, plantsData, warehousesData] = await Promise.all([
+        getStocks(),
+        getPlants(),
+        getWarehouses(),
+      ]);
+
+      // Verileri birleştirip state'i güncelliyoruz
+      const combinedData = createStockSummary(stocksData, plantsData, warehousesData);
+      setSummaryStocks(combinedData);
+
     } catch (err) {
-      console.error('Stok özet verileri çekilirken hata oluştu:', err);
-      setError('Stok verileri yüklenirken bir hata oluştu.');
+      console.error('Veriler çekilirken veya birleştirilirken hata oluştu:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Stok verileri yüklenirken bir hata oluştu.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
-      console.log('fetchStocks finished');
     }
   }, []);
 
   React.useEffect(() => {
-    console.log('useEffect triggered');
-    fetchStocks();
-  }, [fetchStocks]); // fetchStocks zaten useCallback içinde olduğu için bu güvenli olmalı
+    fetchDataAndCombine();
+  }, [fetchDataAndCombine]);
 
   const handlePageChange = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-      console.log('handlePageChange', newPage);
       setPage(newPage);
     },
     []
@@ -60,7 +88,6 @@ export function StockTable(): React.JSX.Element {
 
   const handleRowsPerPageChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      console.log('handleRowsPerPageChange', event.target.value);
       setRowsPerPage(parseInt(event.target.value, 10));
       setPage(0);
     },
@@ -68,30 +95,17 @@ export function StockTable(): React.JSX.Element {
   );
 
   const paginatedStocks = React.useMemo(() => {
-    console.log('paginatedStocks recalculated');
     const start = page * rowsPerPage;
     const end = start + rowsPerPage;
-    return stocks.slice(start, end);
-  }, [stocks, page, rowsPerPage]);
+    return summaryStocks.slice(start, end);
+  }, [summaryStocks, page, rowsPerPage]);
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardContent>
-          <Typography>Stok verileri yükleniyor...</Typography>
-        </CardContent>
-      </Card>
-    );
+    return <Card><CardContent><Typography>Stok verileri yükleniyor...</Typography></CardContent></Card>;
   }
 
   if (error) {
-    return (
-      <Card>
-        <CardContent>
-          <Typography color="error">{error}</Typography>
-        </CardContent>
-      </Card>
-    );
+    return <Card><CardContent><Typography color="error">{error}</Typography></CardContent></Card>;
   }
 
   return (
@@ -113,32 +127,40 @@ export function StockTable(): React.JSX.Element {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedStocks.map((stock) => {
-                  const uniqueKey = `${stock.plantIdentityId}-${stock.warehouseId}`;
-                  return (
-                    <TableRow hover key={uniqueKey}>
-                      <TableCell>{stock.plantTypeName || 'N/A'}</TableCell>
-                      <TableCell>{stock.plantVarietyName || 'N/A'}</TableCell>
-                      <TableCell>{stock.rootstockName || 'N/A'}</TableCell>
-                      <TableCell>{stock.plantSizeName || 'N/A'}</TableCell>
-                      <TableCell>{stock.plantAgeName || 'N/A'}</TableCell>
-                      <TableCell>{stock.warehouseName || 'N/A'}</TableCell>
-                      <TableCell>{stock.totalQuantity}</TableCell>
-                      <TableCell>{stock.status}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                {paginatedStocks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      <Typography>Gösterilecek stok verisi bulunamadı.</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedStocks.map((stock) => {
+                    const uniqueKey = `${stock.plantIdentityId}-${stock.warehouseId}`;
+                    return (
+                      <TableRow hover key={uniqueKey}>
+                        <TableCell>{stock.plantTypeName}</TableCell>
+                        <TableCell>{stock.plantVarietyName}</TableCell>
+                        <TableCell>{stock.rootstockName}</TableCell>
+                        <TableCell>{stock.plantSizeName}</TableCell>
+                        <TableCell>{stock.plantAgeName}</TableCell>
+                        <TableCell>{stock.warehouseName}</TableCell>
+                        <TableCell>{stock.totalQuantity}</TableCell>
+                        <TableCell>{stock.status}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>
           <TablePagination
             component="div"
-            count={totalCount}
+            count={summaryStocks.length}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}
             page={page}
             rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, { label: 'Tümü', value: -1 }]}
+            rowsPerPageOptions={[5, 10, 25]}
           />
         </Stack>
       </CardContent>
