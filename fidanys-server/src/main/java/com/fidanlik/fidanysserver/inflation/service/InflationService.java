@@ -28,7 +28,6 @@ public class InflationService {
     @Value("${tcmb.api.key}")
     private String apiKey;
 
-    // @Transactional anotasyonunu ve ilgili importu tamamen kaldırdık.
     public void fetchAndSaveInflationData(LocalDate startDate, LocalDate endDate) {
 
         DateTimeFormatter tcmbApiFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
@@ -58,7 +57,7 @@ public class InflationService {
         }
 
         List<TcmbItem> items = response.getItems();
-        DateTimeFormatter dbFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        DateTimeFormatter dbFormatter = DateTimeFormatter.ofPattern("yyyy-M");
 
         log.info("{} adet veri kalemi bulundu. Veritabanı işleniyor...", items.size());
 
@@ -66,25 +65,41 @@ public class InflationService {
 
         for (TcmbItem item : items) {
             if (item.getValue() == null || item.getValue().trim().isEmpty() || item.getValue().equalsIgnoreCase("null")) {
+                log.warn("TCMB verisinde boş veya geçersiz değer atlandı: {}", item); // Geçersiz öğeleri logla
                 continue;
             }
 
-            LocalDate itemDate = LocalDate.parse(item.getDate(), dbFormatter);
-            BigDecimal itemValue = new BigDecimal(item.getValue());
+            try { // Parsing hatalarını yakalamak için try-catch eklendi
+                java.time.YearMonth yearMonth = java.time.YearMonth.parse(item.getDate(), dbFormatter);
+                LocalDate itemDate = yearMonth.atDay(1);
+                BigDecimal itemValue = new BigDecimal(item.getValue());
 
-            InflationData data = inflationDataRepository.findByDate(itemDate)
-                    .orElse(new InflationData()); // Varsa al, yoksa yeni oluştur
+                InflationData data = inflationDataRepository.findByDate(itemDate)
+                        .orElse(new InflationData());
 
-            data.setDate(itemDate);
-            data.setValue(itemValue);
-            data.setSeriesName(item.getSeriesCode());
-            toSave.add(data);
+                data.setDate(itemDate);
+                data.setValue(itemValue);
+                data.setSeriesName("TP.FG.J01"); // Serinin kodu API isteğinizden bilindiği için doğrudan atandı
+                toSave.add(data);
+                log.debug("Listeye eklenecek veri: {}", data); // Her öğeyi eklemeden önce logla
+
+            } catch (Exception e) {
+                log.error("TCMB verisi '{}' işlenirken hata oluştu: {}", item, e.getMessage()); // Parsing hatasını detaylı logla
+            }
         }
 
         if (!toSave.isEmpty()) {
             log.info("Kaydedilecek {} adet veri var. Veritabanına yazılıyor...", toSave.size());
-            inflationDataRepository.saveAll(toSave); // Tüm verileri tek seferde kaydet
-            log.info("Veriler başarıyla veritabanına yazıldı.");
+            log.debug("Kaydedilecek verilerin ilk 3 tanesi: {}", toSave.stream().limit(3).toList()); // Debug amaçlı ilk 3 veriyi göster
+            try {
+                List<InflationData> savedEntities = inflationDataRepository.saveAll(toSave); // saveAll'un dönüş değerini yakala
+                log.info("Veriler başarıyla veritabanına yazıldı. Kaydedilen toplam: {}", savedEntities.size()); // Dönüş değerini logla
+                log.debug("Kaydedilen verilerin ilk 3 tanesi (id'leri ile): {}", savedEntities.stream().limit(3).toList()); // Kaydedilen verilerin ID'lerini kontrol et
+            } catch (Exception e) {
+                log.error("Veriler veritabanına kaydedilirken beklenmedik bir hata oluştu: {}", e.getMessage(), e); // saveAll hatasını yakala
+            }
+        } else {
+            log.warn("Kaydedilecek veri bulunamadı.");
         }
 
         log.info("Enflasyon verilerini çekme ve kaydetme işlemi başarıyla tamamlandı.");
@@ -92,6 +107,9 @@ public class InflationService {
 
     public List<InflationData> getAllInflationData() {
         log.info("Tüm enflasyon verileri veritabanından getiriliyor...");
-        return inflationDataRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
+        List<InflationData> allData = inflationDataRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "date"));
+        log.info("Veritabanından toplam {} adet enflasyon verisi bulundu.", allData.size()); // Getirilen veri sayısını logla
+        log.debug("Veritabanından getirilen ilk 3 enflasyon verisi: {}", allData.stream().limit(3).toList()); // Getirilen verilerin ilk 3'ünü logla
+        return allData;
     }
 }

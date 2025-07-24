@@ -1,37 +1,23 @@
 package com.fidanlik.fidanysserver.inflation.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.math.BigDecimal;
+import org.springframework.data.mongodb.core.mapping.Field; // Field anotasyonu için import
+import java.math.BigDecimal; // BigDecimal için import
 import java.time.LocalDate;
 
-// Bu sınıfın bir MongoDB koleksiyonuna karşılık geldiğini belirtir
 @Document(collection = "inflation_data")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class InflationData {
-
-    // MongoDB'nin birincil anahtarı olduğunu belirtir
     @Id
     private String id;
-
-    // Bu alanın üzerinde bir indeks oluşturarak sorguları hızlandırır ve benzersiz olmasını sağlar
-    @Indexed(unique = true)
-    @Field(name = "date") // MongoDB'deki alan adını belirtir
     private LocalDate date;
 
-    @Field(name = "value")
-    private BigDecimal value;
+    @Field("value") // Veritabanında "value" olarak saklanmasını sağlar
+    private BigDecimal value; // Tipi double'dan BigDecimal'a, adı inflationRate'ten value'ya değiştirildi
 
-    @Field(name = "series_name")
+    // Yeni EVDS API'sinden gelen seri adını saklamak için eklenebilir
+    @Field("seriesName")
     private String seriesName;
 }

@@ -4,20 +4,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
-// Gelen JSON'da bizim tanımlamadığımız başka alanlar varsa hata vermemesi için bu anotasyon önemlidir.
-@JsonIgnoreProperties(ignoreUnknown = true)
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true) // JSON'da tanımlı olmayan alanları yok say
 public class TcmbItem {
-
-    // JSON'daki "TARIH" alanını bu "date" değişkenine ata.
-    @JsonProperty("TARIH")
+    @JsonProperty("Tarih") // JSON'dan gelen doğru tarih alanı adı
     private String date;
 
-    // JSON'daki "TP_FG_J01" alanını (yani enflasyon değerini) bu "value" değişkenine ata.
-    @JsonProperty("TP_FG_J01")
+    @JsonProperty("TP_FG_J01-1") // JSON'dan gelen doğru değer alanı adı
     private String value;
 
-    // JSON'daki seri kodunu bu değişkene ata
-    @JsonProperty("SERIE_CODE")
-    private String seriesCode;
+    // JSON yanıtında her bir öğe için doğrudan bir 'seriesCode' veya 'KOD' alanı bulunmuyor.
+    // Bu alanı buradan kaldırıyoruz ve InflationService'de doğrudan atayacağız.
+    // private String seriesCode;
 }
