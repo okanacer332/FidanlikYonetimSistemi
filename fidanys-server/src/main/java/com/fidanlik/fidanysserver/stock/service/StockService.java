@@ -1,5 +1,5 @@
 // fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/service/StockService.java
-package com.fidanlik.fidanysserver.stock.service;
+package com.fidanlik.fidanysserver.stock.service; // BU SATIRIN OLDUĞUNDAN EMİN OLUN
 
 import com.fidanlik.fidanysserver.common.exception.InsufficientStockException;
 import com.fidanlik.fidanysserver.stock.dto.StockSummaryDTO;
@@ -17,6 +17,8 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+// ConvertOperators import'u artık gerekli değil
+// import org.springframework.data.mongodb.core.aggregation.ConvertOperators; // Bu satır yorum satırı olmalı veya kaldırılmalı
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -89,17 +91,19 @@ public class StockService {
         Aggregation aggregation = newAggregation(
                 match(Criteria.where("tenantId").is(tenantId)),
 
+                // plantId dönüşümü kaldırıldı, doğrudan string olarak kullanıyoruz
                 newLookup()
                         .from("plantIdentity")
-                        .localField("plantId")
-                        .foreignField("_id")
+                        .localField("plantId") // doğrudan plantId'yi kullan
+                        .foreignField("_id") // plantIdentity'deki _id alanıyla eşleştir
                         .as("plantIdentityDetails"),
                 unwind("plantIdentityDetails"),
 
+                // warehouseId dönüşümü kaldırıldı, doğrudan string olarak kullanıyoruz
                 newLookup()
                         .from("warehouse")
-                        .localField("warehouseId")
-                        .foreignField("_id")
+                        .localField("warehouseId") // doğrudan warehouseId'yi kullan
+                        .foreignField("_id") // warehouse'daki _id alanıyla eşleştir
                         .as("warehouseDetails"),
                 unwind("warehouseDetails"),
 
@@ -160,21 +164,17 @@ public class StockService {
         );
 
         AggregationResults<StockSummaryDTO> results = mongoTemplate.aggregate(
-                aggregation, "stock", StockSummaryDTO.class);
+                aggregation, "stocks", StockSummaryDTO.class);
 
         return results.getMappedResults();
     }
 
-    // **** YENİ EKLENECEK METOT ****
     public long countAllStocks(String tenantId) {
         Query query = new Query(Criteria.where("tenantId").is(tenantId));
         return mongoTemplate.count(query, Stock.class);
     }
 
-    // **** YENİ EKLENECEK METOT ****
     public long countLowStockPlants(String tenantId) {
-        // Düşük stoklu fidanları sayan mantık
-        // Örneğin, quantity < 10 olanları sayabiliriz
         Query query = new Query(Criteria.where("quantity").lt(10).and("tenantId").is(tenantId));
         return mongoTemplate.count(query, Stock.class);
     }
