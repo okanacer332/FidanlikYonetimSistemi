@@ -1,3 +1,4 @@
+// client/src/paths.ts
 export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
@@ -9,13 +10,10 @@ export const paths = {
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
     plants: '/dashboard/plants',
-    // --- DÜZENLENEN KISIM BAŞLANGICI ---
     settings: {
       root: '/dashboard/settings',
-      // 'account' yolunu da bu yapıya uygun hale getirebiliriz, ama şimdilik ana path yeterli.
       inflation: '/dashboard/settings/inflation',
     },
-    // --- DÜZENLENEN KISIM SONU ---
     suppliers: '/dashboard/suppliers',
     userManagement: '/dashboard/user-management',
     warehouses: '/dashboard/warehouses',
@@ -26,29 +24,27 @@ export const paths = {
       payments: '/dashboard/accounting/payments',
       expenses: '/dashboard/accounting/expenses',
     },
-    // --- YENİ RAPOR ROTALARI ---
     reports: {
       overview: '/dashboard/reports',
       financial: {
-        // YENİ: Gerçek Kar/Zarar raporu
         profitability: '/dashboard/reports/profitability',
         cashFlow: '/dashboard/reports/financial/cash-flow',
         expenseAnalysis: '/dashboard/reports/financial/expense-analysis',
         receivablesAging: '/dashboard/reports/financial/receivables-aging',
       },
-      // Satış
       sales: {
         detailedSales: '/dashboard/reports/sales/detailed-sales',
         salesByCustomer: '/dashboard/reports/sales/by-customer',
         salesByProduct: '/dashboard/reports/sales/by-product',
       },
-      // Stok
       inventory: {
         valuation: '/dashboard/reports/inventory/valuation',
         stockMovements: '/dashboard/reports/inventory/movements',
         stockAging: '/dashboard/reports/inventory/aging',
       },
     },
+    // Yeni eklenen stok durumu yolu (Operasyonlar altında olacağı için direkt dashboard altında)
+    stockStatus: '/dashboard/stok-durumu', // <-- Bu satırı ekle
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

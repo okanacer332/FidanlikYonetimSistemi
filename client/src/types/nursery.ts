@@ -322,3 +322,16 @@ export interface RealProfitLossReport {
     realNetProfit: number;
     baseInflationDate: string; // ISO Date String
 }
+
+export interface StockSummary {
+  plantIdentityId: string;
+  plantTypeName: string;
+  plantVarietyName: string;
+  rootstockName: string;
+  plantSizeName: string;
+  plantAgeName: string;
+  warehouseId: string;
+  warehouseName: string;
+  totalQuantity: number;
+  status: string; // Backend'deki DTO'da 'status' alanı varsa
+}

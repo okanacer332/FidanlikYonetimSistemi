@@ -1,3 +1,4 @@
+// client/src/components/dashboard/layout/config.ts
 import type { NavItemConfig } from '@/types/nav';
 import { paths } from '@/paths';
 
@@ -108,10 +109,10 @@ export const navItems: NavItemConfig[] = [
       },
       {
         type: 'item',
-        key: 'profitability-report', // Yeni anahtar
-        title: 'Gerçek Kar/Zarar Raporu', // Yeni başlık
-        href: paths.dashboard.reports.financial.profitability, // Yeni yol
-        icon: 'chart-bar', // Uygun bir ikon seçin
+        key: 'profitability-report',
+        title: 'Gerçek Kar/Zarar Raporu',
+        href: paths.dashboard.reports.financial.profitability,
+        icon: 'chart-bar',
         roles: ['ADMIN', 'ACCOUNTANT'],
         matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.profitability },
       },
@@ -141,6 +142,36 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
         matcher: { type: 'startsWith', href: paths.dashboard.goodsReceipts },
       },
+      // Yeni eklenen Stok Durumu sayfası:
+      {
+        type: 'item',
+        key: 'stock-status',
+        title: 'Stok Durumu',
+        href: paths.dashboard.stockStatus, // paths.ts'den gelen yeni yol
+        icon: 'stack', // nav-icons.tsx'te mevcut bir ikon
+        roles: ['ADMIN', 'WAREHOUSE_STAFF', 'SALES', 'ACCOUNTANT'],
+        matcher: { type: 'startsWith', href: paths.dashboard.stockStatus },
+      },
+    ],
+  },
+  {
+    type: 'group',
+    key: 'reports', // Bu grup şu an için boş kalabilir veya diğer raporları buraya taşıyabiliriz.
+    title: 'Raporlar',
+    roles: ['ADMIN', 'ACCOUNTANT', 'SALES', 'WAREHOUSE_STAFF'],
+    items: [
+      // Eğer paths.ts'deki diğer raporları burada göstermek istersen, buraya ekleyebilirsin.
+      // Örneğin:
+      // {
+      //   type: 'item',
+      //   key: 'cash-flow-report',
+      //   title: 'Nakit Akışı',
+      //   href: paths.dashboard.reports.financial.cashFlow,
+      //   icon: 'bank',
+      //   roles: ['ADMIN', 'ACCOUNTANT'],
+      //   matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.cashFlow },
+      // },
+      // ... diğer raporlar
     ],
   },
   {
@@ -169,7 +200,7 @@ export const navItems: NavItemConfig[] = [
             key: 'inflation-data',
             title: 'Enflasyon Verileri',
             href: paths.dashboard.settings.inflation,
-            icon: 'chart-line', // DÜZELTİLEN KISIM
+            icon: 'chart-line',
             matcher: { type: 'equals', href: paths.dashboard.settings.inflation },
           },
         ],
