@@ -157,14 +157,6 @@ export const navItems: NavItemConfig[] = [
         items: [
           {
             type: 'item',
-            key: 'general-settings',
-            title: 'Genel Ayarlar',
-            href: paths.dashboard.settings.root,
-            icon: 'gear-six',
-            matcher: { type: 'equals', href: paths.dashboard.settings.root },
-          },
-          {
-            type: 'item',
             key: 'inflation-data',
             title: 'Enflasyon Verileri',
             href: paths.dashboard.settings.inflation,
@@ -172,16 +164,7 @@ export const navItems: NavItemConfig[] = [
             matcher: { type: 'equals', href: paths.dashboard.settings.inflation },
           },
         ],
-      },
-      {
-        type: 'item',
-        key: 'integrations',
-        title: 'Entegrasyonlar',
-        href: paths.dashboard.integrations,
-        icon: 'plugs-connected',
-        roles: ['ADMIN'],
-        matcher: { type: 'startsWith', href: paths.dashboard.integrations },
-      },
+      }
     ],
   },
   {
