@@ -29,8 +29,8 @@ export const paths = {
     // --- YENİ RAPOR ROTALARI ---
     reports: {
       overview: '/dashboard/reports',
-      // Finansal
       financial: {
+        // YENİ: Gerçek Kar/Zarar raporu
         profitability: '/dashboard/reports/profitability',
         cashFlow: '/dashboard/reports/financial/cash-flow',
         expenseAnalysis: '/dashboard/reports/financial/expense-analysis',

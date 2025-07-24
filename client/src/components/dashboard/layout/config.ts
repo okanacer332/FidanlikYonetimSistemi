@@ -106,6 +106,15 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'ACCOUNTANT'],
         matcher: { type: 'startsWith', href: paths.dashboard.accounting.expenses },
       },
+      {
+        type: 'item',
+        key: 'profitability-report', // Yeni anahtar
+        title: 'Gerçek Kar/Zarar Raporu', // Yeni başlık
+        href: paths.dashboard.reports.financial.profitability, // Yeni yol
+        icon: 'chart-bar', // Uygun bir ikon seçin
+        roles: ['ADMIN', 'ACCOUNTANT'],
+        matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.profitability },
+      },
     ],
   },
   {

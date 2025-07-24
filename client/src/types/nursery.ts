@@ -307,3 +307,18 @@ export interface ProfitabilityReportDto {
   totalCost: number;
   totalProfit: number;
 }
+
+export interface RealProfitLossReport {
+    period: string; // YYYY-MM formatında
+    nominalRevenue: number;
+    realRevenue: number;
+    nominalCostOfGoodsSold: number;
+    realCostOfGoodsSold: number;
+    nominalOperatingExpenses: number;
+    realOperatingExpenses: number;
+    nominalGrossProfit: number;
+    realGrossProfit: number;
+    nominalNetProfit: number;
+    realNetProfit: number;
+    baseInflationDate: string; // ISO Date String
+}
