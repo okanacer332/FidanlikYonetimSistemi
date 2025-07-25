@@ -10,6 +10,10 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography
 } from '@mui/material';
 import { Plus as PlusIcon, Trash as TrashIcon } from '@phosphor-icons/react';
+// DatePicker için gerekli importlar
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
 import type { Plant, Warehouse, Supplier } from '@/types/nursery';
 
@@ -23,6 +27,7 @@ const formSchema = zod.object({
   receiptNumber: zod.string().min(1, 'İrsaliye numarası zorunludur.'),
   supplierId: zod.string().min(1, 'Tedarikçi seçimi zorunludur.'),
   warehouseId: zod.string().min(1, 'Depo seçimi zorunludur.'),
+  receiptDate: zod.date({ required_error: 'Makbuz tarihi zorunludur.' }), // YENİ: Tarih alanı eklendi
   items: zod.array(receiptItemSchema).min(1, 'En az bir fidan girişi yapılmalıdır.'),
 });
 
@@ -51,6 +56,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
       receiptNumber: '',
       supplierId: '',
       warehouseId: '',
+      receiptDate: new Date(), // YENİ: Varsayılan olarak bugünün tarihi
       items: [{ plantId: '', quantity: 1, purchasePrice: 0 }],
     },
   });
@@ -99,6 +105,7 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
         receiptNumber: '',
         supplierId: '',
         warehouseId: '',
+        receiptDate: new Date(), // YENİ: Form açıldığında tarihi de sıfırla
         items: [{ plantId: '', quantity: 1, purchasePrice: 0 }],
       });
       setFormError(null);
@@ -111,10 +118,16 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
       
+      // YENİ: receiptDate'i backend'in beklediği ISO formatına çevir (LocalDateTime için tam zaman bilgisiyle birlikte)
+      const formattedValues = {
+        ...values,
+        receiptDate: values.receiptDate.toISOString(), // "2023-10-26T10:00:00.000Z" gibi bir format
+      };
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/goods-receipts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(values),
+        body: JSON.stringify(formattedValues), // YENİ: formattedValues'ı gönder
       });
 
       if (!response.ok) {
@@ -177,6 +190,30 @@ export function GoodsReceiptCreateForm({ open, onClose, onSuccess }: GoodsReceip
                           />
                       )}
                   />
+                  {/* YENİ: Makbuz Tarihi Alanı */}
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <Controller
+                      name="receiptDate"
+                      control={control}
+                      render={({ field }) => (
+                        <DatePicker
+                          {...field}
+                          label="Makbuz Tarihi"
+                          format="dd/MM/yyyy"
+                          value={field.value} // field.value doğrudan Date objesi olmalı
+                          onChange={(date) => field.onChange(date)}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              required: true, // Zorunlu alan
+                              error: Boolean(errors.receiptDate),
+                              helperText: errors.receiptDate?.message,
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  </LocalizationProvider>
                 </Stack>
               </Grid>
 
