@@ -13,4 +13,10 @@ public interface InflationDataRepository extends MongoRepository<InflationData, 
     // Spring Data MongoDB, metot isminden sorguyu otomatik olarak türetir.
     // Bu metot, "date" alanına göre bir kayıt bulmaya yarar.
     Optional<InflationData> findByDate(LocalDate date);
+
+    // Tarihe göre en son (azalan sırayla ilk) enflasyon verisini bulur.
+    Optional<InflationData> findTopByOrderByDateDesc();
+
+    // Düzeltildi: Belirli bir tarihten önceki veya o tarihe eşit en son enflasyon verisini bulur.
+    Optional<InflationData> findTopByDateLessThanEqualOrderByDateDesc(LocalDate date);
 }

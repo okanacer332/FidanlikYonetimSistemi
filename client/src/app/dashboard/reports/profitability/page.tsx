@@ -4,15 +4,15 @@
 import * as React from 'react';
 import { Stack, Typography, CircularProgress, Alert, Card, CardContent, Box, Button } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import 'dayjs/locale/tr';
-import dayjs from 'dayjs';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { PickerChangeHandlerContext } from '@mui/x-date-pickers/models';
+import { DateValidationError } from '@mui/x-date-pickers/models';
 
 import { useUser } from '@/hooks/use-user';
 import { getRealProfitLossReport } from '@/api/reports';
 import type { RealProfitLossReport } from '@/types/nursery';
 import { Chart } from '@/components/core/chart';
-import type { ApexOptions } from 'apexcharts'; // ApexOptions tipini import etmeyi unutmayın
+import type { ApexOptions } from 'apexcharts';
 
 export default function RealProfitLossPage(): React.JSX.Element {
     const { user: currentUser } = useUser();
@@ -20,16 +20,20 @@ export default function RealProfitLossPage(): React.JSX.Element {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
-    const [startDate, setStartDate] = React.useState<Date | null>(dayjs().startOf('month').toDate());
-    const [endDate, setEndDate] = React.useState<Date | null>(dayjs().endOf('month').toDate());
-    const [baseDate, setBaseDate] = React.useState<Date | null>(dayjs().toDate());
+    const [startDate, setStartDate] = React.useState<Date | null>(() => {
+        const today = new Date();
+        return new Date(today.getFullYear(), today.getMonth(), 1); // Ayın ilk günü
+    });
+    const [endDate, setEndDate] = React.useState<Date | null>(() => {
+        const today = new Date();
+        return new Date(today.getFullYear(), today.getMonth() + 1, 0); // Ayın son günü
+    });
 
-    // Check if the user has ADMIN or ACCOUNTANT role to view reports
     const canViewReports = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
 
     const fetchReport = React.useCallback(async () => {
-        if (!startDate || !endDate || !baseDate) {
-            setError('Lütfen başlangıç, bitiş ve baz tarihlerini seçin.');
+        if (!startDate || !endDate) {
+            setError('Lütfen başlangıç ve bitiş tarihlerini seçin.');
             return;
         }
         if (!canViewReports) {
@@ -40,17 +44,16 @@ export default function RealProfitLossPage(): React.JSX.Element {
         setLoading(true);
         setError(null);
         try {
-            const fetchedReport = await getRealProfitLossReport(startDate, endDate, baseDate);
+            const fetchedReport = await getRealProfitLossReport(startDate, endDate, endDate);
             setReport(fetchedReport);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
         } finally {
-            setLoading(false);
+                setLoading(false);
         }
-    }, [startDate, endDate, baseDate, canViewReports]);
+    }, [startDate, endDate, canViewReports]);
 
     React.useEffect(() => {
-        // Sayfa yüklendiğinde varsayılan raporu çek
         if (currentUser) {
             fetchReport();
         }
@@ -68,9 +71,15 @@ export default function RealProfitLossPage(): React.JSX.Element {
     const formatCurrency = (amount: number) =>
         Number(amount || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
 
-    const chartOptions: ApexOptions = { // <-- Buraya ApexOptions tipi eklendi
+    const formatDateForDisplay = (dateString: string | Date, formatOptions: Intl.DateTimeFormatOptions) => {
+        if (!dateString) return '';
+        const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+        return date.toLocaleDateString('tr-TR', formatOptions);
+    };
+
+    const chartOptions: ApexOptions = {
         chart: { background: 'transparent', stacked: true, toolbar: { show: false } },
-        colors: ['#4ade80', '#fbbf24'], // Yeşil (Gerçek), Sarı (Nominal)
+        colors: ['#4ade80', '#fbbf24'],
         dataLabels: { enabled: false },
         fill: { opacity: 1, type: 'solid' },
         grid: {
@@ -81,7 +90,7 @@ export default function RealProfitLossPage(): React.JSX.Element {
         },
         legend: {
             show: true,
-            position: 'top' as 'top' | 'right' | 'bottom' | 'left', // <-- Tipi açıkça belirtildi
+            position: 'top' as 'top' | 'right' | 'bottom' | 'left',
         },
         plotOptions: { bar: { columnWidth: '40px' } },
         stroke: { colors: ['transparent'], show: true, width: 2 },
@@ -135,31 +144,23 @@ export default function RealProfitLossPage(): React.JSX.Element {
 
             <Card>
                 <CardContent>
-                    {/* Tarih Seçicileri ve Buton için Stack kullanıldı */}
                     <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ mb: 2 }}>
-                        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-                            <DatePicker
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            {/* @ts-ignore */}
+                            <DatePicker<Date>
                                 label="Başlangıç Tarihi"
-                                value={startDate ? dayjs(startDate) : null}
-                                onChange={(newValue) => setStartDate(newValue ? newValue.toDate() : null)}
+                                value={startDate ?? undefined}
+                                onChange={(newValue: Date | null, context: PickerChangeHandlerContext<DateValidationError>) => setStartDate(newValue)}
                                 slotProps={{ textField: { size: 'small', fullWidth: true } }}
                                 sx={{ flexGrow: 1 }}
                             />
                         </LocalizationProvider>
-                        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-                            <DatePicker
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            {/* @ts-ignore */}
+                            <DatePicker<Date>
                                 label="Bitiş Tarihi"
-                                value={endDate ? dayjs(endDate) : null}
-                                onChange={(newValue) => setEndDate(newValue ? newValue.toDate() : null)}
-                                slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                                sx={{ flexGrow: 1 }}
-                            />
-                        </LocalizationProvider>
-                        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-                            <DatePicker
-                                label="Baz Enflasyon Tarihi"
-                                value={baseDate ? dayjs(baseDate) : null}
-                                onChange={(newValue) => setBaseDate(newValue ? newValue.toDate() : null)}
+                                value={endDate ?? undefined}
+                                onChange={(newValue: Date | null, context: PickerChangeHandlerContext<DateValidationError>) => setEndDate(newValue)}
                                 slotProps={{ textField: { size: 'small', fullWidth: true } }}
                                 sx={{ flexGrow: 1 }}
                             />
@@ -174,8 +175,9 @@ export default function RealProfitLossPage(): React.JSX.Element {
             {report ? (
                 <Card>
                     <CardContent>
-                        <Typography variant="h6" sx={{ mb: 2 }}>Rapor Özeti ({dayjs(report.period).format('MMMM YYYY')})</Typography>
-                        {/* Rapor detayları için Stack kullanıldı, responsive tasarım için Box ile Flexbox */}
+                        <Typography variant="h6" sx={{ mb: 2 }}>
+                            Rapor Özeti ({formatDateForDisplay(report.period, { month: 'long', year: 'numeric' })})
+                        </Typography>
                         <Stack
                             direction={{ xs: 'column', md: 'row' }}
                             spacing={2}
@@ -195,7 +197,9 @@ export default function RealProfitLossPage(): React.JSX.Element {
                                 </Box>
                             </Box>
                             <Box sx={{ flex: 1 }}>
-                                <Typography variant="subtitle1">Gerçek Değerler (Baz Tarih: {dayjs(report.baseInflationDate).format('DD/MM/YYYY')})</Typography>
+                                <Typography variant="subtitle1">
+                                    Gerçek Değerler (Baz Tarih: {formatDateForDisplay(report.baseInflationDate, { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                                </Typography>
                                 <Box sx={{ ml: 2 }}>
                                     <Typography>Gelirler: {formatCurrency(report.realRevenue)}</Typography>
                                     <Typography>Satılan Mal Maliyeti: {formatCurrency(report.realCostOfGoodsSold)}</Typography>
