@@ -75,7 +75,8 @@ public class InflationCalculationService {
         LocalDate endMonth = targetDate.withDayOfMonth(1);
 
         if (startMonth.isBefore(endMonth)) { // İleriye doğru düzeltme (Enflasyon)
-            LocalDate currentMonthIterator = startMonth.plusMonths(1); // İşlem ayının bir sonraki ayından başla
+            // Düzeltme: İşlem ayının enflasyonunu da dahil etmek için başlangıcı değiştir.
+            LocalDate currentMonthIterator = startMonth; // **DEĞİŞİKLİK BURADA**
             while (!currentMonthIterator.isAfter(endMonth)) { // Hedef ay dahil
                 BigDecimal monthlyRate = getMonthlyInflationRate(currentMonthIterator);
                 cumulativeFactor = cumulativeFactor.multiply(BigDecimal.ONE.add(monthlyRate));
@@ -83,14 +84,10 @@ public class InflationCalculationService {
                 currentMonthIterator = currentMonthIterator.plusMonths(1);
             }
         } else { // Geriye doğru düzeltme (Deflasyon veya farklı birim değerine getirme)
-            LocalDate currentMonthIterator = endMonth.plusMonths(1); // Hedef ayın bir sonraki ayından başla
+            // Düzeltme: Hedef ayının enflasyonunu da dahil etmek için başlangıcı değiştir.
+            LocalDate currentMonthIterator = endMonth; // **DEĞİŞİKLİK BURADA**
             while (!currentMonthIterator.isAfter(startMonth)) { // İşlem ayı dahil
                 BigDecimal monthlyRate = getMonthlyInflationRate(currentMonthIterator);
-                // Geriye doğru düzeltme için çarpan 1 / (1 + oran) olmalı
-                // Ancak burada cumulativeFactor'u çarptığımız için, oran negatifse zaten 1 + (-oran) ile azalır
-                // Eğer oran pozitifse, 1/(1+oran) ile bölmemiz gerekir.
-                // Basitlik adına: cumulativeFactor'u 1/(1+oran) ile çarpmak yerine, eğer geriye gidiyorsak
-                // 1 / (1 + rate) faktörünü hesaplayıp çarpmalıyız.
                 BigDecimal inverseFactor = BigDecimal.ONE.divide(BigDecimal.ONE.add(monthlyRate), 10, RoundingMode.HALF_UP);
                 cumulativeFactor = cumulativeFactor.multiply(inverseFactor);
                 log.info("Ay (Geri): {}, Oran: {} (Decimal), Ters Çarpan: {}, Kümülatif Çarpan: {}", currentMonthIterator.getMonth(), monthlyRate, inverseFactor, cumulativeFactor);
