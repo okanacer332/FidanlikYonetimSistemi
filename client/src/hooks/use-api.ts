@@ -3,12 +3,11 @@
 import * as React from 'react';
 
 interface UseApiOptions<TData, TError> {
-  url: string;
+  url: string | null; // url artık null da olabilir
   initialData?: TData;
-  fetchOnMount?: boolean; // Bileşen yüklendiğinde otomatik veri çekilsin mi? (varsayılan: true)
+  fetchOnMount?: boolean;
   onSuccess?: (data: TData) => void;
   onError?: (error: TError) => void;
-  // Eğer post/put için body veya method gibi ek seçenekler gerekiyorsa buraya eklenebilir
   method?: string;
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
@@ -18,16 +17,13 @@ interface UseApiResult<TData, TError> {
   data: TData | undefined;
   isLoading: boolean;
   error: TError | undefined;
-  refetch: (newUrl?: string, options?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => Promise<void>;
+  refetch: (newUrl?: string | null, options?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => Promise<void>;
 }
 
-// Projendeki merkezi API URL'sini .env dosyasından alıyoruz
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// Axios veya fetch ile yapılan genel veri çekme fonksiyonu
-// Bu fonksiyon, useApi hook'u tarafından kullanılacak.
 const fetchData = async <T>(
-  url: string,
+  url: string, // Bu fonksiyon hala string URL bekler
   options?: { method?: string; body?: Record<string, unknown>; headers?: Record<string, string> }
 ): Promise<T> => {
   const token = localStorage.getItem('authToken');
@@ -63,7 +59,7 @@ const fetchData = async <T>(
 };
 
 export function useApi<TData = unknown, TError extends Error = Error>(
-  url: string,
+  url: string | null, // Burası güncellendi
   options?: UseApiOptions<TData, TError>
 ): UseApiResult<TData, TError> {
   const { initialData, fetchOnMount = true, onSuccess, onError, method = 'GET', body, headers } = options || {};
@@ -72,14 +68,14 @@ export function useApi<TData = unknown, TError extends Error = Error>(
   const [error, setError] = React.useState<TError | undefined>(undefined);
 
   const fetchDataAsync = React.useCallback(
-    async (currentUrl: string, currentOptions?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => {
+    async (currentUrl: string) => { // Bu fonksiyon hala string URL bekler
       setIsLoading(true);
       setError(undefined);
       try {
         const result = await fetchData<TData>(currentUrl, {
-          method: currentOptions?.method || method,
-          body: currentOptions?.body || body,
-          headers: currentOptions?.headers || headers,
+          method: method,
+          body: body,
+          headers: headers,
         });
         setData(result);
         onSuccess?.(result);
@@ -94,15 +90,21 @@ export function useApi<TData = unknown, TError extends Error = Error>(
   );
 
   React.useEffect(() => {
+    // url null değilse ve fetchOnMount true ise veri çek
     if (fetchOnMount && url) {
       void fetchDataAsync(url);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, fetchOnMount]); // fetchDataAsync'i bağımlılıklara eklemiyoruz, çünkü o zaten kendi bağımlılıklarını yönetiyor.
+  }, [url, fetchOnMount]);
 
   const refetch = React.useCallback(
-    async (newUrl?: string, optionsOverride?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => {
-      await fetchDataAsync(newUrl || url, optionsOverride);
+    async (newUrl?: string | null, optionsOverride?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => {
+        const urlToFetch = newUrl ?? url; // Eğer newUrl null ise, mevcut url'i kullan
+        if (urlToFetch) { // urlToFetch null değilse fetch yap
+            await fetchDataAsync(urlToFetch);
+        } else {
+            console.warn('Refetch çağrıldı ancak geçerli bir URL bulunamadı.');
+        }
     },
     [fetchDataAsync, url]
   );

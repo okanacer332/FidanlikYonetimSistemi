@@ -10,8 +10,9 @@ export const paths = {
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
     plants: '/dashboard/plants',
-    // YENİ EKLENEN YOL
-    productionBatches: '/dashboard/production-batches', // Üretim Partileri için yeni yol
+    productionBatches: '/dashboard/production-batches', // Mevcut yol
+    // YENİ EKLENEN YOL: Detay sayfası için dinamik yol
+    productionBatchesDetails: (id: string) => `/dashboard/production-batches/${id}`, 
     settings: {
       root: '/dashboard/settings',
       inflation: '/dashboard/settings/inflation',

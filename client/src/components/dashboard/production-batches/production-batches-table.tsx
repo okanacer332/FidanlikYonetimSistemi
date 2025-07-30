@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import RouterLink from 'next/link'; // next/link import edildi
 
 import {
   Card,
@@ -17,13 +18,12 @@ import {
 import { getAllProductionBatches } from '@/api/nursery';
 import type { ProductionBatch, PlantType, PlantVariety } from '@/types/plant';
 import { useApi } from '@/hooks/use-api';
+import { paths } from '@/paths'; // paths import edildi
 
-// Yeni bir interface tanımlayalım ProductionBatchesTable için prop'ları belirtmek üzere
 interface ProductionBatchesTableProps {
   productionBatches: ProductionBatch[];
   plantTypeMap: Map<string, string>;
   plantVarietyMap: Map<string, string>;
-  // isLoading ve error durumları artık page.tsx tarafından yönetildiği için burada kaldırıldı
 }
 
 export function ProductionBatchesTable({ productionBatches: batches, plantTypeMap, plantVarietyMap }: ProductionBatchesTableProps): React.JSX.Element {
@@ -46,7 +46,7 @@ export function ProductionBatchesTable({ productionBatches: batches, plantTypeMa
   //     } catch (err) {
   //       setBatchesError(err instanceof Error ? err : new Error('Üretim partileri yüklenirken bilinmeyen bir hata oluştu.'));
   //     } finally {
-  //       setIsLoadingBatches(false);
+  //       setIsLoadingBataches(false);
   //     }
   //   };
 
@@ -116,22 +116,18 @@ export function ProductionBatchesTable({ productionBatches: batches, plantTypeMa
             </TableHead>
             <TableBody>
               {batches.map((batch) => (
-                <TableRow hover key={batch.id}> {/* Burada boşluk sorunu çözüldü */}
-                  <TableCell>{batch.batchCode}</TableCell>
-                  <TableCell>{batch.batchName}</TableCell>
-                  <TableCell>{plantTypeMap.get(batch.plantTypeId) || 'Bilinmiyor'}</TableCell>
-                  <TableCell>{plantVarietyMap.get(batch.plantVarietyId) || 'Bilinmiyor'}</TableCell>
-                  <TableCell>{new Date(batch.startDate).toLocaleDateString('tr-TR')}</TableCell>
-                  <TableCell>{batch.initialQuantity}</TableCell>
-                  <TableCell>{batch.currentQuantity}</TableCell>
-                  <TableCell>{batch.harvestedQuantity ?? '0'}</TableCell>
-                  <TableCell>{batch.costPool?.toFixed(2) ?? '0.00'}</TableCell>
-                  <TableCell>{batch.inflationAdjustedCostPool?.toFixed(2) ?? '0.00'}</TableCell>
-                  <TableCell>{batch.lastCostUpdateDate ? new Date(batch.lastCostUpdateDate).toLocaleDateString('tr-TR') : 'N/A'}</TableCell>
-                  <TableCell>{batch.status}</TableCell>
-                  <TableCell>{batch.description || 'N/A'}</TableCell>
+                <TableRow hover key={batch.id}> {/* Boşluk sorunu için tek satırda */}
+                  <TableCell>{batch.batchCode}</TableCell><TableCell>{batch.batchName}</TableCell><TableCell>{plantTypeMap.get(batch.plantTypeId) || 'Bilinmiyor'}</TableCell><TableCell>{plantVarietyMap.get(batch.plantVarietyId) || 'Bilinmiyor'}</TableCell><TableCell>{new Date(batch.startDate).toLocaleDateString('tr-TR')}</TableCell><TableCell>{batch.initialQuantity}</TableCell><TableCell>{batch.currentQuantity}</TableCell><TableCell>{batch.harvestedQuantity ?? '0'}</TableCell><TableCell>{batch.costPool?.toFixed(2) ?? '0.00'}</TableCell><TableCell>{batch.inflationAdjustedCostPool?.toFixed(2) ?? '0.00'}</TableCell><TableCell>{batch.lastCostUpdateDate ? new Date(batch.lastCostUpdateDate).toLocaleDateString('tr-TR') : 'N/A'}</TableCell><TableCell>{batch.status}</TableCell><TableCell>{batch.description || 'N/A'}</TableCell>
                   <TableCell>
-                    <Button size="small" variant="outlined">Detay</Button>
+                    {/* Detay butonunu RouterLink ile güncelliyoruz */}
+                    <Button
+                      component={RouterLink}
+                      href={paths.dashboard.productionBatchesDetails(batch.id)} // Yeni rota ile güncellendi
+                      size="small"
+                      variant="outlined"
+                    >
+                      Detay
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
