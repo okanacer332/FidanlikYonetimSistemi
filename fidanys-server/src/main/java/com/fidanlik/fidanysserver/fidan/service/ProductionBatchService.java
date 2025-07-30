@@ -46,14 +46,19 @@ public class ProductionBatchService {
         if (batch.getInflationAdjustedCostPool() == null) {
             batch.setInflationAdjustedCostPool(BigDecimal.ZERO);
         }
-        if (batch.getHarvestedQuantity() == null) { // Bu null kontrolü Integer için geçerlidir, int için değil.
-            batch.setHarvestedQuantity(0); // int olduğu için varsayılan 0'dır, ancak eksplisit olarak atanabilir.
-        }
+        // harvestedQuantity int olduğu için null olamaz, varsayılan 0'dır, ancak eksplisit olarak atanabilir
+        batch.setHarvestedQuantity(0);
+
         // currentQuantity int olduğu için null olamaz, başlangıçta initialQuantity'e eşitleyelim
         batch.setCurrentQuantity(batch.getInitialQuantity());
 
         if (batch.getStatus() == null) {
             batch.setStatus(ProductionBatch.BatchStatus.CREATED);
+        }
+
+        // Yeni: lastCostUpdateDate'i başlangıç tarihiyle veya oluşturulma tarihiyle set et
+        if (batch.getLastCostUpdateDate() == null) {
+            batch.setLastCostUpdateDate(LocalDate.now()); // Veya batch.getStartDate()
         }
 
         if (batch.getBatchCode() == null || batch.getBatchCode().isEmpty()) {
@@ -120,7 +125,6 @@ public class ProductionBatchService {
             batch.setStatus(ProductionBatch.BatchStatus.COMPLETED);
         }
 
-
         return productionBatchRepository.save(batch);
     }
 
@@ -132,7 +136,6 @@ public class ProductionBatchService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Üretim partisi bulunamadı."));
 
         if (batch.getCostPool() != null && batch.getCostPool().compareTo(BigDecimal.ZERO) > 0) {
-            // Metot çağrısı calculateAdjustedAmount yerine calculateRealValue olarak düzeltildi
             BigDecimal adjustedCost = inflationCalculationService.calculateRealValue(
                     batch.getCostPool(),
                     batch.getLastCostUpdateDate() != null ? batch.getLastCostUpdateDate() : batch.getStartDate(),

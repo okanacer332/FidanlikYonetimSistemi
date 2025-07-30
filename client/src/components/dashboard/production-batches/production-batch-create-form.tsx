@@ -23,9 +23,10 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import Typography from '@mui/material/Typography';
 
-import { useApi } from '@/hooks/use-api';
+// useApi hook'u artık burada doğrudan kullanılmıyor, çünkü veriler prop olarak geliyor
+// import { useApi } from '@/hooks/use-api';
 import type { PlantType, PlantVariety } from '@/types/plant';
-import { createProductionBatch } from '@/api/nursery'; // createProductionBatch'i import edin
+import { createProductionBatch } from '@/api/nursery';
 
 // Form şeması
 const schema = zod.object({
@@ -44,9 +45,11 @@ type FormData = z.infer<typeof schema>;
 interface ProductionBatchCreateFormProps {
   onClose: () => void;
   onSuccess?: () => void;
+  plantTypes: PlantType[]; // Yeni: PlantType dizisi prop olarak eklendi
+  plantVarieties: PlantVariety[]; // Yeni: PlantVariety dizisi prop olarak eklendi
 }
 
-export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatchCreateFormProps): React.JSX.Element {
+export function ProductionBatchCreateForm({ onClose, onSuccess, plantTypes, plantVarieties }: ProductionBatchCreateFormProps): React.JSX.Element {
   const {
     handleSubmit,
     register,
@@ -63,9 +66,9 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
     }
   });
 
-  // API endpoint'lerini server tarafındaki yollarla eşleştirin
-  const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
-  const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
+  // plantTypes ve plantVarieties artık prop olarak geldiği için useApi çağrıları kaldırıldı
+  // const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
+  // const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
 
   const selectedPlantTypeId = watch('plantTypeId');
 
@@ -85,10 +88,9 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
   const onSubmit = React.useCallback(
     async (data: FormData): Promise<void> => {
       try {
-        // Doğrudan createProductionBatch fonksiyonunu kullanın
         await createProductionBatch({
           ...data,
-          startDate: dayjs(data.startDate).toISOString(), // Tarihi ISO string olarak gönder
+          startDate: dayjs(data.startDate).toISOString(),
           expectedHarvestQuantity: data.expectedHarvestQuantity ?? undefined,
           description: data.description || undefined,
         });
@@ -96,7 +98,7 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
         toast.success('Üretim partisi başarıyla oluşturuldu!');
         reset();
         onClose();
-        onSuccess?.();
+        onSuccess?.(); // Başarılı olduğunda üst componente bildir
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
         console.error("Form gönderme hatası:", err);
@@ -105,13 +107,13 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
     [onClose, reset, onSuccess]
   );
 
-  if (isLoadingPlantTypes || isLoadingPlantVarieties) {
-    return <Typography>Fidan türleri ve çeşitleri yükleniyor...</Typography>;
-  }
-
-  if (plantTypesError || plantVarietiesError) {
-    return <Typography color="error">Veriler yüklenirken bir hata oluştu: {(plantTypesError || plantVarietiesError)?.message}</Typography>;
-  }
+  // Yükleme ve hata durumları artık parent component tarafından yönetiliyor, burada sadece prop'lar kontrol edilir
+  // if (isLoadingPlantTypes || isLoadingPlantVarieties) {
+  //   return <Typography>Fidan türleri ve çeşitleri yükleniyor...</Typography>;
+  // }
+  // if (plantTypesError || plantVarietiesError) {
+  //   return <Typography color="error">Veriler yüklenirken bir hata oluştu: {(plantTypesError || plantVarietiesError)?.message}</Typography>;
+  // }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -150,7 +152,7 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
                   value={field.value || ''}
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  {plantTypes?.map((type) => (
+                  {plantTypes.map((type) => ( // plantTypes prop'undan kullanılıyor
                     <MenuItem key={type.id} value={type.id}>{type.name}</MenuItem>
                   ))}
                 </Select>
@@ -175,7 +177,7 @@ export function ProductionBatchCreateForm({ onClose, onSuccess }: ProductionBatc
                   disabled={!selectedPlantTypeId || filteredPlantVarieties.length === 0}
                 >
                   <MenuItem value="">Seçiniz</MenuItem>
-                  {filteredPlantVarieties.map((variety) => (
+                  {filteredPlantVarieties.map((variety) => ( // filteredPlantVarieties prop'undan kullanılıyor
                     <MenuItem key={variety.id} value={variety.id}>{variety.name}</MenuItem>
                   ))}
                 </Select>
