@@ -10,6 +10,8 @@ export const paths = {
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
     plants: '/dashboard/plants',
+    // YENİ EKLENEN YOL
+    productionBatches: '/dashboard/production-batches', // Üretim Partileri için yeni yol
     settings: {
       root: '/dashboard/settings',
       inflation: '/dashboard/settings/inflation',
@@ -43,8 +45,7 @@ export const paths = {
         stockAging: '/dashboard/reports/inventory/aging',
       },
     },
-    // Yeni eklenen stok durumu yolu (Operasyonlar altında olacağı için direkt dashboard altında)
-    stockStatus: '/dashboard/stok-durumu', // <-- Bu satırı ekle
+    stockStatus: '/dashboard/stok-durumu',
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

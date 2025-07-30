@@ -3,6 +3,7 @@ package com.fidanlik.fidanysserver.stock.model;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.math.BigDecimal; // BigDecimal import'ını ekleyin
 import java.time.LocalDateTime;
 
 @Data
@@ -19,6 +20,8 @@ public class StockMovement {
     private String userId;
     private LocalDateTime timestamp;
     private String tenantId;
+    // YENİ EKLENEN ALAN
+    private BigDecimal unitCost; // Hareket anındaki fidanın birim maliyeti (alış veya üretim)
 
     public enum MovementType {
         GOODS_RECEIPT,      // Mal Kabul

@@ -43,6 +43,21 @@ public class TransactionService {
         transactionRepository.save(transaction);
     }
 
+    // YENİ: Dahili işlemler (örn. üretimden stok girişi) için genel işlem metodu
+    public void createInternalTransaction(String relatedEntityId, Transaction.TransactionType type, BigDecimal amount, String description, String relatedDocumentId, String userId, String tenantId) {
+        Transaction transaction = Transaction.builder()
+                .tenantId(tenantId)
+                .transactionDate(LocalDateTime.now())
+                .relatedEntityId(relatedEntityId) // Üretim partisi ID'si gibi ilgili varlık ID'si
+                .type(type)
+                .amount(amount)
+                .description(description)
+                .relatedDocumentId(relatedDocumentId)
+                .userId(userId)
+                .build();
+        transactionRepository.save(transaction);
+    }
+
     public List<Transaction> getCustomerTransactions(String customerId, String tenantId) {
         return transactionRepository.findByCustomerIdAndTenantIdOrderByTransactionDateDesc(customerId, tenantId);
     }
@@ -50,4 +65,6 @@ public class TransactionService {
     public List<Transaction> getSupplierTransactions(String supplierId, String tenantId) {
         return transactionRepository.findBySupplierIdAndTenantIdOrderByTransactionDateDesc(supplierId, tenantId);
     }
+
+    // TODO: Eğer ihtiyaç olursa Production Batch'e özel Transaction sorgu metotları eklenebilir.
 }

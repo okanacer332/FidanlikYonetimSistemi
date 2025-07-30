@@ -7,9 +7,13 @@ import java.math.BigDecimal;
 public class GoodsReceiptItem {
     private String plantId;
     private int quantity;
-    private BigDecimal purchasePrice;
+    // 'purchasePrice' yerine daha genel 'unitCost' kullanıldı
+    private BigDecimal unitCost; // Malın birim maliyeti (alış fiyatı veya üretim birim maliyeti)
 
-    // YENİ EKLENEN ALANLAR
-    private boolean isCommercial = true; // Varsayılan olarak ticari mal (al-sat ürünü)
-    private String productionBatchId; // Eğer isCommercial false ise, ait olduğu üretim partisinin ID'si
+    // Bu alanların ismi daha açıklayıcı hale getirildi.
+    // 'isCommercial' yerine 'sourceType' enum'ı kullanılacağı için bu alan gereksizleşti.
+    // Artık GoodsReceipt modelindeki 'sourceType' ve 'sourceId' alanları bu ayrımı yapacak.
+    // private boolean isCommercial = true;
+    // 'productionBatchId' zaten GoodsReceipt'in sourceId'si olacak. Eğer bir kalem özelinde farklı bir batch id'si gerekiyorsa tutulabilir, ancak şimdilik genel GoodsReceipt'teki yeterli kabul ediliyor.
+    // private String productionBatchId;
 }

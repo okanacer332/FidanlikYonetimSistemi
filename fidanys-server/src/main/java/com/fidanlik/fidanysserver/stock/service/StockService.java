@@ -1,4 +1,3 @@
-// fidanys-server/src/main/java/com/fidanlik/fidanysserver/stock/service/StockService.java
 package com.fidanlik.fidanysserver.stock.service; // BU SATIRIN OLDUĞUNDAN EMİN OLUN
 
 import com.fidanlik.fidanysserver.common.exception.InsufficientStockException;
@@ -17,9 +16,8 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-// ConvertOperators import'u artık gerekli değil
-// import org.springframework.data.mongodb.core.aggregation.ConvertOperators; // Bu satır yorum satırı olmalı veya kaldırılmalı
 
+import java.math.BigDecimal; // BigDecimal import'ını ekleyin
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +35,7 @@ public class StockService {
     private final MongoTemplate mongoTemplate;
 
     @Transactional
-    public void changeStock(String plantId, String warehouseId, int quantity, StockMovement.MovementType type, String relatedDocumentId, String description, String userId, String tenantId) {
+    public void changeStock(String plantId, String warehouseId, int quantity, StockMovement.MovementType type, String relatedDocumentId, String description, String userId, String tenantId, BigDecimal unitCost) { // Yeni: unitCost parametresi eklendi
 
         if (quantity < 0) {
             Stock currentStock = stockRepository.findByPlantIdAndWarehouseIdAndTenantId(plantId, warehouseId, tenantId)
@@ -58,6 +56,7 @@ public class StockService {
         movement.setUserId(userId);
         movement.setTimestamp(LocalDateTime.now());
         movement.setTenantId(tenantId);
+        movement.setUnitCost(unitCost); // YENİ: unitCost'u StockMovement'a set edin
         stockMovementRepository.save(movement);
 
         Query query = new Query(Criteria.where("plantId").is(plantId)
@@ -91,19 +90,17 @@ public class StockService {
         Aggregation aggregation = newAggregation(
                 match(Criteria.where("tenantId").is(tenantId)),
 
-                // plantId dönüşümü kaldırıldı, doğrudan string olarak kullanıyoruz
                 newLookup()
                         .from("plantIdentity")
-                        .localField("plantId") // doğrudan plantId'yi kullan
-                        .foreignField("_id") // plantIdentity'deki _id alanıyla eşleştir
+                        .localField("plantId")
+                        .foreignField("_id")
                         .as("plantIdentityDetails"),
                 unwind("plantIdentityDetails"),
 
-                // warehouseId dönüşümü kaldırıldı, doğrudan string olarak kullanıyoruz
                 newLookup()
                         .from("warehouse")
-                        .localField("warehouseId") // doğrudan warehouseId'yi kullan
-                        .foreignField("_id") // warehouse'daki _id alanıyla eşleştir
+                        .localField("warehouseId")
+                        .foreignField("_id")
                         .as("warehouseDetails"),
                 unwind("warehouseDetails"),
 

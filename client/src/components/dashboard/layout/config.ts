@@ -107,7 +107,6 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'ACCOUNTANT'],
         matcher: { type: 'startsWith', href: paths.dashboard.accounting.expenses },
       },
-      // Gerçek Kar/Zarar Raporu buradan kaldırıldı.
     ],
   },
   {
@@ -134,6 +133,16 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
         matcher: { type: 'startsWith', href: paths.dashboard.goodsReceipts },
       },
+      // YENİ EKLENEN MADDE: Üretim Partileri
+      {
+        type: 'item',
+        key: 'production-batches',
+        title: 'Üretim Partileri',
+        href: paths.dashboard.productionBatches, // Yeni path
+        icon: 'package', // Veya başka uygun bir icon seçebilirsiniz
+        roles: ['ADMIN', 'WAREHOUSE_STAFF'], // Bu menüyü kimlerin görmesi gerektiğini belirleyin
+        matcher: { type: 'startsWith', href: paths.dashboard.productionBatches },
+      },
       {
         type: 'item',
         key: 'stock-status',
@@ -153,11 +162,11 @@ export const navItems: NavItemConfig[] = [
     items: [
       {
         type: 'item',
-        key: 'profitability-report', // Mevcut key'i koruyoruz
+        key: 'profitability-report',
         title: 'Gerçek Kar/Zarar Raporu',
         href: paths.dashboard.reports.financial.profitability,
         icon: 'chart-bar',
-        roles: ['ADMIN', 'ACCOUNTANT'], // Rolleri koruyoruz
+        roles: ['ADMIN', 'ACCOUNTANT'],
         matcher: { type: 'startsWith', href: paths.dashboard.reports.financial.profitability },
       },
     ],
