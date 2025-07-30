@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import RouterLink from 'next/link'; // next/link import edildi
-
+import RouterLink from 'next/link';
+import { styled } from '@mui/material/styles';
 import {
   Card,
   Table,
@@ -11,14 +11,13 @@ import {
   TableHead,
   TableRow,
   Typography,
-  CircularProgress,
   Box,
   Button,
 } from '@mui/material';
 import { getAllProductionBatches } from '@/api/nursery';
 import type { ProductionBatch, PlantType, PlantVariety } from '@/types/plant';
 import { useApi } from '@/hooks/use-api';
-import { paths } from '@/paths'; // paths import edildi
+import { paths } from '@/paths';
 
 interface ProductionBatchesTableProps {
   productionBatches: ProductionBatch[];
@@ -26,109 +25,98 @@ interface ProductionBatchesTableProps {
   plantVarietyMap: Map<string, string>;
 }
 
+// Özel stil tanımlaması - Hücre dolguları ve metin yönetimi
+const CompactTableCell = styled(TableCell)(({ theme }) => ({
+  // Daha da az dolgu, hücrelerin birbirine girmesini engellemek için minimum
+  padding: theme.spacing(0.5, 0.5), // Dikeyde 4px, yatayda 4px boşluk
+  fontSize: '0.70rem', // Yazı boyutunu daha da küçült
+  lineHeight: '1.2', // Satır yüksekliğini azalt
+  wordBreak: 'break-word', // Uzun kelimelerin satır atlamasına izin ver
+  verticalAlign: 'top', // İçeriği hücrenin üstüne hizala
+  '&:last-child': {
+    paddingRight: theme.spacing(0.5),
+  },
+  '&:first-child': {
+    paddingLeft: theme.spacing(0.5),
+  },
+}));
+
+const CompactTableHeadCell = styled(TableCell)(({ theme }) => ({
+  padding: theme.spacing(0.3, 0.5), // Başlık hücreleri için daha da az boşluk
+  fontWeight: theme.typography.fontWeightMedium,
+  // whiteSpace: 'nowrap', // Başlık metinlerinin tek satırda kalmasını kaldırıyoruz, taşarsa kaydırılsın
+  fontSize: '0.70rem', // Başlık yazı boyutunu küçült
+  wordBreak: 'break-word', // Başlık metinlerinin de kaydırılmasına izin ver
+  verticalAlign: 'top', // İçeriği hücrenin üstüne hizala
+  '&:last-child': {
+    paddingRight: theme.spacing(0.5),
+  },
+  '&:first-child': {
+    paddingLeft: theme.spacing(0.5),
+  },
+}));
+
 export function ProductionBatchesTable({ productionBatches: batches, plantTypeMap, plantVarietyMap }: ProductionBatchesTableProps): React.JSX.Element {
-  // productionBatches, plantTypeMap, plantVarietyMap artık prop olarak geliyor, bu component kendi içinde veri çekmiyor.
-  // Bu nedenle aşağıdaki state ve useEffect hook'ları kaldırıldı.
-  // const [productionBatches, setProductionBatches] = React.useState<ProductionBatch[]>([]);
-  // const [isLoadingBatches, setIsLoadingBatches] = React.useState<boolean>(true);
-  // const [batchesError, setBatchesError] = React.useState<Error | null>(null);
-
-  // const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
-  // const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
-
-  // React.useEffect(() => {
-  //   const fetchBatches = async () => {
-  //     setIsLoadingBatches(true);
-  //     setBatchesError(null);
-  //     try {
-  //       const data = await getAllProductionBatches();
-  //       setProductionBatches(data);
-  //     } catch (err) {
-  //       setBatchesError(err instanceof Error ? err : new Error('Üretim partileri yüklenirken bilinmeyen bir hata oluştu.'));
-  //     } finally {
-  //       setIsLoadingBataches(false);
-  //     }
-  //   };
-
-  //   void fetchBatches();
-  // }, []);
-
-  // plantTypeMap ve plantVarietyMap de prop olarak geldiği için useMemo'ya gerek kalmadı
-  // const plantTypeMap = React.useMemo(() => {
-  //   return plantTypes?.reduce((map, type) => {
-  //     map.set(type.id, type.name);
-  //     return map;
-  //   }, new Map<string, string>()) || new Map<string, string>();
-  // }, [plantTypes]);
-
-  // const plantVarietyMap = React.useMemo(() => {
-  //   return plantVarieties?.reduce((map, variety) => {
-  //     map.set(variety.id, variety.name);
-  //     return map;
-  //   }, new Map<string, string>()) || new Map<string, string>();
-  // }, [plantVarieties]);
-
-  // Yükleme ve hata durumları page.tsx tarafından yönetildiği için burada kontrol etmiyoruz
-  // const isLoading = isLoadingBatches || isLoadingPlantTypes || isLoadingPlantVarieties;
-  // const error = batchesError || plantTypesError || plantVarietiesError;
-
-  // if (isLoading) {
-  //   return (
-  //     <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-  //       <CircularProgress />
-  //     </Box>
-  //   );
-  // }
-
-  // if (error) {
-  //   return (
-  //     <Box sx={{ p: 3, textAlign: 'center' }}>
-  //       <Typography color="error">Veriler yüklenirken bir hata oluştu: {error.message}</Typography>
-  //       <Typography variant="body2" color="text.secondary">Lütfen ağ bağlantınızı kontrol edin veya daha sonra tekrar deneyin.</Typography>
-  //     </Box>
-  //   );
-  // }
-
-  // batches artık prop olarak geliyor
-  // const batches = productionBatches; 
-
   return (
     <Card>
-      <Box sx={{ minWidth: 800, overflowX: 'auto' }}>
-          <Table>
+      {/* Min genişliği biraz daha artırarak tüm içeriğin daha iyi yayılmasını sağlayalım */}
+      {/* overflowX: 'auto' ile mobil uyumluluğu koru */}
+      <Box sx={{ minWidth: 1000, overflowX: 'auto' }}>
+          {/* tableLayout: fixed kaldırıldı, MUI'nin otomatik genişlik belirlemesine bırakıldı */}
+          {/* Bu, içeriğin yayılmasına izin verir, ancak çok uzun içerikler hala sorun olabilir */}
+          <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Parti Kodu</TableCell>
-                <TableCell>Parti Adı</TableCell>
-                <TableCell>Fidan Türü</TableCell>
-                <TableCell>Fidan Çeşidi</TableCell>
-                <TableCell>Başlangıç Tarihi</TableCell>
-                <TableCell>Başlangıç Adedi</TableCell>
-                <TableCell>Mevcut Adet</TableCell>
-                <TableCell>Hasat Edilen Adet</TableCell>
-                <TableCell>Maliyet Havuzu (Nominal)</TableCell>
-                <TableCell>Maliyet Havuzu (Enf. Düz.)</TableCell>
-                <TableCell>Son Maliyet Güncelleme</TableCell>
-                <TableCell>Durum</TableCell>
-                <TableCell>Açıklama</TableCell>
-                <TableCell>Aksiyonlar</TableCell>
+                {/* Sütun genişlikleri kaldırıldı, içeriğe göre ayarlansın */}
+                <CompactTableHeadCell>Parti Kodu</CompactTableHeadCell>
+                <CompactTableHeadCell>Parti Adı</CompactTableHeadCell>
+                <CompactTableHeadCell>Tür</CompactTableHeadCell>
+                <CompactTableHeadCell>Çeşit</CompactTableHeadCell>
+                <CompactTableHeadCell>Başlangıç Tarihi</CompactTableHeadCell>
+                <CompactTableHeadCell>Başlangıç Adedi</CompactTableHeadCell>
+                <CompactTableHeadCell>Mevcut Adet</CompactTableHeadCell>
+                <CompactTableHeadCell>Hasat Adet</CompactTableHeadCell>
+                <CompactTableHeadCell>Maliyet (Nom.)</CompactTableHeadCell>
+                <CompactTableHeadCell>Maliyet (Enf.)</CompactTableHeadCell>
+                <CompactTableHeadCell>Son Günc.</CompactTableHeadCell>
+                <CompactTableHeadCell>Durum</CompactTableHeadCell>
+                <CompactTableHeadCell>Açıklama</CompactTableHeadCell>
+                <CompactTableHeadCell>Aksiyonlar</CompactTableHeadCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {batches.map((batch) => (
-                <TableRow hover key={batch.id}> {/* Boşluk sorunu için tek satırda */}
-                  <TableCell>{batch.batchCode}</TableCell><TableCell>{batch.batchName}</TableCell><TableCell>{plantTypeMap.get(batch.plantTypeId) || 'Bilinmiyor'}</TableCell><TableCell>{plantVarietyMap.get(batch.plantVarietyId) || 'Bilinmiyor'}</TableCell><TableCell>{new Date(batch.startDate).toLocaleDateString('tr-TR')}</TableCell><TableCell>{batch.initialQuantity}</TableCell><TableCell>{batch.currentQuantity}</TableCell><TableCell>{batch.harvestedQuantity ?? '0'}</TableCell><TableCell>{batch.costPool?.toFixed(2) ?? '0.00'}</TableCell><TableCell>{batch.inflationAdjustedCostPool?.toFixed(2) ?? '0.00'}</TableCell><TableCell>{batch.lastCostUpdateDate ? new Date(batch.lastCostUpdateDate).toLocaleDateString('tr-TR') : 'N/A'}</TableCell><TableCell>{batch.status}</TableCell><TableCell>{batch.description || 'N/A'}</TableCell>
-                  <TableCell>
-                    {/* Detay butonunu RouterLink ile güncelliyoruz */}
+                <TableRow hover key={batch.id}>
+                  <CompactTableCell>{batch.batchCode}</CompactTableCell>
+                  <CompactTableCell>{batch.batchName}</CompactTableCell>
+                  <CompactTableCell>{plantTypeMap.get(batch.plantTypeId) || 'Bilinmiyor'}</CompactTableCell>
+                  <CompactTableCell>{plantVarietyMap.get(batch.plantVarietyId) || 'Bilinmiyor'}</CompactTableCell>
+                  <CompactTableCell>{new Date(batch.startDate).toLocaleDateString('tr-TR')}</CompactTableCell>
+                  <CompactTableCell>{batch.initialQuantity}</CompactTableCell>
+                  <CompactTableCell>{batch.currentQuantity}</CompactTableCell>
+                  <CompactTableCell>{batch.harvestedQuantity ?? '0'}</CompactTableCell>
+                  <CompactTableCell>{batch.costPool?.toFixed(2) ?? '0.00'}</CompactTableCell>
+                  <CompactTableCell>{batch.inflationAdjustedCostPool?.toFixed(2) ?? '0.00'}</CompactTableCell>
+                  <CompactTableCell>{batch.lastCostUpdateDate ? new Date(batch.lastCostUpdateDate).toLocaleDateString('tr-TR') : 'N/A'}</CompactTableCell>
+                  <CompactTableCell>{batch.status}</CompactTableCell>
+                  <CompactTableCell>{batch.description || 'N/A'}</CompactTableCell>
+                  <CompactTableCell sx={{ whiteSpace: 'nowrap' }}> {/* Aksiyon hücresi içindeki metnin kaymasını engelle */}
                     <Button
                       component={RouterLink}
-                      href={paths.dashboard.productionBatchesDetails(batch.id)} // Yeni rota ile güncellendi
-                      size="small"
+                      href={paths.dashboard.productionBatchesDetails(batch.id)}
+                      // Butonun boyutunu daha küçük ve kontrol edilebilir yapalım
+                      sx={{
+                        minWidth: 'auto', // Butonun minimum genişliğini içeriğine bırak
+                        padding: '2px 6px', // Daha küçük padding
+                        fontSize: '0.65rem', // Daha küçük font boyutu
+                        lineHeight: 1, // Satır yüksekliğini ayarla
+                        height: 'auto', // Yüksekliği içeriğine bırak
+                      }}
                       variant="outlined"
                     >
                       Detay
                     </Button>
-                  </TableCell>
+                  </CompactTableCell>
                 </TableRow>
               ))}
             </TableBody>
