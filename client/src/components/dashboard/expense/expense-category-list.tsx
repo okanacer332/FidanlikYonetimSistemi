@@ -10,7 +10,9 @@ import {
   IconButton, CardContent, CardHeader, Divider
 } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
-import type { ExpenseCategory } from '@/types/nursery';
+// Tip import'u düzeltildi
+import type { ExpenseCategory } from '@/types/expense';
+import { getExpenseCategories, createExpenseCategory } from '@/api/expense';
 
 interface ExpenseCategoryListProps {
     categories: ExpenseCategory[];
@@ -36,21 +38,9 @@ export function ExpenseCategoryList({ categories, onUpdate }: ExpenseCategoryLis
     const onSubmit = React.useCallback(async (values: FormValues) => {
         setFormError(null);
         try {
-            const token = localStorage.getItem('authToken');
-            if (!token) throw new Error('Oturum bulunamadı.');
-
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses/categories`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify(values),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Kategori oluşturulamadı.');
-            }
-            reset(); // Formu sıfırla
-            onUpdate(); // Listeyi güncelle
+            await createExpenseCategory(values);
+            reset();
+            onUpdate();
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
         }
@@ -113,4 +103,3 @@ export function ExpenseCategoryList({ categories, onUpdate }: ExpenseCategoryLis
         </Stack>
     );
 }
-

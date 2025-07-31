@@ -17,6 +17,8 @@ export interface Expense {
   amount: number; // BigDecimal yerine number
   expenseDate: string; // LocalDate yerine ISO string
   categoryId: string; // Kategori ID'si
+  // YENİ EKLENEN: İlişkili kategori objesi
+  category?: ExpenseCategory; // category objesi, backend'den DBRef olarak geliyor
   productionBatchId?: string; // Giderin ilişkili olduğu üretim partisinin ID'si (opsiyonel)
 }
 

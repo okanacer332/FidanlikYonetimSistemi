@@ -3,12 +3,14 @@
 import * as React from 'react';
 import { Button, Stack, Typography, CircularProgress, Alert, Tabs, Tab, Box } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
+import { toast } from 'react-hot-toast'; // toast import edildi
 
 import { useUser } from '@/hooks/use-user';
-import type { Expense, ExpenseCategory } from '@/types/nursery';
-import { ExpensesTable } from '@/components/dashboard/expense/expenses-table'
+import type { Expense, ExpenseCategory } from '@/types/expense'; // Tip import'u düzeltildi
+import { ExpensesTable } from '@/components/dashboard/expense/expenses-table';
 import { ExpenseCreateForm } from '@/components/dashboard/expense/expense-create-form';
 import { ExpenseCategoryList } from '@/components/dashboard/expense/expense-category-list';
+import { getExpenses, getExpenseCategories } from '@/api/expense'; // API fonksiyonları import edildi
 
 function a11yProps(index: number) {
   return {
@@ -68,20 +70,18 @@ export default function Page(): React.JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Oturum bulunamadı.');
-
-      const [expensesRes, categoriesRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/expenses/categories`, { headers: { Authorization: `Bearer ${token}` } }),
+      // YENİ: getExpenses ve getExpenseCategories fonksiyonları kullanıldı
+      const [expensesData, categoriesData] = await Promise.all([
+        getExpenses(),
+        getExpenseCategories(),
       ]);
-      
-      if (!expensesRes.ok || !categoriesRes.ok) throw new Error('Veriler yüklenemedi.');
 
-      setExpenses(await expensesRes.json());
-      setCategories(await categoriesRes.json());
+      setExpenses(expensesData);
+      setCategories(categoriesData);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+      toast.error(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
     } finally {
       setLoading(false);
     }
