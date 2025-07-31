@@ -6,6 +6,7 @@ import com.fidanlik.fidanysserver.user.model.User; // User modelini import edin
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal; // Kullanıcı bilgisini almak için
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ public class ProductionBatchController {
 
     // Yeni Üretim Partisi Oluşturma
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTANT')")
     public ResponseEntity<ProductionBatch> createProductionBatch(
             @RequestBody ProductionBatch productionBatch,
             @AuthenticationPrincipal User currentUser) { // Current User'ı alıyoruz
@@ -49,6 +51,23 @@ public class ProductionBatchController {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    // TODO: Üretim Partisi Güncelleme (PUT/PATCH) ve Silme (DELETE) endpoint'leri eklenebilir.
-    // Ancak mevcut istekte bu yoktu, ihtiyaç olursa eklenebilir.
+    // YENİ EKLENEN: Partiyi tamamlama endpoint'i
+    @PatchMapping("/{id}/complete")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTANT')")
+    public ResponseEntity<ProductionBatch> completeProductionBatch(
+            @PathVariable String id,
+            @AuthenticationPrincipal User currentUser) {
+        ProductionBatch completedBatch = productionBatchService.completeProductionBatch(id, currentUser.getTenantId());
+        return ResponseEntity.ok(completedBatch);
+    }
+
+    // YENİ EKLENEN: Partiyi iptal etme endpoint'i
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTANT')")
+    public ResponseEntity<ProductionBatch> cancelProductionBatch(
+            @PathVariable String id,
+            @AuthenticationPrincipal User currentUser) {
+        ProductionBatch canceledBatch = productionBatchService.cancelProductionBatch(id, currentUser.getTenantId());
+        return ResponseEntity.ok(canceledBatch);
+    }
 }

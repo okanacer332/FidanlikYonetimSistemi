@@ -148,4 +148,38 @@ public class ProductionBatchService {
 
         return productionBatchRepository.save(batch);
     }
+
+    // YENİ EKLENEN METOT: Partiyi tamamlama
+    @Transactional
+    public ProductionBatch completeProductionBatch(String id, String tenantId) {
+        ProductionBatch batch = productionBatchRepository.findById(id)
+                .filter(b -> b.getTenantId().equals(tenantId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Üretim partisi bulunamadı."));
+
+        // Sadece CREATED, GROWING veya HARVESTED durumundaki partiler tamamlanabilir
+        if (batch.getStatus() != ProductionBatch.BatchStatus.CREATED &&
+                batch.getStatus() != ProductionBatch.BatchStatus.GROWING &&
+                batch.getStatus() != ProductionBatch.BatchStatus.HARVESTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sadece aktif üretim partileri tamamlanabilir.");
+        }
+
+        batch.setStatus(ProductionBatch.BatchStatus.COMPLETED);
+        return productionBatchRepository.save(batch);
+    }
+
+    // YENİ EKLENEN METOT: Partiyi iptal etme
+    @Transactional
+    public ProductionBatch cancelProductionBatch(String id, String tenantId) {
+        ProductionBatch batch = productionBatchRepository.findById(id)
+                .filter(b -> b.getTenantId().equals(tenantId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Üretim partisi bulunamadı."));
+
+        // Tamamlanmış veya zaten iptal edilmiş bir parti iptal edilemez
+        if (batch.getStatus() == ProductionBatch.BatchStatus.COMPLETED || batch.getStatus() == ProductionBatch.BatchStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tamamlanmış veya zaten iptal edilmiş bir parti iptal edilemez.");
+        }
+
+        batch.setStatus(ProductionBatch.BatchStatus.CANCELLED);
+        return productionBatchRepository.save(batch);
+    }
 }

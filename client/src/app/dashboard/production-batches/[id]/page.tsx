@@ -16,12 +16,15 @@ import { toast } from 'react-hot-toast';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContentText from '@mui/material/DialogContentText';
 
 import { useApi } from '@/hooks/use-api';
 import type { ProductionBatch, PlantType, PlantVariety, Plant } from '@/types/plant';
 import dayjs from 'dayjs';
 import { HarvestForm } from '@/components/dashboard/production-batches/harvest-form';
-import { AddExpenseForm } from '@/components/dashboard/production-batches/add-expense-form'; // AddExpenseForm import edildi
+import { AddExpenseForm } from '@/components/dashboard/production-batches/add-expense-form';
+import { completeProductionBatch, cancelProductionBatch } from '@/api/nursery'; // API fonksiyonları güncellendi
 
 export default function ProductionBatchDetailPage(): React.JSX.Element {
   const { id } = useParams();
@@ -39,7 +42,10 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
   );
 
   const [isHarvestFormOpen, setIsHarvestFormOpen] = React.useState<boolean>(false);
-  const [isAddExpenseFormOpen, setIsAddExpenseFormOpen] = React.useState<boolean>(false); // YENİ: Gider ekleme formu için state
+  const [isAddExpenseFormOpen, setIsAddExpenseFormOpen] = React.useState<boolean>(false);
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = React.useState<boolean>(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = React.useState<boolean>(false);
+
 
   const plantTypeMap = React.useMemo(() => {
     return plantTypes?.reduce((map, type) => {
@@ -64,11 +70,40 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     toast.success('Hasat başarıyla kaydedildi!');
   }, [refetch]);
 
-  const handleAddExpenseSuccess = React.useCallback(() => { // YENİ: Gider ekleme başarılı callback'i
+  const handleAddExpenseSuccess = React.useCallback(() => {
     setIsAddExpenseFormOpen(false);
-    void refetch(); // Parti detaylarını yeniden çekerek güncel maliyeti al
+    void refetch();
     toast.success('Gider başarıyla eklendi!');
   }, [refetch]);
+
+  // YENİ: Parti tamamlama ve iptal fonksiyonları
+  const handleCompleteBatch = React.useCallback(async () => {
+    if (!batchId) return;
+    try {
+      await completeProductionBatch(batchId);
+      toast.success('Parti başarıyla tamamlandı!');
+      void refetch();
+    } catch (err) {
+      console.error('Partiyi tamamlarken hata oluştu:', err);
+      toast.error('Partiyi tamamlarken bir hata oluştu.');
+    } finally {
+      setIsCompleteDialogOpen(false);
+    }
+  }, [batchId, refetch]);
+
+  const handleCancelBatch = React.useCallback(async () => {
+    if (!batchId) return;
+    try {
+      await cancelProductionBatch(batchId);
+      toast.success('Parti başarıyla iptal edildi!');
+      void refetch();
+    } catch (err) {
+      console.error('Partiyi iptal ederken hata oluştu:', err);
+      toast.error('Partiyi iptal ederken bir hata oluştu.');
+    } finally {
+      setIsCancelDialogOpen(false);
+    }
+  }, [batchId, refetch]);
 
 
   if (overallLoading) {
@@ -111,6 +146,8 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     );
   }
 
+
+  const canHarvestOrAddExpense = productionBatch.status === 'CREATED' || productionBatch.status === 'GROWING' || productionBatch.status === 'HARVESTED';
 
   return (
     <Stack spacing={3}>
@@ -183,12 +220,29 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         <CardHeader title="Parti Aksiyonları" />
         <CardContent>
           <Stack direction="row" spacing={2}>
-            <Button variant="contained" onClick={() => setIsHarvestFormOpen(true)}>
-              Hasat Yap
-            </Button>
-            <Button variant="outlined" onClick={() => setIsAddExpenseFormOpen(true)}> {/* YENİ: Gider Ekle butonu */}
-              Gider Ekle
-            </Button>
+            {/* Hasat yap ve gider ekle butonları doğru durumlar için gösterilir */}
+            {canHarvestOrAddExpense && (
+              <Button variant="contained" onClick={() => setIsHarvestFormOpen(true)}>
+                Hasat Yap
+              </Button>
+            )}
+            {canHarvestOrAddExpense && (
+              <Button variant="outlined" onClick={() => setIsAddExpenseFormOpen(true)}>
+                Gider Ekle
+              </Button>
+            )}
+            {/* Parti Tamamlama butonu */}
+            {productionBatch.status !== 'COMPLETED' && productionBatch.status !== 'CANCELLED' && (
+              <Button color="success" variant="outlined" onClick={() => setIsCompleteDialogOpen(true)}>
+                Partiyi Tamamla
+              </Button>
+            )}
+            {/* Parti İptal Etme butonu */}
+            {productionBatch.status !== 'COMPLETED' && productionBatch.status !== 'CANCELLED' && (
+              <Button color="error" variant="outlined" onClick={() => setIsCancelDialogOpen(true)}>
+                Partiyi İptal Et
+              </Button>
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -199,17 +253,49 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         onClose={() => setIsHarvestFormOpen(false)}
         onSuccess={handleHarvestSuccess}
         productionBatchId={productionBatch.id}
-        plant={plant} // Doğru Plant objesi HarvestForm'a iletiliyor
+        plant={plant}
         currentBatchQuantity={productionBatch.currentQuantity}
       />
 
-      {/* YENİ: Gider Ekleme Formu Modalı */}
+      {/* Gider Ekleme Formu Modalı */}
       <AddExpenseForm
         open={isAddExpenseFormOpen}
         onClose={() => setIsAddExpenseFormOpen(false)}
         onSuccess={handleAddExpenseSuccess}
         productionBatchId={productionBatch.id}
       />
+
+      {/* Parti Tamamlama Onay Dialogu */}
+      <Dialog open={isCompleteDialogOpen} onClose={() => setIsCompleteDialogOpen(false)}>
+        <DialogTitle>Partiyi Tamamlamayı Onayla</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bu üretim partisini tamamlamak istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsCompleteDialogOpen(false)}>İptal</Button>
+          <Button onClick={handleCompleteBatch} color="success" autoFocus>
+            Onayla
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Parti İptal Etme Onay Dialogu */}
+      <Dialog open={isCancelDialogOpen} onClose={() => setIsCancelDialogOpen(false)}>
+        <DialogTitle>Partiyi İptal Etmeyi Onayla</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bu üretim partisini iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz ve partideki tüm fidanlar stoktan düşülür.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsCancelDialogOpen(false)}>İptal</Button>
+          <Button onClick={handleCancelBatch} color="error" autoFocus>
+            Onayla
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -7,45 +7,6 @@ import type { ReceiptItemDto } from '@/types/goods-receipt';
 // API Base URL'sini tanımlıyoruz
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// ... (Diğer fonksiyonlar: createProductionBatch, getAllProductionBatches, getProductionBatchById, createGoodsReceipt, getPlantTypes, getPlantVarieties) ...
-
-// YENİ EKLENEN: PlantType ve PlantVariety ID'sine göre Plant objesini getiren fonksiyon
-export const getPlantByTypeIdAndVarietyId = async (
-  plantTypeId: string,
-  plantVarietyId: string
-): Promise<Plant> => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-  }
-
-  const url = `${API_BASE_URL}/api/v1/plants/by-type-and-variety?plantTypeId=${plantTypeId}&plantVarietyId=${plantVarietyId}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    try {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Fidan bilgisi alınamadı: ${response.status}`);
-    } catch (e) {
-      if (response.status === 404) {
-        throw new Error(`Belirtilen fidan türü ve çeşidi için fidan bilgisi bulunamadı.`);
-      }
-      throw new Error(`Veri alınamadı: ${response.status}. Yanıt JSON formatında değil.`);
-    }
-  }
-
-  return response.json();
-};
-
-// ... (Diğer fonksiyonlar devam ediyor) ...
-// Eski getPlantTypes, getPlantVarieties fonksiyonları burada devam ediyor.
-
 // Yeni bir üretim partisi oluşturmak için API çağrısı
 interface CreateProductionBatchRequest {
   batchCode: string;
@@ -177,6 +138,51 @@ export const createGoodsReceipt = async (
   return response.json();
 };
 
+// YENİ EKLENEN: Üretim partisini tamamlama fonksiyonu
+export const completeProductionBatch = async (batchId: string): Promise<ProductionBatch> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/production-batches/${batchId}/complete`, {
+    method: 'PATCH', // Durum güncellemesi için PATCH metodu
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Parti tamamlanırken bir hata oluştu: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+// YENİ EKLENEN: Üretim partisini iptal etme fonksiyonu
+export const cancelProductionBatch = async (batchId: string): Promise<ProductionBatch> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/production-batches/${batchId}/cancel`, {
+    method: 'PATCH', // Durum güncellemesi için PATCH metodu
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Parti iptal edilirken bir hata oluştu: ${response.status}`);
+  }
+
+  return response.json();
+};
 
 // Plant Type API Fonksiyonları
 export const getPlantTypes = async (): Promise<PlantType[]> => {
