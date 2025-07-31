@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation'; // next/router yerine next/navigation'dan useRouter
+import { useRouter } from 'next/navigation';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -12,27 +12,37 @@ import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { toast } from 'react-hot-toast';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
 
 import { useApi } from '@/hooks/use-api';
-import type { ProductionBatch, PlantType, PlantVariety } from '@/types/plant';
-// getProductionBatchById doğrudan useApi içinde kullanılacağı için burada import edilmiyor
-// import { getProductionBatchById } from '@/api/nursery';
+import type { ProductionBatch, PlantType, PlantVariety, Plant } from '@/types/plant';
 import dayjs from 'dayjs';
+import { HarvestForm } from '@/components/dashboard/production-batches/harvest-form';
 
 export default function ProductionBatchDetailPage(): React.JSX.Element {
-  const { id } = useParams(); // URL'den parti ID'sini al
-  const router = useRouter(); // Geri gitmek için router
+  const { id } = useParams();
+  const router = useRouter();
 
-  // ID'nin string olduğundan emin olalım, useParams string | string[] | undefined dönebilir
   const batchId = typeof id === 'string' ? id : null;
 
-  // Tek bir üretim partisi detayını çekme
-  // batchId null ise useApi'ye null göndererek API çağrısı yapmamasını sağlıyoruz
-  const { data: productionBatch, isLoading, error } = useApi<ProductionBatch>(batchId ? `/api/v1/production-batches/${batchId}` : null);
+  // Üretim partisi detayını ve refetch fonksiyonunu alıyoruz
+  const { data: productionBatch, isLoading, error, refetch } = useApi<ProductionBatch>(batchId ? `/api/v1/production-batches/${batchId}` : null);
 
-  // Fidan Türleri ve Çeşitleri için veri çekme (detayları göstermek için)
+  // Fidan Türleri ve Çeşitleri için veri çekme
   const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
   const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
+  
+  // YENİ: ProductionBatch'teki plantTypeId ve plantVarietyId'yi kullanarak doğru Plant ID'sini çekme
+  const { data: plant, isLoading: isLoadingPlant, error: plantError } = useApi<Plant>(
+    productionBatch?.plantTypeId && productionBatch?.plantVarietyId 
+      ? `/api/v1/plants/by-type-and-variety?plantTypeId=${productionBatch.plantTypeId}&plantVarietyId=${productionBatch.plantVarietyId}` 
+      : null
+  );
+
+  const [isHarvestFormOpen, setIsHarvestFormOpen] = React.useState<boolean>(false);
 
   const plantTypeMap = React.useMemo(() => {
     return plantTypes?.reduce((map, type) => {
@@ -48,8 +58,16 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     }, new Map<string, string>()) || new Map<string, string>();
   }, [plantVarieties]);
 
-  const overallLoading = isLoading || isLoadingPlantTypes || isLoadingPlantVarieties;
-  const overallError = error || plantTypesError || plantVarietiesError;
+  // Yeni isLoading ve error durumları eklendi
+  const overallLoading = isLoading || isLoadingPlantTypes || isLoadingPlantVarieties || isLoadingPlant;
+  const overallError = error || plantTypesError || plantVarietiesError || plantError;
+
+  const handleHarvestSuccess = React.useCallback(() => {
+    setIsHarvestFormOpen(false);
+    void refetch();
+    toast.success('Hasat başarıyla kaydedildi!');
+  }, [refetch]);
+
 
   if (overallLoading) {
     return (
@@ -69,8 +87,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
   }
 
   if (!productionBatch) {
-    // Eğer parti ID'si yoksa veya parti bulunamadıysa
-    // Bu durum, örneğin URL'de ID yoksa (undefined) veya API 404 döndürdüyse gerçekleşir.
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography variant="h5">Üretim Partisi bulunamadı veya geçersiz ID.</Typography>
@@ -80,6 +96,20 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
       </Box>
     );
   }
+
+  // plant objesi yoksa da bir hata mesajı gösterelim
+  if (!plant) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="error">Bu üretim partisi için eşleşen bir fidan kimliği bulunamadı.</Typography>
+        <Typography variant="body2" color="text.secondary">Lütfen fidan yönetiminden bu fidan kimliğini oluşturun.</Typography>
+        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => router.back()}>
+          Geri Dön
+        </Button>
+      </Box>
+    );
+  }
+
 
   return (
     <Stack spacing={3}>
@@ -147,6 +177,26 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
           </Stack>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader title="Parti Aksiyonları" />
+        <CardContent>
+          <Stack direction="row" spacing={2}>
+            <Button variant="contained" onClick={() => setIsHarvestFormOpen(true)}>
+              Hasat Yap
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <HarvestForm
+        open={isHarvestFormOpen}
+        onClose={() => setIsHarvestFormOpen(false)}
+        onSuccess={handleHarvestSuccess}
+        productionBatchId={productionBatch.id}
+        plantId={plant.id} // Doğru Plant ID'si HarvestForm'a iletiliyor
+        currentBatchQuantity={productionBatch.currentQuantity}
+      />
     </Stack>
   );
 }

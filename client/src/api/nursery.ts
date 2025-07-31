@@ -1,9 +1,50 @@
 // client/src/api/nursery.ts
 
-import type { PlantType, PlantVariety, ProductionBatch } from '@/types/plant';
+import type { PlantType, PlantVariety, ProductionBatch, Plant } from '@/types/plant';
+import type { GoodsReceipt } from '@/types/goods-receipt';
+import type { ReceiptItemDto } from '@/types/goods-receipt';
 
-// API Base URL'sini tanımlıyoruz, process.env.NEXT_PUBLIC_API_URL undefined ise fallback kullanır
+// API Base URL'sini tanımlıyoruz
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// ... (Diğer fonksiyonlar: createProductionBatch, getAllProductionBatches, getProductionBatchById, createGoodsReceipt, getPlantTypes, getPlantVarieties) ...
+
+// YENİ EKLENEN: PlantType ve PlantVariety ID'sine göre Plant objesini getiren fonksiyon
+export const getPlantByTypeIdAndVarietyId = async (
+  plantTypeId: string,
+  plantVarietyId: string
+): Promise<Plant> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const url = `${API_BASE_URL}/api/v1/plants/by-type-and-variety?plantTypeId=${plantTypeId}&plantVarietyId=${plantVarietyId}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Fidan bilgisi alınamadı: ${response.status}`);
+    } catch (e) {
+      if (response.status === 404) {
+        throw new Error(`Belirtilen fidan türü ve çeşidi için fidan bilgisi bulunamadı.`);
+      }
+      throw new Error(`Veri alınamadı: ${response.status}. Yanıt JSON formatında değil.`);
+    }
+  }
+
+  return response.json();
+};
+
+// ... (Diğer fonksiyonlar devam ediyor) ...
+// Eski getPlantTypes, getPlantVarieties fonksiyonları burada devam ediyor.
 
 // Yeni bir üretim partisi oluşturmak için API çağrısı
 interface CreateProductionBatchRequest {
@@ -71,7 +112,7 @@ export const getAllProductionBatches = async (): Promise<ProductionBatch[]> => {
   return response.json();
 };
 
-// YENİ EKLENEN: ID'ye göre tek bir üretim partisini getiren fonksiyon
+// ID'ye göre tek bir üretim partisini getiren fonksiyon
 export const getProductionBatchById = async (id: string): Promise<ProductionBatch> => {
   const token = localStorage.getItem('authToken');
   if (!token) {
@@ -100,8 +141,44 @@ export const getProductionBatchById = async (id: string): Promise<ProductionBatc
   return response.json();
 };
 
+// YENİ EKLENEN: Mal Girişi (Goods Receipt) Oluşturma Fonksiyonu
+// Bu fonksiyon, HarvestForm tarafından kullanılacak
+interface CreateGoodsReceiptRequest {
+  receiptNumber: string;
+  sourceType: 'SUPPLIER' | 'PRODUCTION_BATCH';
+  sourceId: string;
+  warehouseId: string;
+  receiptDate: string; // ISO string formatında
+  items: ReceiptItemDto[];
+}
 
-// Plant Type API Fonksiyonları (useApi hook'u tarafından doğrudan kullanılabilir, ancak tutuluyor)
+export const createGoodsReceipt = async (
+  request: CreateGoodsReceiptRequest
+): Promise<GoodsReceipt> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/goods-receipts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Mal girişi oluşturulurken bir hata oluştu: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+
+// Plant Type API Fonksiyonları
 export const getPlantTypes = async (): Promise<PlantType[]> => {
   const token = localStorage.getItem('authToken');
   const response = await fetch(`${API_BASE_URL}/api/v1/plant-types`, {
@@ -112,7 +189,7 @@ export const getPlantTypes = async (): Promise<PlantType[]> => {
   return response.json();
 };
 
-// Plant Variety API Fonksiyonları (useApi hook'u tarafından doğrudan kullanılabilir, ancak tutuluyor)
+// Plant Variety API Fonksiyonları
 export const getPlantVarieties = async (): Promise<PlantVariety[]> => {
   const token = localStorage.getItem('authToken');
   const response = await fetch(`${API_BASE_URL}/api/v1/plant-varieties`, {

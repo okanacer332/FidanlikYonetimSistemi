@@ -37,6 +37,22 @@ public class PlantController {
         return ResponseEntity.ok(plants);
     }
 
+    // YENİ EKLENEN ENDPOINT: Fidan türü ve çeşidine göre tek bir fidan bulma
+    @GetMapping("/by-type-and-variety")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
+    public ResponseEntity<Plant> getPlantByTypeIdAndVarietyId(
+            @RequestParam String plantTypeId,
+            @RequestParam String plantVarietyId,
+            Authentication authentication) {
+        User authenticatedUser = (User) authentication.getPrincipal();
+        String tenantId = authenticatedUser.getTenantId();
+
+        return plantService.getPlantByTypeIdAndVarietyId(plantTypeId, plantVarietyId, tenantId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Plant> updatePlant(@PathVariable String id, @RequestBody Plant plant, Authentication authentication) {
