@@ -34,32 +34,12 @@ import type { Warehouse } from '@/types/warehouse'; // Depo tipi (eğer warehous
 import type { Plant } from '@/types/plant'; // Plant tipi (eğer plant.ts dosyanızda tanımlıysa)
 import { createGoodsReceipt } from '@/api/nursery'; // createGoodsReceipt API fonksiyonu
 
-// Warehouse tipi varsayımı
-// Eğer zaten tanımlı değilse, client/src/types/warehouse.ts dosyasında tanımlamalısınız.
-// export interface Warehouse {
-//   id: string;
-//   name: string;
-//   description?: string;
-//   tenantId: string;
-// }
-
-// Plant tipi varsayımı
-// Eğer zaten tanımlı değilse, client/src/types/plant.ts dosyasında tanımlamalısınız (üstte eklendi).
-// export interface Plant {
-//   id: string;
-//   plantCode: string;
-//   // diğer plant özellikleri
-//   plantTypeId: string;
-//   plantVarietyId: string;
-// }
-
-
 interface HarvestFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   productionBatchId: string;
-  plantId: string; // Hasat edilen fidanın ID'si (ProductionBatch'ten gelen)
+  plant: Plant; // YENİ: plant objesi prop olarak alınıyor
   currentBatchQuantity: number; // Üretim partisinin mevcut fidan adedi (validasyon için)
 }
 
@@ -73,7 +53,7 @@ const schema = zod.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function HarvestForm({ open, onClose, onSuccess, productionBatchId, plantId, currentBatchQuantity }: HarvestFormProps): React.JSX.Element {
+export function HarvestForm({ open, onClose, onSuccess, productionBatchId, plant, currentBatchQuantity }: HarvestFormProps): React.JSX.Element {
   const {
     handleSubmit,
     register,
@@ -97,6 +77,11 @@ export function HarvestForm({ open, onClose, onSuccess, productionBatchId, plant
         toast.error(`Hasat adedi (${data.quantity}) mevcut parti miktarından (${currentBatchQuantity}) fazla olamaz.`);
         return;
       }
+      // plant objesinin varlığını kontrol et
+      if (!plant || !plant.id) {
+          toast.error('Hasat işlemi için geçerli bir fidan kimliği bulunamadı.');
+          return;
+      }
 
       try {
         // GoodsReceiptRequest DTO'sunu kullanarak API çağrısı yapıyoruz
@@ -108,7 +93,7 @@ export function HarvestForm({ open, onClose, onSuccess, productionBatchId, plant
           warehouseId: data.warehouseId,
           receiptDate: dayjs(data.receiptDate).toISOString(),
           items: [{
-            plantId: plantId,
+            plantId: plant.id, // plant objesinden doğru ID'yi alıyoruz
             quantity: data.quantity,
             unitCost: 0, // Üretim partisi için unitCost backend tarafından hesaplanacak
           }],
@@ -123,7 +108,7 @@ export function HarvestForm({ open, onClose, onSuccess, productionBatchId, plant
         console.error("Hasat kaydetme hatası:", err);
       }
     },
-    [onClose, onSuccess, reset, productionBatchId, plantId, currentBatchQuantity]
+    [onClose, onSuccess, reset, productionBatchId, plant, currentBatchQuantity]
   );
 
   // Yükleme veya hata durumunda

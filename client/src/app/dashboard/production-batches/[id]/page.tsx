@@ -21,6 +21,7 @@ import { useApi } from '@/hooks/use-api';
 import type { ProductionBatch, PlantType, PlantVariety, Plant } from '@/types/plant';
 import dayjs from 'dayjs';
 import { HarvestForm } from '@/components/dashboard/production-batches/harvest-form';
+import { AddExpenseForm } from '@/components/dashboard/production-batches/add-expense-form'; // AddExpenseForm import edildi
 
 export default function ProductionBatchDetailPage(): React.JSX.Element {
   const { id } = useParams();
@@ -28,14 +29,9 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
 
   const batchId = typeof id === 'string' ? id : null;
 
-  // Üretim partisi detayını ve refetch fonksiyonunu alıyoruz
   const { data: productionBatch, isLoading, error, refetch } = useApi<ProductionBatch>(batchId ? `/api/v1/production-batches/${batchId}` : null);
-
-  // Fidan Türleri ve Çeşitleri için veri çekme
   const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
   const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
-  
-  // YENİ: ProductionBatch'teki plantTypeId ve plantVarietyId'yi kullanarak doğru Plant ID'sini çekme
   const { data: plant, isLoading: isLoadingPlant, error: plantError } = useApi<Plant>(
     productionBatch?.plantTypeId && productionBatch?.plantVarietyId 
       ? `/api/v1/plants/by-type-and-variety?plantTypeId=${productionBatch.plantTypeId}&plantVarietyId=${productionBatch.plantVarietyId}` 
@@ -43,6 +39,7 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
   );
 
   const [isHarvestFormOpen, setIsHarvestFormOpen] = React.useState<boolean>(false);
+  const [isAddExpenseFormOpen, setIsAddExpenseFormOpen] = React.useState<boolean>(false); // YENİ: Gider ekleme formu için state
 
   const plantTypeMap = React.useMemo(() => {
     return plantTypes?.reduce((map, type) => {
@@ -58,7 +55,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     }, new Map<string, string>()) || new Map<string, string>();
   }, [plantVarieties]);
 
-  // Yeni isLoading ve error durumları eklendi
   const overallLoading = isLoading || isLoadingPlantTypes || isLoadingPlantVarieties || isLoadingPlant;
   const overallError = error || plantTypesError || plantVarietiesError || plantError;
 
@@ -66,6 +62,12 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     setIsHarvestFormOpen(false);
     void refetch();
     toast.success('Hasat başarıyla kaydedildi!');
+  }, [refetch]);
+
+  const handleAddExpenseSuccess = React.useCallback(() => { // YENİ: Gider ekleme başarılı callback'i
+    setIsAddExpenseFormOpen(false);
+    void refetch(); // Parti detaylarını yeniden çekerek güncel maliyeti al
+    toast.success('Gider başarıyla eklendi!');
   }, [refetch]);
 
 
@@ -97,7 +99,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     );
   }
 
-  // plant objesi yoksa da bir hata mesajı gösterelim
   if (!plant) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -185,17 +186,29 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
             <Button variant="contained" onClick={() => setIsHarvestFormOpen(true)}>
               Hasat Yap
             </Button>
+            <Button variant="outlined" onClick={() => setIsAddExpenseFormOpen(true)}> {/* YENİ: Gider Ekle butonu */}
+              Gider Ekle
+            </Button>
           </Stack>
         </CardContent>
       </Card>
 
+      {/* Hasat Formu Modalı */}
       <HarvestForm
         open={isHarvestFormOpen}
         onClose={() => setIsHarvestFormOpen(false)}
         onSuccess={handleHarvestSuccess}
         productionBatchId={productionBatch.id}
-        plantId={plant.id} // Doğru Plant ID'si HarvestForm'a iletiliyor
+        plant={plant} // Doğru Plant objesi HarvestForm'a iletiliyor
         currentBatchQuantity={productionBatch.currentQuantity}
+      />
+
+      {/* YENİ: Gider Ekleme Formu Modalı */}
+      <AddExpenseForm
+        open={isAddExpenseFormOpen}
+        onClose={() => setIsAddExpenseFormOpen(false)}
+        onSuccess={handleAddExpenseSuccess}
+        productionBatchId={productionBatch.id}
       />
     </Stack>
   );

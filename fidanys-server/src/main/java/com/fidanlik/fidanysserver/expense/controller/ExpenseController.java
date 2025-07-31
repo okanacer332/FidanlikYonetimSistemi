@@ -1,9 +1,7 @@
 package com.fidanlik.fidanysserver.expense.controller;
 
-import com.fidanlik.fidanysserver.expense.dto.ExpenseCategoryRequest;
 import com.fidanlik.fidanysserver.expense.dto.ExpenseRequest;
 import com.fidanlik.fidanysserver.expense.model.Expense;
-import com.fidanlik.fidanysserver.expense.model.ExpenseCategory;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.user.model.User;
 import lombok.RequiredArgsConstructor;
@@ -23,19 +21,8 @@ public class ExpenseController {
 
     private final ExpenseService expenseService;
 
-    // --- Expense Categories ---
-    @PostMapping("/categories")
-    public ResponseEntity<ExpenseCategory> createCategory(@RequestBody ExpenseCategoryRequest request, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        ExpenseCategory category = expenseService.createCategory(request, user.getTenantId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(category);
-    }
+    // --- Expense Categories ile ilgili metotlar buradaydı, şimdi kaldırıldı ---
 
-    @GetMapping("/categories")
-    public ResponseEntity<List<ExpenseCategory>> getAllCategories(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        return ResponseEntity.ok(expenseService.getAllCategories(user.getTenantId()));
-    }
 
     // --- Expenses ---
     @PostMapping
