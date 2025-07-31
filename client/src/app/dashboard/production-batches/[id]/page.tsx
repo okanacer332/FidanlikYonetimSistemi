@@ -21,10 +21,13 @@ import DialogContentText from '@mui/material/DialogContentText';
 
 import { useApi } from '@/hooks/use-api';
 import type { ProductionBatch, PlantType, PlantVariety, Plant } from '@/types/plant';
+import type { Expense, ExpenseCategory } from '@/types/expense';
 import dayjs from 'dayjs';
 import { HarvestForm } from '@/components/dashboard/production-batches/harvest-form';
 import { AddExpenseForm } from '@/components/dashboard/production-batches/add-expense-form';
-import { completeProductionBatch, cancelProductionBatch } from '@/api/nursery'; // API fonksiyonları güncellendi
+import { completeProductionBatch, cancelProductionBatch } from '@/api/nursery';
+import { BatchExpensesTable } from '@/components/dashboard/production-batches/batch-expenses-table';
+import { getExpenseCategories } from '@/api/expense';
 
 export default function ProductionBatchDetailPage(): React.JSX.Element {
   const { id } = useParams();
@@ -40,12 +43,17 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
       ? `/api/v1/plants/by-type-and-variety?plantTypeId=${productionBatch.plantTypeId}&plantVarietyId=${productionBatch.plantVarietyId}` 
       : null
   );
+  // YENİ: Giderler için ayrı bir refetch fonksiyonu eklendi
+  const { data: batchExpenses, isLoading: isLoadingExpenses, error: expensesError, refetch: refetchExpenses } = useApi<Expense[]>(
+    batchId ? `/api/v1/expenses/by-batch/${batchId}` : null
+  );
+  const { data: expenseCategories, isLoading: isLoadingCategories, error: categoriesError } = useApi<ExpenseCategory[]>('/api/v1/expense-categories');
+
 
   const [isHarvestFormOpen, setIsHarvestFormOpen] = React.useState<boolean>(false);
   const [isAddExpenseFormOpen, setIsAddExpenseFormOpen] = React.useState<boolean>(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = React.useState<boolean>(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = React.useState<boolean>(false);
-
 
   const plantTypeMap = React.useMemo(() => {
     return plantTypes?.reduce((map, type) => {
@@ -60,9 +68,17 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
       return map;
     }, new Map<string, string>()) || new Map<string, string>();
   }, [plantVarieties]);
+  
+  const expenseCategoriesMap = React.useMemo(() => {
+    return expenseCategories?.reduce((map, category) => {
+      map.set(category.id, category);
+      return map;
+    }, new Map<string, ExpenseCategory>()) || new Map<string, ExpenseCategory>();
+  }, [expenseCategories]);
 
-  const overallLoading = isLoading || isLoadingPlantTypes || isLoadingPlantVarieties || isLoadingPlant;
-  const overallError = error || plantTypesError || plantVarietiesError || plantError;
+
+  const overallLoading = isLoading || isLoadingPlantTypes || isLoadingPlantVarieties || isLoadingPlant || isLoadingExpenses || isLoadingCategories;
+  const overallError = error || plantTypesError || plantVarietiesError || plantError || expensesError || categoriesError;
 
   const handleHarvestSuccess = React.useCallback(() => {
     setIsHarvestFormOpen(false);
@@ -70,13 +86,14 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
     toast.success('Hasat başarıyla kaydedildi!');
   }, [refetch]);
 
+  // DEĞİŞİKLİK: Gider eklendiğinde hem parti verilerini hem de gider listesini yenile
   const handleAddExpenseSuccess = React.useCallback(() => {
     setIsAddExpenseFormOpen(false);
-    void refetch();
+    void refetch(); // Parti verilerini yenile (maliyet havuzu için)
+    void refetchExpenses(); // Gider listesini yenile
     toast.success('Gider başarıyla eklendi!');
-  }, [refetch]);
+  }, [refetch, refetchExpenses]);
 
-  // YENİ: Parti tamamlama ve iptal fonksiyonları
   const handleCompleteBatch = React.useCallback(async () => {
     if (!batchId) return;
     try {
@@ -145,7 +162,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
       </Box>
     );
   }
-
 
   const canHarvestOrAddExpense = productionBatch.status === 'CREATED' || productionBatch.status === 'GROWING' || productionBatch.status === 'HARVESTED';
 
@@ -220,7 +236,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         <CardHeader title="Parti Aksiyonları" />
         <CardContent>
           <Stack direction="row" spacing={2}>
-            {/* Hasat yap ve gider ekle butonları doğru durumlar için gösterilir */}
             {canHarvestOrAddExpense && (
               <Button variant="contained" onClick={() => setIsHarvestFormOpen(true)}>
                 Hasat Yap
@@ -231,13 +246,11 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
                 Gider Ekle
               </Button>
             )}
-            {/* Parti Tamamlama butonu */}
             {productionBatch.status !== 'COMPLETED' && productionBatch.status !== 'CANCELLED' && (
               <Button color="success" variant="outlined" onClick={() => setIsCompleteDialogOpen(true)}>
                 Partiyi Tamamla
               </Button>
             )}
-            {/* Parti İptal Etme butonu */}
             {productionBatch.status !== 'COMPLETED' && productionBatch.status !== 'CANCELLED' && (
               <Button color="error" variant="outlined" onClick={() => setIsCancelDialogOpen(true)}>
                 Partiyi İptal Et
@@ -246,8 +259,17 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
           </Stack>
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader title="Partiye Ait Giderler" />
+        <CardContent>
+          <BatchExpensesTable 
+            expenses={batchExpenses || []} 
+            expenseCategoriesMap={expenseCategoriesMap} 
+          />
+        </CardContent>
+      </Card>
 
-      {/* Hasat Formu Modalı */}
       <HarvestForm
         open={isHarvestFormOpen}
         onClose={() => setIsHarvestFormOpen(false)}
@@ -257,7 +279,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         currentBatchQuantity={productionBatch.currentQuantity}
       />
 
-      {/* Gider Ekleme Formu Modalı */}
       <AddExpenseForm
         open={isAddExpenseFormOpen}
         onClose={() => setIsAddExpenseFormOpen(false)}
@@ -265,7 +286,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         productionBatchId={productionBatch.id}
       />
 
-      {/* Parti Tamamlama Onay Dialogu */}
       <Dialog open={isCompleteDialogOpen} onClose={() => setIsCompleteDialogOpen(false)}>
         <DialogTitle>Partiyi Tamamlamayı Onayla</DialogTitle>
         <DialogContent>
@@ -281,7 +301,6 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
         </DialogActions>
       </Dialog>
 
-      {/* Parti İptal Etme Onay Dialogu */}
       <Dialog open={isCancelDialogOpen} onClose={() => setIsCancelDialogOpen(false)}>
         <DialogTitle>Partiyi İptal Etmeyi Onayla</DialogTitle>
         <DialogContent>

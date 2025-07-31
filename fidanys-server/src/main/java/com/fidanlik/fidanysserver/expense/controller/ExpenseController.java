@@ -37,4 +37,14 @@ public class ExpenseController {
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(expenseService.getAllExpenses(user.getTenantId()));
     }
+
+    // YENİ EKLENEN ENDPOINT: Belirli bir üretim partisine ait giderleri getirme
+    @GetMapping("/by-batch/{productionBatchId}")
+    public ResponseEntity<List<Expense>> getExpensesByProductionBatchId(
+            @PathVariable String productionBatchId,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        List<Expense> expenses = expenseService.getExpensesByProductionBatchId(productionBatchId, user.getTenantId());
+        return ResponseEntity.ok(expenses);
+    }
 }
