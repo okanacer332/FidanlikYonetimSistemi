@@ -18,21 +18,21 @@ import {
   IconButton,
   Tooltip,
   Box,
-  Typography, // Typography eklendi
 } from '@mui/material';
 import { Pencil as PencilIcon, Trash as TrashIcon, ArrowRight as ArrowRightIcon } from '@phosphor-icons/react';
 
-// Ortak Bileşenler
+// Ortak Bileşenler ve Hook'lar
 import { PageHeader } from '@/components/common/PageHeader';
 import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
 import { InlineCreateForm } from '@/components/common/InlineCreateForm';
 import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
 import { ControlledAutocomplete } from '@/components/common/ControlledAutocomplete';
 import { useNotifier } from '@/hooks/useNotifier';
-
-// Diğer Gerekli Importlar
-import type { Plant, MasterData, PlantCreateFormValues } from '@/types/nursery';
 import { useUser } from '@/hooks/use-user';
+import { useApiSWR } from '@/hooks/use-api-swr'; // YENİ: Modern veri çekme hook'umuz
+
+// Tipler ve Diğer Bileşenler
+import type { Plant, MasterData, PlantCreateFormValues } from '@/types/nursery';
 import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form';
 import { PlantTypeCreateForm } from '@/components/dashboard/nursery/plant-type-create-form';
 import { PlantVarietyCreateForm } from '@/components/dashboard/nursery/plant-variety-create-form';
@@ -42,20 +42,24 @@ import { PlantAgeCreateForm } from '@/components/dashboard/nursery/plant-age-cre
 import { LandCreateForm } from '@/components/dashboard/nursery/land-create-form';
 
 const schema = zod.object({
-  plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunludur.'),
-  plantVarietyId: zod.string().min(1, 'Fidan çeşidi seçimi zorunludur.'),
-  rootstockId: zod.string().min(1, 'Anaç seçimi zorunludur.'),
-  plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
-  plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
-  landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
+  plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunlur.'),
+  plantVarietyId: zod.string().min(1, 'Fidan çeşidi seçimi zorunlur.'),
+  rootstockId: zod.string().min(1, 'Anaç seçimi zorunlur.'),
+  plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunlur.'),
+  plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunlur.'),
+  landId: zod.string().min(1, 'Arazi seçimi zorunlur.'),
 });
 
 export default function Page(): React.JSX.Element {
   const notify = useNotifier();
   const { user: currentUser } = useUser();
-  const [data, setData] = React.useState<{ plants: Plant[]; masterData: MasterData | null }>({ plants: [], masterData: null });
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  
+  // --- VERİ ÇEKME İŞLEMİ ARTIK BU KADAR BASİT ---
+  const { data: plantsData, error: plantsError, isLoading: isLoadingPlants, mutate: mutatePlants } = useApiSWR<Plant[]>('/plants');
+  const { data: masterData, error: masterDataError, isLoading: isLoadingMasterData, mutate: mutateMasterData } = useApiSWR<MasterData>('/master-data');
+  const isLoading = isLoadingPlants || isLoadingMasterData;
+  const error = plantsError || masterDataError;
+
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -88,40 +92,6 @@ export default function Page(): React.JSX.Element {
   const canEdit = currentUser?.roles?.some(role => role.name === 'ADMIN');
   const canDelete = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
-  const fetchData = React.useCallback(async (isUpdate = false) => {
-    if (isUpdate) {
-      setIsTableLoading(true);
-    } else {
-      setIsLoading(true);
-    }
-    setError(null);
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Oturum bulunamadı.');
-      const [plantsRes, masterDataRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/master-data`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      if (!plantsRes.ok) throw new Error(`Fidanlar yüklenemedi (Hata: ${plantsRes.status})`);
-      if (!masterDataRes.ok) throw new Error(`Ana veriler yüklenemedi (Hata: ${masterDataRes.status})`);
-      setData({ plants: await plantsRes.json(), masterData: await masterDataRes.json() });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-    } finally {
-      setIsLoading(false);
-      setIsTableLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (canList) { 
-      fetchData(false); 
-    } else { 
-      setIsLoading(false); 
-      setError('Bu sayfayı görüntüleme yetkiniz yok.'); 
-    }
-  }, [canList, fetchData]);
-
   const handleRequestSort = React.useCallback((property: string) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -142,7 +112,7 @@ export default function Page(): React.JSX.Element {
       reset();
       setCreateFormOpen(false);
       setNewlyAddedPlantId(newPlant.id);
-      await fetchData(true);
+      await mutatePlants(); // SWR'a veriyi yenilemesini söylüyoruz
       notify.success('Fidan başarıyla oluşturuldu.');
       setTimeout(() => setNewlyAddedPlantId(null), 2000);
     } catch (err) {
@@ -150,18 +120,18 @@ export default function Page(): React.JSX.Element {
       notify.error(errorMessage);
       setFormError('root', { type: 'server', message: errorMessage });
     }
-  }, [fetchData, reset, setFormError, notify]);
+  }, [mutatePlants, reset, setFormError, notify]);
 
   const handleEditClick = React.useCallback((plant: Plant) => {
     setPlantToEdit(plant);
     setEditModalOpen(true);
   }, []);
 
-  const handleEditSuccess = React.useCallback(() => {
+  const handleEditSuccess = React.useCallback(async () => {
     setEditModalOpen(false);
-    fetchData(true);
+    await mutatePlants();
     notify.success('Fidan başarıyla güncellendi.');
-  }, [fetchData, notify]);
+  }, [mutatePlants, notify]);
 
   const handleDeleteConfirm = React.useCallback(async () => {
     if (!plantToDelete) return;
@@ -169,37 +139,37 @@ export default function Page(): React.JSX.Element {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum bulunamadı.');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants/${plantToDelete.id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants/${plantToDelete.id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) { throw new Error((await response.json()).message || 'Fidan silinemedi.'); }
       setPlantToDelete(null);
-      await fetchData(true);
+      await mutatePlants();
       notify.success('Fidan başarıyla silindi.');
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Silme işlemi başarısız oldu.');
     } finally {
       setIsTableLoading(false);
     }
-  }, [plantToDelete, fetchData, notify]);
+  }, [plantToDelete, mutatePlants, notify]);
   
   const handleMiniModalSuccess = React.useCallback(async (newData: { id: string }, type: keyof PlantCreateFormValues) => {
     setModalToOpen(null);
-    await fetchData(true);
+    await mutateMasterData();
     setValue(type, newData.id);
     notify.success('Yeni kayıt eklendi ve seçildi!');
-  }, [fetchData, setValue, notify]);
+  }, [mutateMasterData, setValue, notify]);
 
   const sortedAndFilteredPlants = React.useMemo(() => {
+    const plants = plantsData || [];
     const filtered = searchTerm
-      ? data.plants.filter((plant) =>
+      ? plants.filter((plant) =>
           (plant.plantType?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (plant.plantVariety?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (plant.rootstock?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (plant.land?.name.toLowerCase().includes(searchTerm.toLowerCase()))
         )
-      : data.plants;
+      : plants;
 
     const getSortableValue = (plant: Plant, key: string) => {
       const keys = key.split('.');
@@ -218,7 +188,7 @@ export default function Page(): React.JSX.Element {
       }
       return bValue > aValue ? 1 : -1;
     });
-  }, [data.plants, searchTerm, order, orderBy]);
+  }, [plantsData, searchTerm, order, orderBy]);
 
   const paginatedPlants = React.useMemo(() => {
     return sortedAndFilteredPlants.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -228,7 +198,6 @@ export default function Page(): React.JSX.Element {
     { key: 'plantType.name', header: 'Fidan Türü', sortable: true, render: (row) => row.plantType?.name || 'N/A', getValue: (row) => row.plantType?.name || '' },
     { key: 'plantVariety.name', header: 'Fidan Çeşidi', sortable: true, render: (row) => row.plantVariety?.name || 'N/A', getValue: (row) => row.plantVariety?.name || '' },
     { key: 'rootstock.name', header: 'Anaç', sortable: true, render: (row) => row.rootstock?.name || 'N/A', getValue: (row) => row.rootstock?.name || '' },
-    // --- DEĞİŞİKLİK BURADA: Chip yerine düz metin ---
     { key: 'plantSize.name', header: 'Boy', sortable: true, render: (row) => row.plantSize?.name || 'N/A', getValue: (row) => row.plantSize?.name || '' },
     { key: 'plantAge.name', header: 'Yaş', sortable: true, render: (row) => row.plantAge?.name || 'N/A', getValue: (row) => row.plantAge?.name || '' },
     { key: 'land.name', header: 'Arazi', sortable: true, render: (row) => row.land?.name || 'N/A', getValue: (row) => row.land?.name || '' },
@@ -247,12 +216,12 @@ export default function Page(): React.JSX.Element {
   
   const renderStepperForm = () => {
     const steps = [
-        { name: 'plantTypeId', label: 'Fidan Türü', options: data.masterData?.plantTypes, onAdd: () => setModalToOpen('plantType') },
-        { name: 'plantVarietyId', label: 'Fidan Çeşidi', options: data.masterData?.plantVarieties.filter(v => v.plantTypeId === watchedValues.plantTypeId), onAdd: () => setModalToOpen('plantVariety') },
-        { name: 'rootstockId', label: 'Anaç', options: data.masterData?.rootstocks, onAdd: () => setModalToOpen('rootstock') },
-        { name: 'plantSizeId', label: 'Fidan Boyu', options: data.masterData?.plantSizes, onAdd: () => setModalToOpen('plantSize') },
-        { name: 'plantAgeId', label: 'Fidan Yaşı', options: data.masterData?.plantAges, onAdd: () => setModalToOpen('plantAge') },
-        { name: 'landId', label: 'Arazi', options: data.masterData?.lands, onAdd: () => setModalToOpen('land') },
+        { name: 'plantTypeId', label: 'Fidan Türü', options: masterData?.plantTypes, onAdd: () => setModalToOpen('plantType') },
+        { name: 'plantVarietyId', label: 'Fidan Çeşidi', options: masterData?.plantVarieties.filter(v => v.plantTypeId === watchedValues.plantTypeId), onAdd: () => setModalToOpen('plantVariety') },
+        { name: 'rootstockId', label: 'Anaç', options: masterData?.rootstocks, onAdd: () => setModalToOpen('rootstock') },
+        { name: 'plantSizeId', label: 'Fidan Boyu', options: masterData?.plantSizes, onAdd: () => setModalToOpen('plantSize') },
+        { name: 'plantAgeId', label: 'Fidan Yaşı', options: masterData?.plantAges, onAdd: () => setModalToOpen('plantAge') },
+        { name: 'landId', label: 'Arazi', options: masterData?.lands, onAdd: () => setModalToOpen('land') },
     ];
 
     let currentStepIndex = 0;
@@ -311,7 +280,8 @@ export default function Page(): React.JSX.Element {
   };
 
   if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (!canList) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
 
   return (
     <Stack spacing={3}>
@@ -331,7 +301,7 @@ export default function Page(): React.JSX.Element {
       <ActionableTable
         columns={columns}
         rows={paginatedPlants}
-        data={data.plants}
+        data={plantsData || []}
         count={sortedAndFilteredPlants.length}
         page={page}
         rowsPerPage={rowsPerPage}
