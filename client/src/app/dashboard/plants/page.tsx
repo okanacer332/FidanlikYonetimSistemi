@@ -18,6 +18,7 @@ import {
   IconButton,
   Tooltip,
   Box,
+  Typography, // Typography eklendi
 } from '@mui/material';
 import { Pencil as PencilIcon, Trash as TrashIcon, ArrowRight as ArrowRightIcon } from '@phosphor-icons/react';
 
@@ -65,6 +66,8 @@ export default function Page(): React.JSX.Element {
   const [plantToDelete, setPlantToDelete] = React.useState<Plant | null>(null);
   const [isTableLoading, setIsTableLoading] = React.useState(false);
   const [newlyAddedPlantId, setNewlyAddedPlantId] = React.useState<string | null>(null);
+  const [order, setOrder] = React.useState<'asc' | 'desc'>('asc');
+  const [orderBy, setOrderBy] = React.useState<string>('plantType.name');
 
   const { control, handleSubmit, reset, watch, setValue, setError: setFormError, formState: { isSubmitting } } = useForm<PlantCreateFormValues>({
     resolver: zodResolver(schema),
@@ -119,6 +122,12 @@ export default function Page(): React.JSX.Element {
     }
   }, [canList, fetchData]);
 
+  const handleRequestSort = React.useCallback((property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  }, [order, orderBy]);
+
   const handleCreateSubmit = React.useCallback(async (values: PlantCreateFormValues) => {
     try {
       const token = localStorage.getItem('authToken');
@@ -143,7 +152,6 @@ export default function Page(): React.JSX.Element {
     }
   }, [fetchData, reset, setFormError, notify]);
 
-  // --- DÜZENLEME İŞLEMİ İÇİN YENİ HANDLER FONKSİYONU ---
   const handleEditClick = React.useCallback((plant: Plant) => {
     setPlantToEdit(plant);
     setEditModalOpen(true);
@@ -183,40 +191,59 @@ export default function Page(): React.JSX.Element {
     notify.success('Yeni kayıt eklendi ve seçildi!');
   }, [fetchData, setValue, notify]);
 
-  const filteredPlants = React.useMemo(() => {
-    if (!searchTerm) return data.plants;
-    const lowercasedSearchTerm = searchTerm.toLowerCase();
-    return data.plants.filter((plant) => (
-        plant.plantType?.name.toLowerCase().includes(lowercasedSearchTerm) ||
-        plant.plantVariety?.name.toLowerCase().includes(lowercasedSearchTerm) ||
-        plant.rootstock?.name.toLowerCase().includes(lowercasedSearchTerm) ||
-        plant.land?.name.toLowerCase().includes(lowercasedSearchTerm)
-    ));
-  }, [data.plants, searchTerm]);
+  const sortedAndFilteredPlants = React.useMemo(() => {
+    const filtered = searchTerm
+      ? data.plants.filter((plant) =>
+          (plant.plantType?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (plant.plantVariety?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (plant.rootstock?.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (plant.land?.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      : data.plants;
+
+    const getSortableValue = (plant: Plant, key: string) => {
+      const keys = key.split('.');
+      let value: any = plant;
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      return value || '';
+    };
+    
+    return [...filtered].sort((a, b) => {
+      const aValue = getSortableValue(a, orderBy);
+      const bValue = getSortableValue(b, orderBy);
+      if (order === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      }
+      return bValue > aValue ? 1 : -1;
+    });
+  }, [data.plants, searchTerm, order, orderBy]);
 
   const paginatedPlants = React.useMemo(() => {
-    return filteredPlants.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [filteredPlants, page, rowsPerPage]);
+    return sortedAndFilteredPlants.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredPlants, page, rowsPerPage]);
 
   const columns: ColumnDef<Plant>[] = React.useMemo(() => [
-    { key: 'plantType', header: 'Fidan Türü', render: (row) => row.plantType?.name || 'N/A', getValue: (row) => row.plantType?.name || '' },
-    { key: 'plantVariety', header: 'Fidan Çeşidi', render: (row) => row.plantVariety?.name || 'N/A', getValue: (row) => row.plantVariety?.name || '' },
-    { key: 'rootstock', header: 'Anaç', render: (row) => row.rootstock?.name || 'N/A', getValue: (row) => row.rootstock?.name || '' },
-    { key: 'plantSize', header: 'Boy', render: (row) => <Chip label={row.plantSize?.name || 'N/A'} size="small" variant='outlined' />, getValue: (row) => row.plantSize?.name || '' },
-    { key: 'plantAge', header: 'Yaş', render: (row) => <Chip label={row.plantAge?.name || 'N/A'} size="small" variant='outlined' />, getValue: (row) => row.plantAge?.name || '' },
-    { key: 'land', header: 'Arazi', render: (row) => row.land?.name || 'N/A', getValue: (row) => row.land?.name || '' },
+    { key: 'plantType.name', header: 'Fidan Türü', sortable: true, render: (row) => row.plantType?.name || 'N/A', getValue: (row) => row.plantType?.name || '' },
+    { key: 'plantVariety.name', header: 'Fidan Çeşidi', sortable: true, render: (row) => row.plantVariety?.name || 'N/A', getValue: (row) => row.plantVariety?.name || '' },
+    { key: 'rootstock.name', header: 'Anaç', sortable: true, render: (row) => row.rootstock?.name || 'N/A', getValue: (row) => row.rootstock?.name || '' },
+    // --- DEĞİŞİKLİK BURADA: Chip yerine düz metin ---
+    { key: 'plantSize.name', header: 'Boy', sortable: true, render: (row) => row.plantSize?.name || 'N/A', getValue: (row) => row.plantSize?.name || '' },
+    { key: 'plantAge.name', header: 'Yaş', sortable: true, render: (row) => row.plantAge?.name || 'N/A', getValue: (row) => row.plantAge?.name || '' },
+    { key: 'land.name', header: 'Arazi', sortable: true, render: (row) => row.land?.name || 'N/A', getValue: (row) => row.land?.name || '' },
     {
       key: 'actions',
       header: 'İşlemler',
+      sortable: false,
       render: (row) => (
         <Stack direction="row">
-          {/* DÜZENLEME: OnClick olayı yeni handler fonksiyonunu çağırıyor */}
           {canEdit && <Tooltip title="Düzenle"><IconButton size="small" onClick={() => handleEditClick(row)}><PencilIcon /></IconButton></Tooltip>}
           {canDelete && <Tooltip title="Sil"><IconButton size="small" color="error" onClick={() => setPlantToDelete(row)}><TrashIcon /></IconButton></Tooltip>}
         </Stack>
       ),
     },
-  ], [canEdit, canDelete, handleEditClick]); // useMemo bağımlılığına handleEditClick eklendi
+  ], [canEdit, canDelete, handleEditClick]);
   
   const renderStepperForm = () => {
     const steps = [
@@ -259,7 +286,7 @@ export default function Page(): React.JSX.Element {
                     }
                     if (index === currentStepIndex) {
                         return (
-                            <Box key={step.name} sx={{minWidth: '250px', flexGrow: 1}}>
+                            <Box key={step.name} sx={{ width: '100%', maxWidth: '320px' }}>
                                 <ControlledAutocomplete
                                     control={control}
                                     name={step.name as keyof PlantCreateFormValues}
@@ -305,7 +332,7 @@ export default function Page(): React.JSX.Element {
         columns={columns}
         rows={paginatedPlants}
         data={data.plants}
-        count={filteredPlants.length}
+        count={sortedAndFilteredPlants.length}
         page={page}
         rowsPerPage={rowsPerPage}
         onPageChange={(_, newPage) => setPage(newPage)}
@@ -315,6 +342,9 @@ export default function Page(): React.JSX.Element {
         selectionEnabled={false}
         isLoading={isTableLoading}
         highlightedId={newlyAddedPlantId}
+        order={order}
+        orderBy={orderBy}
+        onSort={handleRequestSort}
       />
       
       <Dialog open={!!plantToDelete} onClose={() => setPlantToDelete(null)}>
@@ -326,7 +356,6 @@ export default function Page(): React.JSX.Element {
         </DialogActions>
       </Dialog>
       
-      {/* Düzenleme modalı artık `plantToEdit` state'i doluyken render ediliyor */}
       <PlantEditForm 
         open={isEditModalOpen} 
         onClose={() => setEditModalOpen(false)} 

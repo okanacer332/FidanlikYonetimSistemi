@@ -14,20 +14,22 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  TableSortLabel,
   TextField,
   CircularProgress,
   alpha,
 } from '@mui/material';
 import { FileCsv, FilePdf, MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Sadece import etmeniz yeterli
+import 'jspdf-autotable'; // Sadece import etmeniz yeterli, tipi any olacak
 
 export interface ColumnDef<T> {
-  key: keyof T | 'actions';
+  key: keyof T | 'actions' | string;
   header: string;
   getValue?: (row: T) => string | number;
   render: (row: T) => React.ReactNode;
   width?: string | number;
+  sortable?: boolean;
 }
 
 interface ActionableTableProps<T> {
@@ -50,6 +52,9 @@ interface ActionableTableProps<T> {
   onDeselectAll?: () => void;
   isLoading?: boolean;
   highlightedId?: string | null;
+  order?: 'asc' | 'desc';
+  orderBy?: string;
+  onSort?: (property: string) => void;
 }
 
 const flashAnimation = {
@@ -79,14 +84,17 @@ export function ActionableTable<T extends { id: string }>({
   onDeselectAll,
   isLoading = false,
   highlightedId = null,
+  order = 'asc',
+  orderBy = '',
+  onSort,
 }: ActionableTableProps<T>) {
   const selectedSome = selected && selected.length > 0 && selected.length < rows.length;
   const selectedAll = selected && rows.length > 0 && selected.length === rows.length;
 
   const handleExportCSV = () => {
-    const BOM = '\uFEFF'; 
+    const BOM = '\uFEFF';
     const headers = columns.filter(c => c.key !== 'actions').map(c => c.header).join(',');
-    const csvRows = data.map(row => 
+    const csvRows = data.map(row =>
       columns
         .filter(c => c.key !== 'actions')
         .map(c => {
@@ -107,15 +115,15 @@ export function ActionableTable<T extends { id: string }>({
   };
 
   const handleExportPDF = () => {
-    // autoTable'ı doğrudan doc üzerinden çağır
     const doc = new jsPDF();
     const tableHeaders = columns.filter(c => c.key !== 'actions').map(c => c.header);
-    const tableBody = data.map(row => 
+    const tableBody = data.map(row =>
       columns
         .filter(c => c.key !== 'actions')
         .map(c => String(c.getValue ? c.getValue(row) : (row[c.key as keyof T] as any)?.name || row[c.key as keyof T] || ''))
     );
 
+    // jsPDF'in autoTable eklentisini kullanıyoruz
     (doc as any).autoTable({
       head: [tableHeaders],
       body: tableBody,
@@ -124,30 +132,39 @@ export function ActionableTable<T extends { id: string }>({
     doc.save('export.pdf');
   };
 
+  const createSortHandler = (property: string) => (event: React.MouseEvent<unknown>) => {
+    onSort?.(property);
+  };
+
   return (
     <Box sx={{ position: 'relative' }}>
       <Card>
-        <Stack direction="row" spacing={2} alignItems="center" sx={{ p: 2 }}>
-          {onSearch && (
-            <Box sx={{ flexGrow: 1 }}>
-              <TextField
-                fullWidth
-                value={searchTerm}
-                onChange={onSearch}
-                placeholder={searchPlaceholder}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ maxWidth: '500px' }}
-              />
-            </Box>
-          )}
-          <Button onClick={handleExportCSV} startIcon={<FileCsv />} size="small">CSV</Button>
-          <Button onClick={handleExportPDF} startIcon={<FilePdf />} size="small">PDF</Button>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ p: 2 }}>
+          <Box>
+            <TextField
+              size="small"
+              value={searchTerm}
+              onChange={onSearch}
+              placeholder={searchPlaceholder}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MagnifyingGlassIcon fontSize="var(--icon-fontSize-sm)" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                maxWidth: '300px',
+                '.MuiInputBase-root': {
+                  fontSize: '0.875rem'
+                }
+              }}
+            />
+          </Box>
+          <Box>
+            <Button onClick={handleExportCSV} startIcon={<FileCsv />} size="small">CSV</Button>
+            <Button onClick={handleExportPDF} startIcon={<FilePdf />} size="small">PDF</Button>
+          </Box>
         </Stack>
         <Divider />
 
@@ -171,8 +188,22 @@ export function ActionableTable<T extends { id: string }>({
                   </TableCell>
                 )}
                 {columns.map((col) => (
-                  <TableCell key={String(col.key)} sx={{ width: col.width }}>
-                    {col.header}
+                  <TableCell
+                    key={String(col.key)}
+                    sx={{ width: col.width }}
+                    sortDirection={orderBy === col.key ? order : false}
+                  >
+                    {col.sortable && onSort ? (
+                      <TableSortLabel
+                        active={orderBy === col.key}
+                        direction={orderBy === col.key ? order : 'asc'}
+                        onClick={createSortHandler(String(col.key))}
+                      >
+                        {col.header}
+                      </TableSortLabel>
+                    ) : (
+                      col.header
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
