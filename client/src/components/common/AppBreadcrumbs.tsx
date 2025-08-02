@@ -1,4 +1,3 @@
-// src/components/common/AppBreadcrumbs.tsx (Düzeltilmiş Hali)
 'use client';
 
 import * as React from 'react';
@@ -7,31 +6,48 @@ import { usePathname } from 'next/navigation';
 import { Breadcrumbs, Link, Typography } from '@mui/material';
 import { House as HouseIcon } from '@phosphor-icons/react/dist/ssr/House';
 
-// Türkçe çevirileri ekledik ve genişlettik.
+// Türkçe çevirileri genişletiyoruz.
 const PATH_TRANSLATIONS: Record<string, string> = {
   dashboard: 'Anasayfa',
+  // Tanımlar
   plants: 'Fidan Yönetimi',
-  customers: 'Müşteriler',
-  orders: 'Siparişler',
+  warehouses: 'Depo Yönetimi',
+  customers: 'Müşteri Yönetimi',
+  suppliers: 'Tedarikçi Yönetimi',
+  // Muhasebe
+  accounting: 'Muhasebe',
+  'current-accounts': 'Cari Hesaplar (Müşteri)',
+  invoices: 'Faturalar',
+  payments: 'Kasa & Banka Hareketleri',
+  expenses: 'Gider Yönetimi',
+  // Operasyonlar
+  operations: 'Operasyonlar',
+  orders: 'Sipariş Yönetimi',
+  // Diğer
   account: 'Hesap',
   settings: 'Ayarlar',
-  invoices: 'Faturalar',
-  suppliers: 'Tedarikçiler',
-  warehouses: 'Depolar',
 };
+
+// --- YENİ: Tıklanabilir olmayan yolları burada tanımlıyoruz ---
+const NON_CLICKABLE_PATHS = [
+    '/dashboard/accounting',
+    '/dashboard/operations',
+    '/dashboard/reports',
+    '/dashboard/system',
+    '/dashboard/settings'
+];
+
 
 export function AppBreadcrumbs(): React.JSX.Element {
   const pathname = usePathname();
   const pathSegments = pathname.split('/').filter((segment) => segment);
 
-  // Eğer path "/dashboard" ise, breadcrumb gösterme.
   if (pathname === '/dashboard') {
     return <></>;
   }
 
   return (
     <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
-      {/* Anasayfa linki her zaman başta olacak */}
       <Link
         component={NextLink}
         underline="hover"
@@ -43,21 +59,37 @@ export function AppBreadcrumbs(): React.JSX.Element {
         {PATH_TRANSLATIONS['dashboard']}
       </Link>
 
-      {/* URL segmentlerini 'dashboard' hariç tutarak dön */}
       {pathSegments.slice(1).map((segment, index) => {
-        // slice(1) ile 'dashboard' segmentini atlıyoruz.
         const href = `/${pathSegments.slice(0, index + 2).join('/')}`;
         const isLast = index === pathSegments.length - 2;
+        const isUUID = /^[a-f\d]{24}$/i.test(segment);
+        
+        // YENİ KURAL: Eğer yol, tıklanabilir olmayanlar listesindeyse veya son segment ise, link yapma.
+        const isClickable = !isLast && !NON_CLICKABLE_PATHS.includes(href);
+
+        if (isLast && isUUID) {
+            const parentSegment = pathSegments[index];
+            const parentTranslation = PATH_TRANSLATIONS[parentSegment] || parentSegment;
+            return (
+                <Typography key={href} color="text.primary">
+                    {parentTranslation} Detayı
+                </Typography>
+            );
+        }
+        
+        if(isUUID) return null;
+
         const translatedText = PATH_TRANSLATIONS[segment] || segment;
 
-        return isLast ? (
-          <Typography key={href} color="text.primary">
-            {translatedText}
-          </Typography>
-        ) : (
+        // YENİ MANTIK: Sadece isClickable true ise Link'e dönüştür.
+        return isClickable ? (
           <Link component={NextLink} underline="hover" color="inherit" href={href} key={href}>
             {translatedText}
           </Link>
+        ) : (
+          <Typography key={href} color={isLast ? "text.primary" : "inherit"}>
+            {translatedText}
+          </Typography>
         );
       })}
     </Breadcrumbs>
