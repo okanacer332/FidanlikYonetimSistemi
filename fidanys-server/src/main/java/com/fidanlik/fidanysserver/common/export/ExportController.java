@@ -1,8 +1,14 @@
 package com.fidanlik.fidanysserver.common.export;
 
+import com.fidanlik.fidanysserver.customer.model.Customer;
+import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
+import com.fidanlik.fidanysserver.supplier.model.Supplier;
+import com.fidanlik.fidanysserver.supplier.service.SupplierService;
 import com.fidanlik.fidanysserver.user.model.User;
+import com.fidanlik.fidanysserver.warehouse.model.Warehouse;
+import com.fidanlik.fidanysserver.warehouse.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -24,8 +30,11 @@ import java.util.Map;
 public class ExportController {
 
     private final ExportService exportService;
+    // Gerekli tüm servisleri enjekte ediyoruz
     private final PlantService plantService;
-    // Gelecekte buraya CustomerService, OrderService gibi diğer servisleri ekleyeceğiz.
+    private final WarehouseService warehouseService;
+    private final CustomerService customerService;
+    private final SupplierService supplierService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -39,29 +48,70 @@ public class ExportController {
         String reportTitle = "";
 
         // Frontend'den gelen 'entity' parametresine göre ilgili veriyi hazırla
-        if ("plants".equalsIgnoreCase(entity)) {
-            reportTitle = "Fidan Kimlik Raporu";
-            headers = List.of("Fidan Türü", "Fidan Çeşidi", "Anaç", "Boy", "Yaş", "Arazi");
-            List<Plant> plants = plantService.getAllPlantsByTenant(tenantId);
-            for (Plant plant : plants) {
-                // LinkedHashMap kullanarak sıralamayı koruyoruz
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("Fidan Türü", plant.getPlantType() != null ? plant.getPlantType().getName() : "");
-                row.put("Fidan Çeşidi", plant.getPlantVariety() != null ? plant.getPlantVariety().getName() : "");
-                row.put("Anaç", plant.getRootstock() != null ? plant.getRootstock().getName() : "");
-                row.put("Boy", plant.getPlantSize() != null ? plant.getPlantSize().getName() : "");
-                row.put("Yaş", plant.getPlantAge() != null ? plant.getPlantAge().getName() : "");
-                row.put("Arazi", plant.getLand() != null ? plant.getLand().getName() : "");
-                data.add(row);
-            }
-        }
-        // else if ("customers".equalsIgnoreCase(entity)) { ... Müşteriler için mantık buraya eklenecek ... }
-        else {
-            // Bilinmeyen bir entity istenirse hata döndür
-            return ResponseEntity.badRequest().build();
+        switch (entity.toLowerCase()) {
+            case "plants":
+                reportTitle = "Fidan Kimlik Raporu";
+                headers = List.of("Fidan Türü", "Fidan Çeşidi", "Anaç", "Boy", "Yaş", "Arazi");
+                List<Plant> plants = plantService.getAllPlantsByTenant(tenantId);
+                for (Plant plant : plants) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("Fidan Türü", plant.getPlantType() != null ? plant.getPlantType().getName() : "");
+                    row.put("Fidan Çeşidi", plant.getPlantVariety() != null ? plant.getPlantVariety().getName() : "");
+                    row.put("Anaç", plant.getRootstock() != null ? plant.getRootstock().getName() : "");
+                    row.put("Boy", plant.getPlantSize() != null ? plant.getPlantSize().getName() : "");
+                    row.put("Yaş", plant.getPlantAge() != null ? plant.getPlantAge().getName() : "");
+                    row.put("Arazi", plant.getLand() != null ? plant.getLand().getName() : "");
+                    data.add(row);
+                }
+                break;
+
+            case "warehouses":
+                reportTitle = "Depo Raporu";
+                headers = List.of("Depo Adı", "Adres");
+                List<Warehouse> warehouses = warehouseService.getAllWarehousesByTenant(tenantId);
+                for (Warehouse warehouse : warehouses) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("Depo Adı", warehouse.getName());
+                    row.put("Adres", warehouse.getAddress());
+                    data.add(row);
+                }
+                break;
+
+            case "customers":
+                reportTitle = "Müşteri Raporu";
+                headers = List.of("Adı", "Soyadı", "Firma Adı", "Telefon", "E-posta", "Adres");
+                List<Customer> customers = customerService.getAllCustomersByTenant(tenantId);
+                for (Customer customer : customers) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("Adı", customer.getFirstName());
+                    row.put("Soyadı", customer.getLastName());
+                    row.put("Firma Adı", customer.getCompanyName());
+                    row.put("Telefon", customer.getPhone());
+                    row.put("E-posta", customer.getEmail());
+                    row.put("Adres", customer.getAddress());
+                    data.add(row);
+                }
+                break;
+
+            case "suppliers":
+                reportTitle = "Tedarikçi Raporu";
+                headers = List.of("Tedarikçi Adı", "Yetkili Kişi", "Telefon", "E-posta", "Adres");
+                List<Supplier> suppliers = supplierService.getAllSuppliersByTenant(tenantId);
+                for (Supplier supplier : suppliers) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("Tedarikçi Adı", supplier.getName());
+                    row.put("Yetkili Kişi", supplier.getContactPerson());
+                    row.put("Telefon", supplier.getPhone());
+                    row.put("E-posta", supplier.getEmail());
+                    row.put("Adres", supplier.getAddress());
+                    data.add(row);
+                }
+                break;
+
+            default:
+                return ResponseEntity.badRequest().build();
         }
 
-        // Veriyi istenen formata dönüştür
         ByteArrayInputStream in;
         HttpHeaders httpHeaders = new HttpHeaders();
         String filename = entity + "-raporu." + format;
