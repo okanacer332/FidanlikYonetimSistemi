@@ -14,14 +14,16 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { PlantAgeCreate } from '@/types/nursery';
+// DÜZELTME 1: PlantAge tipi import edildi
+import type { PlantAge, PlantAgeCreate } from '@/types/nursery';
 
 const schema = zod.object({ name: zod.string().min(1, { message: 'Fidan yaşı adı gereklidir.' }) });
 
 interface PlantAgeCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME 2: onSuccess prop'u güncellendi
+  onSuccess: (newPlantAge: PlantAge) => void | Promise<void>;
 }
 
 export function PlantAgeCreateForm({ open, onClose, onSuccess }: PlantAgeCreateFormProps): React.JSX.Element {
@@ -47,7 +49,11 @@ export function PlantAgeCreateForm({ open, onClose, onSuccess }: PlantAgeCreateF
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess();
+      
+      // DÜZELTME 3: Yeni veri alınıp onSuccess ile geri gönderildi
+      const newPlantAge = await response.json();
+      onSuccess(newPlantAge);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

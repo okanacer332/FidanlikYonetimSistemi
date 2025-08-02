@@ -1,4 +1,3 @@
-// src/app/(dashboard)/plants/page.tsx (Tüm Düzeltmeleri ve Optimizasyonları İçeren Nihai Hali)
 'use client';
 
 import * as React from 'react';
@@ -18,9 +17,9 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Grid,
+  Box,
 } from '@mui/material';
-import { Pencil as PencilIcon, Trash as TrashIcon } from '@phosphor-icons/react';
+import { Pencil as PencilIcon, Trash as TrashIcon, ArrowRight as ArrowRightIcon } from '@phosphor-icons/react';
 
 // Ortak Bileşenler
 import { PageHeader } from '@/components/common/PageHeader';
@@ -41,8 +40,6 @@ import { PlantSizeCreateForm } from '@/components/dashboard/nursery/plant-size-c
 import { PlantAgeCreateForm } from '@/components/dashboard/nursery/plant-age-create-form';
 import { LandCreateForm } from '@/components/dashboard/nursery/land-create-form';
 
-
-// --- Form Şeması ---
 const schema = zod.object({
   plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunludur.'),
   plantVarietyId: zod.string().min(1, 'Fidan çeşidi seçimi zorunludur.'),
@@ -52,23 +49,22 @@ const schema = zod.object({
   landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
 });
 
-// --- Ana Sayfa Bileşeni ---
 export default function Page(): React.JSX.Element {
   const notify = useNotifier();
   const { user: currentUser } = useUser();
   const [data, setData] = React.useState<{ plants: Plant[]; masterData: MasterData | null }>({ plants: [], masterData: null });
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isCreateFormOpen, setCreateFormOpen] = React.useState(false);
-
   const [modalToOpen, setModalToOpen] = React.useState<string | null>(null);
   const [isEditModalOpen, setEditModalOpen] = React.useState(false);
   const [plantToEdit, setPlantToEdit] = React.useState<Plant | null>(null);
   const [plantToDelete, setPlantToDelete] = React.useState<Plant | null>(null);
+  const [isTableLoading, setIsTableLoading] = React.useState(false);
+  const [newlyAddedPlantId, setNewlyAddedPlantId] = React.useState<string | null>(null);
 
   const { control, handleSubmit, reset, watch, setValue, setError: setFormError, formState: { isSubmitting } } = useForm<PlantCreateFormValues>({
     resolver: zodResolver(schema),
@@ -76,7 +72,6 @@ export default function Page(): React.JSX.Element {
   });
   const watchedValues = watch();
 
-  // --- OTOMATİK FORM TEMİZLEME MANTIĞI ---
   const isFirstRender = React.useRef(true);
   React.useEffect(() => { if (isFirstRender.current) return; setValue('plantVarietyId', ''); }, [watchedValues.plantTypeId, setValue]);
   React.useEffect(() => { if (isFirstRender.current) return; setValue('rootstockId', ''); }, [watchedValues.plantVarietyId, setValue]);
@@ -85,15 +80,17 @@ export default function Page(): React.JSX.Element {
   React.useEffect(() => { if (isFirstRender.current) return; setValue('landId', ''); }, [watchedValues.plantAgeId, setValue]);
   React.useEffect(() => { isFirstRender.current = false; }, []);
 
-  // --- YETKİ KONTROLLERİ ---
   const canList = currentUser?.roles?.some(role => ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'].includes(role.name));
   const canCreate = currentUser?.roles?.some(role => ['ADMIN', 'SALES'].includes(role.name));
   const canEdit = currentUser?.roles?.some(role => role.name === 'ADMIN');
   const canDelete = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
-  // --- VERİ ÇEKME VE AKSİYON FONKSİYONLARI ---
-  const fetchData = React.useCallback(async (showSuccessToast: boolean = false) => {
-    if (!modalToOpen) setIsLoading(true);
+  const fetchData = React.useCallback(async (isUpdate = false) => {
+    if (isUpdate) {
+      setIsTableLoading(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
@@ -105,24 +102,22 @@ export default function Page(): React.JSX.Element {
       if (!plantsRes.ok) throw new Error(`Fidanlar yüklenemedi (Hata: ${plantsRes.status})`);
       if (!masterDataRes.ok) throw new Error(`Ana veriler yüklenemedi (Hata: ${masterDataRes.status})`);
       setData({ plants: await plantsRes.json(), masterData: await masterDataRes.json() });
-      if (showSuccessToast) notify.success('Ana veriler güncellendi.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
     } finally {
       setIsLoading(false);
-      if (modalToOpen) setModalToOpen(null);
+      setIsTableLoading(false);
     }
-  }, [modalToOpen, notify]);
+  }, []);
 
   React.useEffect(() => {
     if (canList) { 
-      fetchData(); 
+      fetchData(false); 
     } else { 
       setIsLoading(false); 
       setError('Bu sayfayı görüntüleme yetkiniz yok.'); 
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canList]);
+  }, [canList, fetchData]);
 
   const handleCreateSubmit = React.useCallback(async (values: PlantCreateFormValues) => {
     try {
@@ -134,10 +129,13 @@ export default function Page(): React.JSX.Element {
           body: JSON.stringify(values),
       });
       if (!response.ok) { throw new Error((await response.json()).message || 'Fidan kimliği oluşturulamadı.'); }
+      const newPlant = await response.json();
       reset();
       setCreateFormOpen(false);
-      await fetchData();
+      setNewlyAddedPlantId(newPlant.id);
+      await fetchData(true);
       notify.success('Fidan başarıyla oluşturuldu.');
+      setTimeout(() => setNewlyAddedPlantId(null), 2000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Bir hata oluştu.';
       notify.error(errorMessage);
@@ -145,14 +143,21 @@ export default function Page(): React.JSX.Element {
     }
   }, [fetchData, reset, setFormError, notify]);
 
+  // --- DÜZENLEME İŞLEMİ İÇİN YENİ HANDLER FONKSİYONU ---
+  const handleEditClick = React.useCallback((plant: Plant) => {
+    setPlantToEdit(plant);
+    setEditModalOpen(true);
+  }, []);
+
   const handleEditSuccess = React.useCallback(() => {
     setEditModalOpen(false);
-    fetchData();
+    fetchData(true);
     notify.success('Fidan başarıyla güncellendi.');
   }, [fetchData, notify]);
 
   const handleDeleteConfirm = React.useCallback(async () => {
     if (!plantToDelete) return;
+    setIsTableLoading(true);
     try {
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('Oturum bulunamadı.');
@@ -162,14 +167,22 @@ export default function Page(): React.JSX.Element {
       });
       if (!response.ok) { throw new Error((await response.json()).message || 'Fidan silinemedi.'); }
       setPlantToDelete(null);
-      await fetchData();
+      await fetchData(true);
       notify.success('Fidan başarıyla silindi.');
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Silme işlemi başarısız oldu.');
+    } finally {
+      setIsTableLoading(false);
     }
   }, [plantToDelete, fetchData, notify]);
   
-  // --- FİLTRELEME VE TABLO YÖNETİMİ ---
+  const handleMiniModalSuccess = React.useCallback(async (newData: { id: string }, type: keyof PlantCreateFormValues) => {
+    setModalToOpen(null);
+    await fetchData(true);
+    setValue(type, newData.id);
+    notify.success('Yeni kayıt eklendi ve seçildi!');
+  }, [fetchData, setValue, notify]);
+
   const filteredPlants = React.useMemo(() => {
     if (!searchTerm) return data.plants;
     const lowercasedSearchTerm = searchTerm.toLowerCase();
@@ -197,14 +210,79 @@ export default function Page(): React.JSX.Element {
       header: 'İşlemler',
       render: (row) => (
         <Stack direction="row">
-          {canEdit && <Tooltip title="Düzenle"><IconButton size="small" onClick={() => { setPlantToEdit(row); setEditModalOpen(true); }}><PencilIcon /></IconButton></Tooltip>}
+          {/* DÜZENLEME: OnClick olayı yeni handler fonksiyonunu çağırıyor */}
+          {canEdit && <Tooltip title="Düzenle"><IconButton size="small" onClick={() => handleEditClick(row)}><PencilIcon /></IconButton></Tooltip>}
           {canDelete && <Tooltip title="Sil"><IconButton size="small" color="error" onClick={() => setPlantToDelete(row)}><TrashIcon /></IconButton></Tooltip>}
         </Stack>
       ),
     },
-  ], [canEdit, canDelete]);
+  ], [canEdit, canDelete, handleEditClick]); // useMemo bağımlılığına handleEditClick eklendi
+  
+  const renderStepperForm = () => {
+    const steps = [
+        { name: 'plantTypeId', label: 'Fidan Türü', options: data.masterData?.plantTypes, onAdd: () => setModalToOpen('plantType') },
+        { name: 'plantVarietyId', label: 'Fidan Çeşidi', options: data.masterData?.plantVarieties.filter(v => v.plantTypeId === watchedValues.plantTypeId), onAdd: () => setModalToOpen('plantVariety') },
+        { name: 'rootstockId', label: 'Anaç', options: data.masterData?.rootstocks, onAdd: () => setModalToOpen('rootstock') },
+        { name: 'plantSizeId', label: 'Fidan Boyu', options: data.masterData?.plantSizes, onAdd: () => setModalToOpen('plantSize') },
+        { name: 'plantAgeId', label: 'Fidan Yaşı', options: data.masterData?.plantAges, onAdd: () => setModalToOpen('plantAge') },
+        { name: 'landId', label: 'Arazi', options: data.masterData?.lands, onAdd: () => setModalToOpen('land') },
+    ];
 
-  // --- ANA RENDER ---
+    let currentStepIndex = 0;
+    for (const step of steps) {
+        if (!watchedValues[step.name as keyof PlantCreateFormValues]) {
+            break;
+        }
+        currentStepIndex++;
+    }
+
+    return (
+        <form onSubmit={handleSubmit(handleCreateSubmit)}>
+            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{p: 2}}>
+                {steps.map((step, index) => {
+                    const selectedValue = watchedValues[step.name as keyof PlantCreateFormValues];
+                    if (index < currentStepIndex) {
+                        const selectedOption = step.options?.find(opt => opt.id === selectedValue);
+                        return (
+                            <React.Fragment key={step.name}>
+                                <Chip 
+                                    label={`${step.label}: ${selectedOption?.name || '...'}`} 
+                                    onDelete={() => {
+                                        for (let i = index; i < steps.length; i++) {
+                                            setValue(steps[i].name as keyof PlantCreateFormValues, '');
+                                        }
+                                    }}
+                                />
+                                {index < steps.length -1 && <ArrowRightIcon size={20} color="var(--mui-palette-text-secondary)" />}
+                            </React.Fragment>
+                        );
+                    }
+                    if (index === currentStepIndex) {
+                        return (
+                            <Box key={step.name} sx={{minWidth: '250px', flexGrow: 1}}>
+                                <ControlledAutocomplete
+                                    control={control}
+                                    name={step.name as keyof PlantCreateFormValues}
+                                    label={step.label}
+                                    options={step.options || []}
+                                    size="small"
+                                    onAddClick={step.onAdd}
+                                />
+                            </Box>
+                        );
+                    }
+                    return null;
+                })}
+                 {currentStepIndex === steps.length && (
+                    <Button type="submit" variant="contained" disabled={isSubmitting}>
+                        {isSubmitting ? <CircularProgress size={24} /> : 'Fidan Kimliğini Kaydet'}
+                    </Button>
+                )}
+            </Stack>
+        </form>
+    );
+  };
+
   if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -220,43 +298,7 @@ export default function Page(): React.JSX.Element {
         isOpen={isCreateFormOpen}
         onClose={() => setCreateFormOpen(false)}
       >
-        <form onSubmit={handleSubmit(handleCreateSubmit)}>
-          <Grid container spacing={2} sx={{ p: 2 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <ControlledAutocomplete control={control} name="plantTypeId" label="Fidan Türü" options={data.masterData?.plantTypes || []} size="small" onAddClick={() => setModalToOpen('plantType')} />
-            </Grid>
-            {watchedValues.plantTypeId && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <ControlledAutocomplete control={control} name="plantVarietyId" label="Fidan Çeşidi" options={data.masterData?.plantVarieties.filter(v => v.plantTypeId === watchedValues.plantTypeId) || []} size="small" onAddClick={() => setModalToOpen('plantVariety')} />
-              </Grid>
-            )}
-            {watchedValues.plantVarietyId && (
-              <>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <ControlledAutocomplete control={control} name="rootstockId" label="Anaç" options={data.masterData?.rootstocks || []} size="small" onAddClick={() => setModalToOpen('rootstock')} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <ControlledAutocomplete control={control} name="plantSizeId" label="Fidan Boyu" options={data.masterData?.plantSizes || []} size="small" onAddClick={() => setModalToOpen('plantSize')} />
-                </Grid>
-              </>
-            )}
-            {watchedValues.plantSizeId && (
-              <>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <ControlledAutocomplete control={control} name="plantAgeId" label="Fidan Yaşı" options={data.masterData?.plantAges || []} size="small" onAddClick={() => setModalToOpen('plantAge')} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <ControlledAutocomplete control={control} name="landId" label="Arazi" options={data.masterData?.lands || []} size="small" onAddClick={() => setModalToOpen('land')} />
-                </Grid>
-              </>
-            )}
-            {watchedValues.landId && (
-              <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="submit" variant="contained" disabled={isSubmitting}>Kaydet</Button>
-              </Grid>
-            )}
-          </Grid>
-        </form>
+        {renderStepperForm()}
       </InlineCreateForm>
       
       <ActionableTable
@@ -271,10 +313,10 @@ export default function Page(): React.JSX.Element {
         searchTerm={searchTerm}
         onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
         selectionEnabled={false}
+        isLoading={isTableLoading}
+        highlightedId={newlyAddedPlantId}
       />
       
-      {/* --- Modallar --- */}
-      {canEdit && <PlantEditForm open={isEditModalOpen} onClose={() => setEditModalOpen(false)} onSuccess={handleEditSuccess} plant={plantToEdit} />}
       <Dialog open={!!plantToDelete} onClose={() => setPlantToDelete(null)}>
         <DialogTitle>Fidan Kimliğini Sil</DialogTitle>
         <DialogContent><DialogContentText>Bu fidanı kalıcı olarak silmek istediğinizden emin misiniz?</DialogContentText></DialogContent>
@@ -283,12 +325,21 @@ export default function Page(): React.JSX.Element {
           <Button onClick={handleDeleteConfirm} color="error">Sil</Button>
         </DialogActions>
       </Dialog>
-      <PlantTypeCreateForm open={modalToOpen === 'plantType'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} />
-      <PlantVarietyCreateForm open={modalToOpen === 'plantVariety'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} plantTypeId={watchedValues.plantTypeId || ''} />
-      <RootstockCreateForm open={modalToOpen === 'rootstock'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} />
-      <PlantSizeCreateForm open={modalToOpen === 'plantSize'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} />
-      <PlantAgeCreateForm open={modalToOpen === 'plantAge'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} />
-      <LandCreateForm open={modalToOpen === 'land'} onClose={() => setModalToOpen(null)} onSuccess={() => fetchData(true)} />
+      
+      {/* Düzenleme modalı artık `plantToEdit` state'i doluyken render ediliyor */}
+      <PlantEditForm 
+        open={isEditModalOpen} 
+        onClose={() => setEditModalOpen(false)} 
+        onSuccess={handleEditSuccess} 
+        plant={plantToEdit} 
+      />
+
+      <PlantTypeCreateForm open={modalToOpen === 'plantType'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'plantTypeId')} />
+      <PlantVarietyCreateForm open={modalToOpen === 'plantVariety'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'plantVarietyId')} plantTypeId={watchedValues.plantTypeId || ''} />
+      <RootstockCreateForm open={modalToOpen === 'rootstock'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'rootstockId')} />
+      <PlantSizeCreateForm open={modalToOpen === 'plantSize'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'plantSizeId')} />
+      <PlantAgeCreateForm open={modalToOpen === 'plantAge'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'plantAgeId')} />
+      <LandCreateForm open={modalToOpen === 'land'} onClose={() => setModalToOpen(null)} onSuccess={(data) => handleMiniModalSuccess(data, 'landId')} />
     </Stack>
   );
 }
