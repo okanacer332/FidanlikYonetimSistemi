@@ -29,10 +29,11 @@ import { ActionableTable, type ColumnDef } from '@/components/common/ActionableT
 import { ControlledAutocomplete } from '@/components/common/ControlledAutocomplete';
 import { useNotifier } from '@/hooks/useNotifier';
 import { useUser } from '@/hooks/use-user';
-import { useApiSWR } from '@/hooks/use-api-swr'; // YENİ: Modern veri çekme hook'umuz
+import { useApiSWR } from '@/hooks/use-api-swr';
 
 // Tipler ve Diğer Bileşenler
 import type { Plant, MasterData, PlantCreateFormValues } from '@/types/nursery';
+import { createPlant, deletePlant } from '@/services/plantService';
 import { PlantEditForm } from '@/components/dashboard/nursery/plant-edit-form';
 import { PlantTypeCreateForm } from '@/components/dashboard/nursery/plant-type-create-form';
 import { PlantVarietyCreateForm } from '@/components/dashboard/nursery/plant-variety-create-form';
@@ -42,21 +43,24 @@ import { PlantAgeCreateForm } from '@/components/dashboard/nursery/plant-age-cre
 import { LandCreateForm } from '@/components/dashboard/nursery/land-create-form';
 
 const schema = zod.object({
-  plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunlur.'),
-  plantVarietyId: zod.string().min(1, 'Fidan çeşidi seçimi zorunlur.'),
-  rootstockId: zod.string().min(1, 'Anaç seçimi zorunlur.'),
-  plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunlur.'),
-  plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunlur.'),
-  landId: zod.string().min(1, 'Arazi seçimi zorunlur.'),
+  plantTypeId: zod.string().min(1, 'Fidan türü seçimi zorunludur.'),
+  plantVarietyId: zod.string().min(1, 'Fidan çeşidi seçimi zorunludur.'),
+  rootstockId: zod.string().min(1, 'Anaç seçimi zorunludur.'),
+  plantSizeId: zod.string().min(1, 'Fidan boyu seçimi zorunludur.'),
+  plantAgeId: zod.string().min(1, 'Fidan yaşı seçimi zorunludur.'),
+  landId: zod.string().min(1, 'Arazi seçimi zorunludur.'),
 });
+
+// SWR hook'ları artık doğrudan servis katmanından çağrılıyor
+const usePlants = () => useApiSWR<Plant[]>('/plants');
+const useMasterData = () => useApiSWR<MasterData>('/master-data');
 
 export default function Page(): React.JSX.Element {
   const notify = useNotifier();
   const { user: currentUser } = useUser();
   
-  // --- VERİ ÇEKME İŞLEMİ ARTIK BU KADAR BASİT ---
-  const { data: plantsData, error: plantsError, isLoading: isLoadingPlants, mutate: mutatePlants } = useApiSWR<Plant[]>('/plants');
-  const { data: masterData, error: masterDataError, isLoading: isLoadingMasterData, mutate: mutateMasterData } = useApiSWR<MasterData>('/master-data');
+  const { data: plantsData, error: plantsError, isLoading: isLoadingPlants, mutate: mutatePlants } = usePlants();
+  const { data: masterData, error: masterDataError, isLoading: isLoadingMasterData, mutate: mutateMasterData } = useMasterData();
   const isLoading = isLoadingPlants || isLoadingMasterData;
   const error = plantsError || masterDataError;
 
@@ -100,19 +104,11 @@ export default function Page(): React.JSX.Element {
 
   const handleCreateSubmit = React.useCallback(async (values: PlantCreateFormValues) => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Oturum bulunamadı.');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(values),
-      });
-      if (!response.ok) { throw new Error((await response.json()).message || 'Fidan kimliği oluşturulamadı.'); }
-      const newPlant = await response.json();
+      const newPlant = await createPlant(values);
       reset();
       setCreateFormOpen(false);
       setNewlyAddedPlantId(newPlant.id);
-      await mutatePlants(); // SWR'a veriyi yenilemesini söylüyoruz
+      await mutatePlants();
       notify.success('Fidan başarıyla oluşturuldu.');
       setTimeout(() => setNewlyAddedPlantId(null), 2000);
     } catch (err) {
@@ -137,12 +133,7 @@ export default function Page(): React.JSX.Element {
     if (!plantToDelete) return;
     setIsTableLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Oturum bulunamadı.');
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants/${plantToDelete.id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-      });
+      await deletePlant(plantToDelete.id);
       setPlantToDelete(null);
       await mutatePlants();
       notify.success('Fidan başarıyla silindi.');
@@ -301,7 +292,7 @@ export default function Page(): React.JSX.Element {
       <ActionableTable
         columns={columns}
         rows={paginatedPlants}
-        data={plantsData || []}
+        // DÜZELTME: 'data' prop'u kaldırıldı.
         count={sortedAndFilteredPlants.length}
         page={page}
         rowsPerPage={rowsPerPage}
@@ -315,6 +306,7 @@ export default function Page(): React.JSX.Element {
         order={order}
         orderBy={orderBy}
         onSort={handleRequestSort}
+        entity="plants" 
       />
       
       <Dialog open={!!plantToDelete} onClose={() => setPlantToDelete(null)}>

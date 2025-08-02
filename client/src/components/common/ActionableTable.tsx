@@ -20,8 +20,7 @@ import {
   alpha,
 } from '@mui/material';
 import { FileCsv, FilePdf, MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Sadece import etmeniz yeterli, tipi any olacak
+import { saveAs } from 'file-saver'; // Dosya indirme için
 
 export interface ColumnDef<T> {
   key: keyof T | 'actions' | string;
@@ -35,7 +34,6 @@ export interface ColumnDef<T> {
 interface ActionableTableProps<T> {
   columns: ColumnDef<T>[];
   rows: T[];
-  data: T[];
   count: number;
   page: number;
   rowsPerPage: number;
@@ -55,6 +53,7 @@ interface ActionableTableProps<T> {
   order?: 'asc' | 'desc';
   orderBy?: string;
   onSort?: (property: string) => void;
+  entity: string; // Hangi modül olduğunu belirtmek için (örn: "plants")
 }
 
 const flashAnimation = {
@@ -67,7 +66,6 @@ const flashAnimation = {
 export function ActionableTable<T extends { id: string }>({
   columns,
   rows,
-  data,
   count,
   page,
   rowsPerPage,
@@ -87,50 +85,38 @@ export function ActionableTable<T extends { id: string }>({
   order = 'asc',
   orderBy = '',
   onSort,
+  entity,
 }: ActionableTableProps<T>) {
+
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExport = async (format: 'pdf' | 'csv') => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) throw new Error('Oturum bulunamadı.');
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/export/${format}?entity=${entity}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error('Dosya oluşturulurken sunucuda bir hata oluştu.');
+      }
+
+      const blob = await response.blob();
+      saveAs(blob, `${entity}-raporu.${format}`);
+
+    } catch (error) {
+      console.error(`${format.toUpperCase()} indirilirken hata oluştu:`, error);
+      // Burada kullanıcıya bir bildirim (toast) gösterebilirsin.
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const selectedSome = selected && selected.length > 0 && selected.length < rows.length;
   const selectedAll = selected && rows.length > 0 && selected.length === rows.length;
-
-  const handleExportCSV = () => {
-    const BOM = '\uFEFF';
-    const headers = columns.filter(c => c.key !== 'actions').map(c => c.header).join(',');
-    const csvRows = data.map(row =>
-      columns
-        .filter(c => c.key !== 'actions')
-        .map(c => {
-          const value = c.getValue ? c.getValue(row) : (row[c.key as keyof T] as any)?.name || row[c.key as keyof T] || '';
-          return `"${String(value).replace(/"/g, '""')}"`;
-        })
-        .join(',')
-    ).join('\n');
-
-    const csvContent = `data:text/csv;charset=utf-8,${BOM}${headers}\n${csvRows}`;
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    const tableHeaders = columns.filter(c => c.key !== 'actions').map(c => c.header);
-    const tableBody = data.map(row =>
-      columns
-        .filter(c => c.key !== 'actions')
-        .map(c => String(c.getValue ? c.getValue(row) : (row[c.key as keyof T] as any)?.name || row[c.key as keyof T] || ''))
-    );
-
-    // jsPDF'in autoTable eklentisini kullanıyoruz
-    (doc as any).autoTable({
-      head: [tableHeaders],
-      body: tableBody,
-    });
-
-    doc.save('export.pdf');
-  };
 
   const createSortHandler = (property: string) => (event: React.MouseEvent<unknown>) => {
     onSort?.(property);
@@ -162,8 +148,10 @@ export function ActionableTable<T extends { id: string }>({
             />
           </Box>
           <Box>
-            <Button onClick={handleExportCSV} startIcon={<FileCsv />} size="small">CSV</Button>
-            <Button onClick={handleExportPDF} startIcon={<FilePdf />} size="small">PDF</Button>
+            <Button onClick={() => handleExport('csv')} startIcon={<FileCsv />} size="small" disabled={isExporting}>CSV</Button>
+            <Button onClick={() => handleExport('pdf')} startIcon={<FilePdf />} size="small" disabled={isExporting}>
+              {isExporting ? 'Oluşturuluyor...' : 'PDF'}
+            </Button>
           </Box>
         </Stack>
         <Divider />
