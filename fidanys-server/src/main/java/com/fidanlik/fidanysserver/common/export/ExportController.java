@@ -105,25 +105,6 @@ public class ExportController {
                 });
                 break;
 
-            // --- YENİ EKLENEN CASE ---
-            case "stock":
-                reportTitle = "Stok Durumu Raporu";
-                headers = List.of("Fidan Türü", "Fidan Çeşidi", "Anaç", "Boy", "Yaş", "Depo", "Miktar");
-                List<StockSummary> stockSummaries = stockService.getStockSummary(tenantId);
-
-                for (StockSummary summary : stockSummaries) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("Fidan Türü", summary.getPlantTypeName());
-                    row.put("Fidan Çeşidi", summary.getPlantVarietyName());
-                    row.put("Anaç", summary.getRootstockName());
-                    row.put("Boy", summary.getPlantSizeName());
-                    row.put("Yaş", summary.getPlantAgeName());
-                    row.put("Depo", summary.getWarehouseName());
-                    row.put("Miktar", summary.getTotalQuantity());
-                    data.add(row);
-                }
-                break;
-
             default:
                 return ResponseEntity.badRequest().build();
         }
