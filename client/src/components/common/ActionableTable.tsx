@@ -20,7 +20,7 @@ import {
   alpha,
 } from '@mui/material';
 import { FileCsv, FilePdf, MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { saveAs } from 'file-saver'; // Dosya indirme için
+import { saveAs } from 'file-saver';
 
 export interface ColumnDef<T> {
   key: keyof T | 'actions' | string;
@@ -53,7 +53,7 @@ interface ActionableTableProps<T> {
   order?: 'asc' | 'desc';
   orderBy?: string;
   onSort?: (property: string) => void;
-  entity: string; // Hangi modül olduğunu belirtmek için (örn: "plants")
+  entity: string;
 }
 
 const flashAnimation = {
@@ -109,7 +109,6 @@ export function ActionableTable<T extends { id: string }>({
 
     } catch (error) {
       console.error(`${format.toUpperCase()} indirilirken hata oluştu:`, error);
-      // Burada kullanıcıya bir bildirim (toast) gösterebilirsin.
     } finally {
       setIsExporting(false);
     }

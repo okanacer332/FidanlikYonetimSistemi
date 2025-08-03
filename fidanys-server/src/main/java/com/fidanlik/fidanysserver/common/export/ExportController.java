@@ -4,14 +4,13 @@ import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
-import com.fidanlik.fidanysserver.invoicing.model.Invoice;
-import com.fidanlik.fidanysserver.invoicing.service.InvoiceService;
-import com.fidanlik.fidanysserver.payment.model.Payment;
-import com.fidanlik.fidanysserver.payment.service.PaymentService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
 import com.fidanlik.fidanysserver.supplier.service.SupplierService;
 import com.fidanlik.fidanysserver.user.model.User;
 import com.fidanlik.fidanysserver.warehouse.model.Warehouse;
+import com.fidanlik.fidanysserver.warehouse.service.WarehouseService;
+import com.fidanlik.fidanysserver.stock.dto.StockSummaryDTO;
+import com.fidanlik.fidanysserver.stock.service.StockService;
 import com.fidanlik.fidanysserver.warehouse.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -27,7 +26,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/export")
@@ -39,8 +37,6 @@ public class ExportController {
     private final WarehouseService warehouseService;
     private final CustomerService customerService;
     private final SupplierService supplierService;
-    private final PaymentService paymentService;
-    private final InvoiceService invoiceService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -109,50 +105,21 @@ public class ExportController {
                 });
                 break;
 
-            case "payments":
-                reportTitle = "Kasa & Banka Hareketleri Raporu";
-                headers = List.of("Tarih", "İşlem Tipi", "İlişkili Taraf", "Açıklama", "Ödeme Yöntemi", "Tutar");
-                paymentService.getAllPayments(tenantId).forEach(payment -> {
+            // --- YENİ EKLENEN CASE ---
+            case "stock":
+                reportTitle = "Stok Durumu Raporu";
+                headers = List.of("Fidan Türü", "Fidan Çeşidi", "Anaç", "Boy", "Yaş", "Depo", "Miktar");
+                List<StockSummary> stockSummaries = stockService.getStockSummary(tenantId);
+
+                for (StockSummary summary : stockSummaries) {
                     Map<String, Object> row = new LinkedHashMap<>();
-                    String relatedName = "N/A";
-                    if (payment.getRelatedEntityType() == Payment.RelatedEntityType.CUSTOMER) {
-                        relatedName = customerService.findCustomerById(payment.getRelatedId(), tenantId)
-                                .map(c -> c.getFirstName() + " " + c.getLastName()).orElse("Silinmiş Müşteri");
-                    } else if (payment.getRelatedEntityType() == Payment.RelatedEntityType.SUPPLIER) {
-                        relatedName = supplierService.findSupplierById(payment.getRelatedId(), tenantId)
-                                .map(Supplier::getName).orElse("Silinmiş Tedarikçi");
-                    } else if (payment.getRelatedEntityType() == Payment.RelatedEntityType.EXPENSE) {
-                        relatedName = "Gider Kaydı";
-                    }
-                    row.put("Tarih", payment.getPaymentDate() != null ? payment.getPaymentDate().toString() : "");
-                    row.put("İşlem Tipi", payment.getType() != null ? (payment.getType() == Payment.PaymentType.COLLECTION ? "Tahsilat" : "Tediye") : "");
-                    row.put("İlişkili Taraf", relatedName);
-                    row.put("Açıklama", payment.getDescription());
-                    row.put("Ödeme Yöntemi", payment.getMethod() != null ? payment.getMethod().toString() : "");
-                    row.put("Tutar", payment.getAmount());
-                    data.add(row);
-                });
-                break;
-
-            case "invoices":
-                reportTitle = "Fatura Raporu";
-                headers = List.of("Fatura No", "İlişkili Müşteri", "Tarih", "Vade Tarihi", "Tutar", "Durum");
-                List<Invoice> invoices = invoiceService.getAllInvoices(tenantId);
-
-                for (Invoice invoice : invoices) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-
-                    // DOĞRU YÖNTEM: customerId alanını kullanarak müşteri adını bul
-                    String customerName = customerService.findCustomerById(invoice.getCustomerId(), tenantId)
-                            .map(c -> c.getFirstName() + " " + c.getLastName())
-                            .orElse("Silinmiş veya Bulunamayan Müşteri");
-
-                    row.put("Fatura No", invoice.getInvoiceNumber());
-                    row.put("İlişkili Müşteri", customerName);
-                    row.put("Tarih", invoice.getIssueDate() != null ? invoice.getIssueDate().toString() : "");
-                    row.put("Vade Tarihi", invoice.getDueDate() != null ? invoice.getDueDate().toString() : "");
-                    row.put("Tutar", invoice.getTotalAmount());
-                    row.put("Durum", invoice.getStatus() != null ? invoice.getStatus().toString() : "");
+                    row.put("Fidan Türü", summary.getPlantTypeName());
+                    row.put("Fidan Çeşidi", summary.getPlantVarietyName());
+                    row.put("Anaç", summary.getRootstockName());
+                    row.put("Boy", summary.getPlantSizeName());
+                    row.put("Yaş", summary.getPlantAgeName());
+                    row.put("Depo", summary.getWarehouseName());
+                    row.put("Miktar", summary.getTotalQuantity());
                     data.add(row);
                 }
                 break;
