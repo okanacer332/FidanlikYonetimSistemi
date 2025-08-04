@@ -58,7 +58,6 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
   const [loadingRoles, setLoadingRoles] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
 
-  // UPDATED: Check for standardized role name 'ADMIN'
   const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
   const defaultValues = React.useMemo(() => ({
@@ -119,7 +118,8 @@ export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormPro
         roleIds: values.roleIds,
       };
 
-      if (values.password) {
+      // Şifre alanı SADECE doluysa payload'a ekle
+      if (values.password && values.password.trim() !== '') {
         payload.password = values.password;
       }
       

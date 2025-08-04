@@ -104,63 +104,66 @@ public class UserService {
         return savedUser;
     }
 
-    // Kullanıcı güncelle
     public User updateUser(String id, UserUpdateRequest userUpdateRequest, String authenticatedUserId, String tenantId, Set<Role> authenticatedUserRoles) {
-        Optional<User> userOptional = userRepository.findById(id);
-        if (userOptional.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Güncellenecek kullanıcı bulunamadı.");
-        }
-        User userToUpdate = userOptional.get();
+        User userToUpdate = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Güncellenecek kullanıcı bulunamadı."));
 
         // Kullanıcının kendi tenant'ına ait olup olmadığını kontrol et
         if (!userToUpdate.getTenantId().equals(tenantId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Başka bir şirketin kullanıcısını güncellemeye yetkiniz yok.");
         }
 
-        // Yetkilendirme Kontrolü (Business Logic'i Service'e taşıdık)
-        boolean isOkanAdmin = authenticatedUserRoles.stream().anyMatch(role -> role.getName().equals("Yönetici")) && userToUpdate.getUsername().equals("okan");
+        // --- YETKİLENDİRME KONTROLLERİ ---
 
-        // Sistem yöneticisi (okan) kendi hesabını düzenleyemez
-        if (authenticatedUserId.equals(userToUpdate.getId()) && isOkanAdmin) { // Eğer giriş yapan okan ise ve kendini düzenlemeye çalışıyorsa
+        // 1. İşlemi yapan kullanıcının "ADMIN" rolü var mı?
+        boolean isCurrentUserAdmin = authenticatedUserRoles.stream()
+                .anyMatch(role -> role.getName().equals("ADMIN"));
+
+        // 2. İşlemi yapan kullanıcı, "okan" mı? Bunun için DB'den kullanıcının kendisini çekiyoruz.
+        User authenticatedUser = userRepository.findById(authenticatedUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kimliği doğrulanmış kullanıcı veritabanında bulunamadı."));
+
+        // 3. İş kurallarını uygula
+        // Kural A: Sistem yöneticisi "okan", kendi hesabını düzenleyemez.
+        if (authenticatedUser.getUsername().equals("okan") && authenticatedUserId.equals(userToUpdate.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sistem yöneticisi kendi hesabını düzenleyemez.");
         }
 
-        boolean isCurrentUserAdmin = authenticatedUserRoles.stream().anyMatch(role -> role.getName().equals("Yönetici"));
-
-        // Yönetici olmayan bir kullanıcı, kendi dışındaki bir kullanıcıyı düzenlemeye çalışamaz
+        // Kural B: Yönetici olmayan bir kullanıcı, başkasının hesabını düzenleyemez.
         if (!isCurrentUserAdmin && !authenticatedUserId.equals(userToUpdate.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu işlemi yapmaya yetkiniz yok.");
         }
 
+        // --- GÜNCELLEME İŞLEMLERİ ---
+
         // Kullanıcı adı ve e-posta çakışmalarını kontrol et (mevcut kullanıcı hariç)
         if (userUpdateRequest.getUsername() != null && !userUpdateRequest.getUsername().equals(userToUpdate.getUsername())) {
-            if (userRepository.findByUsernameAndTenantId(userUpdateRequest.getUsername(), tenantId).isPresent()) {
+            userRepository.findByUsernameAndTenantId(userUpdateRequest.getUsername(), tenantId).ifPresent(u -> {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu kullanıcı adı bu şirkette zaten mevcut.");
-            }
+            });
             userToUpdate.setUsername(userUpdateRequest.getUsername());
         }
         if (userUpdateRequest.getEmail() != null && !userUpdateRequest.getEmail().equals(userToUpdate.getEmail())) {
-            if (userRepository.findByEmailAndTenantId(userUpdateRequest.getEmail(), tenantId).isPresent()) {
+            userRepository.findByEmailAndTenantId(userUpdateRequest.getEmail(), tenantId).ifPresent(u -> {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu e-posta adresi bu şirkette zaten mevcut.");
-            }
+            });
             userToUpdate.setEmail(userUpdateRequest.getEmail());
         }
 
         // Parola güncellenecekse hash'le
-        if (userUpdateRequest.getPassword() != null && userUpdateRequest.getPassword().isPresent() && !userUpdateRequest.getPassword().get().isEmpty()) {
-            String newHashedPassword = passwordEncoder.encode(userUpdateRequest.getPassword().get());
-            userToUpdate.setPassword(newHashedPassword);
-        }
+        userUpdateRequest.getPassword().ifPresent(password -> {
+            if (!password.isEmpty()) {
+                String newHashedPassword = passwordEncoder.encode(password);
+                userToUpdate.setPassword(newHashedPassword);
+            }
+        });
 
-        // Rolleri güncelle (Sadece Admin yetkili kullanıcıların rol değiştirmesine izin verilmeli)
+        // Rolleri güncelle (Sadece Admin yetkili kullanıcıların rol değiştirmesine izin verilir)
         if (userUpdateRequest.getRoleIds() != null) {
-            if (!isCurrentUserAdmin) {
-                // Yönetici değilse ve rolleri değiştirmeye çalışıyorsa hata fırlat
-                if (!userUpdateRequest.getRoleIds().equals(userToUpdate.getRoleIds())) { // Eğer rolleri değiştirme isteği varsa
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rolleri değiştirmeye yetkiniz yok.");
-                }
-                // Eğer roller değişmediyse ve Yönetici değilse, problem yok, devam et
-            } else { // Yönetici ise rolleri güncelle
+            if (!isCurrentUserAdmin && !userUpdateRequest.getRoleIds().equals(userToUpdate.getRoleIds())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rolleri değiştirmeye yetkiniz yok.");
+            }
+            if (isCurrentUserAdmin) {
                 Set<String> validRoleIds = userUpdateRequest.getRoleIds().stream()
                         .filter(roleId -> roleRepository.findById(roleId)
                                 .map(r -> r.getTenantId().equals(tenantId))
@@ -170,20 +173,19 @@ public class UserService {
             }
         }
 
-
         User updatedUser = userRepository.save(userToUpdate);
 
         // Kaydedilen kullanıcının rollerini doldurup geri döndür
         if (updatedUser.getRoleIds() != null && !updatedUser.getRoleIds().isEmpty()) {
             Set<Role> roles = updatedUser.getRoleIds().stream()
-                    .map(roleRepository::findById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
+                    .map(roleId -> roleRepository.findById(roleId).orElse(null))
+                    .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toSet());
             updatedUser.setRoles(roles);
         }
         return updatedUser;
     }
+
 
     // Kullanıcı silme
     public void deleteUser(String id, String authenticatedUserId, Set<Role> authenticatedUserRoles, String tenantId) {
@@ -198,7 +200,7 @@ public class UserService {
         }
 
         boolean isCurrentUserAdmin = authenticatedUserRoles.stream()
-                .anyMatch(role -> role.getName().equals("Yönetici"));
+                .anyMatch(role -> role.getName().equals("ADMIN"));
 
         if (!isCurrentUserAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu kullanıcıyı silmeye yetkiniz yok.");
