@@ -1,6 +1,65 @@
 // client/src/types/nursery.ts
 
-// --- YENİ EKLENEN TİPLER (ÖDEME) ---
+// --- YENİ EKLENEN TİPLER (MAL KABUL VE ÜRETİM) ---
+
+export enum BatchStatus {
+    CREATED = 'CREATED',
+    GROWING = 'GROWING',
+    HARVESTED = 'HARVESTED',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED'
+}
+
+export interface ProductionBatch {
+    id: string;
+    batchCode: string;
+    batchName: string;
+    startDate: string; // ISO Date String
+    initialQuantity: number;
+    currentQuantity: number;
+    costPool: number;
+    inflationAdjustedCostPool?: number;
+    lastCostUpdateDate?: string; // ISO Date String
+    expectedHarvestQuantity?: number;
+    harvestedQuantity?: number;
+    status: BatchStatus;
+    plantTypeId: string;
+    plantVarietyId: string;
+    tenantId: string;
+}
+
+export enum GoodsReceiptStatus {
+    COMPLETED = 'COMPLETED',
+    CANCELED = 'CANCELED'
+}
+
+export enum SourceType {
+    SUPPLIER = 'SUPPLIER',
+    PRODUCTION_BATCH = 'PRODUCTION_BATCH'
+}
+
+export interface GoodsReceiptItem {
+    plantId: string;
+    quantity: number;
+    unitCost: number;
+}
+
+export interface GoodsReceipt {
+    id: string;
+    receiptNumber: string;
+    warehouseId: string;
+    items: GoodsReceiptItem[];
+    totalValue: number;
+    status: GoodsReceiptStatus;
+    userId: string;
+    receiptDate: string; // ISO Date String
+    tenantId: string;
+    sourceType: SourceType;
+    sourceId: string;
+}
+
+
+// --- MEVCUT TİPLERİN GERİ KALANI ---
 
 export interface OverviewReportDto {
     totalCustomers: number;
@@ -14,8 +73,6 @@ export interface TopSellingPlantReport {
     plantVarietyName: string;
     totalQuantitySold: number;
 }
-
-
 
 export interface CustomerSalesReport {
     customerFirstName: string;
@@ -41,8 +98,8 @@ export interface Expense {
 }
 
 export enum PaymentType {
-    COLLECTION = 'COLLECTION', // Tahsilat
-    PAYMENT = 'PAYMENT'        // Tediye
+    COLLECTION = 'COLLECTION',
+    PAYMENT = 'PAYMENT'
 }
 
 export enum PaymentMethod {
@@ -63,15 +120,13 @@ export interface Payment {
     userId: string;
     type: PaymentType;
     method: PaymentMethod;
-    paymentDate: string; // ISO Date String
+    paymentDate: string;
     amount: number;
     description: string;
     relatedId: string;
     relatedEntityType: RelatedEntityType;
     invoiceId?: string;
 }
-
-// ... (dosyanın geri kalanı aynı kalacak)
 
 export interface Land {
   id: string;
@@ -115,9 +170,9 @@ export interface PlantVariety {
 export interface Warehouse {
   id: string;
   name: string;
-  address: string; // DEĞİŞİKLİK: 'location' yerine 'address'
+  address: string;
   tenantId: string;
-  createdAt: string; // JSON'da string olarak gelir
+  createdAt: string;
 }
 
 export interface Supplier {
@@ -271,7 +326,7 @@ export interface PlantCreateFormValues {
 
 export interface WarehouseCreate {
   name: string;
-  address: string; // DEĞİŞİKLİK: 'location' yerine 'address'
+  address: string;
 }
 
 export interface SupplierCreate {
@@ -333,5 +388,5 @@ export interface StockSummary {
   warehouseId: string;
   warehouseName: string;
   totalQuantity: number;
-  status: string; // Backend'deki DTO'da 'status' alanı varsa
+  status: string;
 }
