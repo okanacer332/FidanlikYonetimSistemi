@@ -1,136 +1,195 @@
 'use client';
 
 import * as React from 'react';
-import type { Metadata } from 'next'; // Metadata import'ı artık sadece tipi için
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { CircularProgress, Box } from '@mui/material';
-import { toast } from 'react-hot-toast'; // toast import edildi
+import { useRouter } from 'next/navigation';
+import { Stack, CircularProgress, Alert, IconButton, Tooltip, Button } from '@mui/material';
+import { Plus as PlusIcon, Pencil as PencilIcon } from '@phosphor-icons/react';
+import dayjs from 'dayjs';
 
-import { config } from '@/config';
-import { ProductionBatchesTable } from '@/components/dashboard/production-batches/production-batches-table';
+import { useUser } from '@/hooks/use-user';
+import type { ProductionBatch, PlantType, PlantVariety } from '@/types/nursery';
+import { useApiSWR } from '@/hooks/use-api-swr';
+import { useNotifier } from '@/hooks/useNotifier';
+
+// --- ORTAK BİLEŞENLER ---
+import { PageHeader } from '@/components/common/PageHeader';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
+import { StatusChip } from '@/components/common/StatusChip'; // Düzeltilmiş bileşeni kullanıyoruz
+import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
+import { InlineCreateForm } from '@/components/common/InlineCreateForm';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+
+// --- MODÜLE ÖZEL FORM BİLEŞENLERİ ---
 import { ProductionBatchCreateForm } from '@/components/dashboard/production-batches/production-batch-create-form';
-import { Button } from '@mui/material';
-import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
-import { Card } from '@mui/material';
-import { CardHeader } from '@mui/material';
-import { CardContent } from '@mui/material';
 
-import { getAllProductionBatches } from '@/api/nursery';
-import type { ProductionBatch, PlantType, PlantVariety } from '@/types/plant';
-import { useApi } from '@/hooks/use-api';
+export interface BatchRow extends ProductionBatch {
+  plantTypeName: string;
+  plantVarietyName: string;
+}
 
-export default function ProductionBatchesPage(): React.JSX.Element {
-  // Tüm state ve hook tanımlamaları en başta ve koşulsuz olmalı
-  const [isCreateFormOpen, setIsCreateFormOpen] = React.useState<boolean>(false);
+const useProductionBatches = () => useApiSWR<ProductionBatch[]>('/production-batches');
+const usePlantTypes = () => useApiSWR<PlantType[]>('/plant-types');
+const usePlantVarieties = () => useApiSWR<PlantVariety[]>('/plant-varieties');
 
-  // Üretim Partileri için veri çekme state'leri
-  const [productionBatches, setProductionBatches] = React.useState<ProductionBatch[]>([]);
-  const [isLoadingBatches, setIsLoadingBatches] = React.useState<boolean>(true);
-  const [batchesError, setBatchesError] = React.useState<Error | null>(null);
+export default function Page(): React.JSX.Element {
+    const router = useRouter();
+    const notify = useNotifier();
+    const { user: currentUser, isLoading: isUserLoading } = useUser();
 
-  // Fidan Türleri ve Çeşitleri için veri çekme (Form ve Tablo için ortak)
-  const { data: plantTypes, isLoading: isLoadingPlantTypes, error: plantTypesError } = useApi<PlantType[]>('/api/v1/plant-types');
-  const { data: plantVarieties, isLoading: isLoadingPlantVarieties, error: plantVarietiesError } = useApi<PlantVariety[]>('/api/v1/plant-varieties');
+    const { data: batchesData, error: batchesError, isLoading: isLoadingBatches, mutate: mutateBatches } = useProductionBatches();
+    const { data: plantTypesData, error: plantTypesError, isLoading: isLoadingPlantTypes } = usePlantTypes();
+    const { data: plantVarietiesData, error: plantVarietiesError, isLoading: isLoadingPlantVarieties } = usePlantVarieties();
+    
+    // ... (state'ler ve handle fonksiyonları aynı) ...
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(10);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
+    const [orderBy, setOrderBy] = React.useState<string>('startDate');
+    const [newlyAddedBatchId, setNewlyAddedBatchId] = React.useState<string | null>(null);
+    const [isCreateFormOpen, setCreateFormOpen] = React.useState(false);
 
-  // Fidan Türü ve Çeşitleri için ID'den isme hızlı erişim map'leri
-  // Hooks kuralına uygun olarak tüm koşullu render'lardan önce tanımlandı
-  const plantTypeMap = React.useMemo(() => {
-    return plantTypes?.reduce((map, type) => {
-      map.set(type.id, type.name);
-      return map;
-    }, new Map<string, string>()) || new Map<string, string>();
-  }, [plantTypes]);
+    const isLoading = isLoadingBatches || isLoadingPlantTypes || isLoadingPlantVarieties || isUserLoading;
+    const error = batchesError || plantTypesError || plantVarietiesError;
 
-  const plantVarietyMap = React.useMemo(() => {
-    return plantVarieties?.reduce((map, variety) => {
-      map.set(variety.id, variety.name);
-      return map;
-    }, new Map<string, string>()) || new Map<string, string>();
-  }, [plantVarieties]);
+    const canManageBatches = currentUser?.roles?.some(role => role.name === 'ADMIN');
+    const canViewBatches = currentUser?.roles?.some(role => ['ADMIN', 'SALES', 'WAREHOUSE_STAFF'].includes(role.name));
 
-  // Veri çekme fonksiyonu
-  const fetchAllProductionBatches = React.useCallback(async () => {
-    setIsLoadingBatches(true);
-    setBatchesError(null);
-    try {
-      const data = await getAllProductionBatches();
-      setProductionBatches(data);
-    } catch (err) {
-      setBatchesError(err instanceof Error ? err : new Error('Üretim partileri yüklenirken bilinmeyen bir hata oluştu.'));
-    } finally {
-      setIsLoadingBatches(false);
-    }
-  }, []);
+    const handleSuccess = (message: string, newBatch: ProductionBatch) => {
+        setCreateFormOpen(false);
+        notify.success(message);
+        setNewlyAddedBatchId(newBatch.id);
+        setTimeout(() => setNewlyAddedBatchId(null), 2000);
+        mutateBatches();
+    };
 
-  // Sayfa yüklendiğinde ve form başarıyla gönderildiğinde veriyi çek
-  React.useEffect(() => {
-    void fetchAllProductionBatches();
-  }, [fetchAllProductionBatches]);
+    const handleEditClick = (batch: BatchRow) => {
+        router.push(`/dashboard/production-batches/${batch.id}`);
+    };
+    
+    const handleRequestSort = React.useCallback((property: string) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    }, [order, orderBy]);
+    const sortedAndFilteredData = React.useMemo((): BatchRow[] => {
+        const batches = batchesData || [];
+        const plantTypes = plantTypesData || [];
+        const plantVarieties = plantVarietiesData || [];
+        const typeMap = new Map(plantTypes.map(t => [t.id, t.name]));
+        const varietyMap = new Map(plantVarieties.map(v => [v.id, v.name]));
+        const preparedData: BatchRow[] = batches.map(batch => ({
+            ...batch,
+            plantTypeName: typeMap.get(batch.plantTypeId) || 'Bilinmiyor',
+            plantVarietyName: varietyMap.get(batch.plantVarietyId) || 'Bilinmiyor',
+        }));
+        const filtered = searchTerm
+            ? preparedData.filter(row => 
+                row.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                row.batchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                row.plantTypeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                row.plantVarietyName.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+            : preparedData;
+        const getSortableValue = (row: BatchRow, key: string) => {
+            if (key === 'startDate') return dayjs(row.startDate).valueOf();
+            let value: any = row;
+            const keys = key.split('.');
+            for (const k of keys) { value = value?.[k]; }
+            return value || '';
+        };
+        return [...filtered].sort((a, b) => {
+            const aValue = getSortableValue(a, orderBy);
+            const bValue = getSortableValue(b, orderBy);
+            if (aValue < bValue) return order === 'asc' ? -1 : 1;
+            if (aValue > bValue) return order === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [batchesData, plantTypesData, plantVarietiesData, searchTerm, order, orderBy]);
+    
+    const paginatedData = React.useMemo(() => {
+      return sortedAndFilteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [sortedAndFilteredData, page, rowsPerPage]);
 
-  const handleCreateFormToggle = () => {
-    setIsCreateFormOpen((prev) => !prev);
-  };
+    const columns = React.useMemo<ColumnDef<BatchRow>[]>(() => [
+        { key: 'batchCode', header: 'Parti Kodu', sortable: true, getValue: (row) => row.batchCode, render: (row) => row.batchCode },
+        { key: 'batchName', header: 'Parti Adı', sortable: true, getValue: (row) => row.batchName, render: (row) => row.batchName },
+        { key: 'initialQuantity', header: 'Başlangıç Adedi', sortable: true, getValue: (row) => row.initialQuantity, render: (row) => row.initialQuantity },
+        { key: 'startDate', header: 'Başlangıç Tarihi', sortable: true, getValue: (row) => dayjs(row.startDate).valueOf(), render: (row) => dayjs(row.startDate).format('DD/MM/YYYY') },
+        { 
+            key: 'status', 
+            header: 'Durum', 
+            sortable: true, 
+            getValue: (row) => row.status, 
+            render: (row) => <StatusChip status={row.status} /> // ARTIK DOĞRU KULLANIM
+        },
+        {
+            key: 'actions',
+            header: 'İşlemler',
+            align: 'right',
+            render: (row) => (
+                <Stack direction="row" spacing={0} justifyContent="flex-end">
+                    {canManageBatches && (
+                        <Tooltip title="Partiyi Düzenle / Detayları Gör">
+                            <IconButton size="small" onClick={() => handleEditClick(row)}>
+                                <PencilIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Stack>
+            ),
+        },
+    ], [canManageBatches, router]);
 
-  // Yeni parti başarıyla oluşturulduğunda
-  const handleProductionBatchCreated = () => {
-    setIsCreateFormOpen(false); // Formu kapat
-    void fetchAllProductionBatches(); // Tabloyu yenilemek için veriyi tekrar çek
-    toast.success('Yeni üretim partisi başarıyla oluşturuldu ve liste güncellendi!');
-  };
-
-  // Genel yükleme ve hata durumunu kontrol et
-  const isLoading = isLoadingBatches || isLoadingPlantTypes || isLoadingPlantVarieties;
-  const error = batchesError || plantTypesError || plantVarietiesError;
-
-  // Yükleme veya hata durumunda koşullu render
-  if (isLoading) {
+    if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
+    if (error) return <Alert severity="error">{error.message}</Alert>;
+    if (!canViewBatches) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
+    
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="error">Veriler yüklenirken bir hata oluştu: {error.message}</Typography>
-        <Typography variant="body2" color="text.secondary">Lütfen ağ bağlantınızı kontrol edin veya daha sonra tekrar deneyin.</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Stack spacing={3}>
-      <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }} spacing={3}>
-        <Stack spacing={1}>
-          <Typography variant="h4">Üretim Partileri</Typography>
-        </Stack>
-        <div>
-          <Button startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained" onClick={handleCreateFormToggle}>
-            Yeni Parti Oluştur
-          </Button>
-        </div>
-      </Stack>
-      {isCreateFormOpen && (
-        <Card>
-          <CardHeader title="Yeni Üretim Partisi Oluştur" />
-          <CardContent>
-            <ProductionBatchCreateForm
-              onClose={handleCreateFormToggle}
-              onSuccess={handleProductionBatchCreated}
-              plantTypes={plantTypes || []}
-              plantVarieties={plantVarieties || []}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Stack spacing={3}>
+            <AppBreadcrumbs />
+            <PageHeader
+                title="Üretim Partileri"
+                action={ canManageBatches ? (
+                    <Button startIcon={<PlusIcon />} variant="contained" onClick={() => setCreateFormOpen(prev => !prev)}>
+                        Yeni Parti Oluştur
+                    </Button>
+                ) : undefined }
             />
-          </CardContent>
-        </Card>
-      )}
-      <ProductionBatchesTable
-        productionBatches={productionBatches}
-        plantTypeMap={plantTypeMap}
-        plantVarietyMap={plantVarietyMap}
-      />
-    </Stack>
-  );
+
+            <InlineCreateForm
+                title="Yeni Üretim Partisi Oluştur"
+                isOpen={isCreateFormOpen}
+                onClose={() => setCreateFormOpen(false)}
+            >
+                <ProductionBatchCreateForm
+                    onSuccess={(newBatch) => handleSuccess("Üretim partisi başarıyla oluşturuldu!", newBatch)}
+                    onCancel={() => setCreateFormOpen(false)}
+                    plantTypes={plantTypesData || []}
+                    plantVarieties={plantVarietiesData || []}
+                />
+            </InlineCreateForm>
+            
+            <ActionableTable<BatchRow>
+                columns={columns}
+                rows={paginatedData}
+                count={sortedAndFilteredData.length}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                onPageChange={(_, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(event) => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); }}
+                searchTerm={searchTerm}
+                onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+                order={order}
+                orderBy={orderBy}
+                onSort={handleRequestSort}
+                entity="production-batches"
+                selectionEnabled={false}
+                highlightedId={newlyAddedBatchId}
+            />
+        </Stack>
+      </LocalizationProvider>
+    );
 }

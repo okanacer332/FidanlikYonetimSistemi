@@ -16,27 +16,26 @@ const PATH_TRANSLATIONS: Record<string, string> = {
   suppliers: 'Tedarikçi Yönetimi',
   // Muhasebe
   accounting: 'Muhasebe',
-  'current-accounts': 'Cari Hesaplar (Müşteri)',
+  'current-accounts': 'Cari Hesaplar',
   invoices: 'Faturalar',
-  payments: 'Kasa & Banka Hareketleri',
+  payments: 'Kasa & Banka',
   expenses: 'Gider Yönetimi',
   // Operasyonlar
   operations: 'Operasyonlar',
   orders: 'Sipariş Yönetimi',
+  'goods-receipts': 'Mal Giriş Yönetimi',
+  'production-batches': 'Üretim Partileri', // <-- YENİ EKLENDİ
   // Diğer
+  'user-management': 'Kullanıcı Yönetimi',
   account: 'Hesap',
   settings: 'Ayarlar',
 };
 
-// --- YENİ: Tıklanabilir olmayan yolları burada tanımlıyoruz ---
+// ... (Dosyanın geri kalanı aynı kalacak)
 const NON_CLICKABLE_PATHS = [
     '/dashboard/accounting',
     '/dashboard/operations',
-    '/dashboard/reports',
-    '/dashboard/system',
-    '/dashboard/settings'
 ];
-
 
 export function AppBreadcrumbs(): React.JSX.Element {
   const pathname = usePathname();
@@ -47,41 +46,26 @@ export function AppBreadcrumbs(): React.JSX.Element {
   }
 
   return (
-    <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
-      <Link
-        component={NextLink}
-        underline="hover"
-        color="inherit"
-        href="/dashboard"
-        sx={{ display: 'flex', alignItems: 'center' }}
-      >
+    <Breadcrumbs aria-label="breadcrumb">
+      <Link component={NextLink} underline="hover" color="inherit" href="/dashboard" sx={{ display: 'flex', alignItems: 'center' }}>
         <HouseIcon style={{ marginRight: '8px' }} />
         {PATH_TRANSLATIONS['dashboard']}
       </Link>
-
       {pathSegments.slice(1).map((segment, index) => {
         const href = `/${pathSegments.slice(0, index + 2).join('/')}`;
         const isLast = index === pathSegments.length - 2;
         const isUUID = /^[a-f\d]{24}$/i.test(segment);
-        
-        // YENİ KURAL: Eğer yol, tıklanabilir olmayanlar listesindeyse veya son segment ise, link yapma.
         const isClickable = !isLast && !NON_CLICKABLE_PATHS.includes(href);
 
         if (isLast && isUUID) {
             const parentSegment = pathSegments[index];
             const parentTranslation = PATH_TRANSLATIONS[parentSegment] || parentSegment;
-            return (
-                <Typography key={href} color="text.primary">
-                    {parentTranslation} Detayı
-                </Typography>
-            );
+            return ( <Typography key={href} color="text.primary"> Detay </Typography> );
         }
         
         if(isUUID) return null;
+        const translatedText = PATH_TRANSLATIONS[segment] || segment.replace(/-/g, ' ');
 
-        const translatedText = PATH_TRANSLATIONS[segment] || segment;
-
-        // YENİ MANTIK: Sadece isClickable true ise Link'e dönüştür.
         return isClickable ? (
           <Link component={NextLink} underline="hover" color="inherit" href={href} key={href}>
             {translatedText}

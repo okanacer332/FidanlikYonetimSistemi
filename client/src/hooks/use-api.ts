@@ -2,10 +2,7 @@
 
 import * as React from 'react';
 
-// Bu hook, SWR'a geçmeden önceki manuel veri çekme yöntemimizdir.
-// Projenin eski bölümlerinin çalışmaya devam etmesi için geçici olarak geri yüklendi.
-// Uzun vadeli hedef, bu hook'u kullanan tüm sayfaları useApiSWR'a geçirmektir.
-
+// ... (interface tanımları aynı kalacak)
 interface UseApiOptions<TData, TError> {
   url: string | null;
   initialData?: TData;
@@ -24,7 +21,8 @@ interface UseApiResult<TData, TError> {
   refetch: (newUrl?: string | null, options?: Omit<UseApiOptions<TData, TError>, 'initialData' | 'fetchOnMount'>) => Promise<void>;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 const fetchData = async <T>(
   url: string,
@@ -41,7 +39,12 @@ const fetchData = async <T>(
     ...options?.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
+  // --- HATA DÜZELTMESİ: URL'yi akıllıca birleştirme ---
+  // Eğer gelen url zaten tam bir adres ise, onu kullan.
+  // Değilse, API_BASE_URL ile birleştir.
+  const finalUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+
+  const response = await fetch(finalUrl, {
     method: options?.method || 'GET',
     headers: defaultHeaders,
     body: options?.body ? JSON.stringify(options.body) : undefined,
@@ -59,6 +62,11 @@ const fetchData = async <T>(
     }
   }
 
+  // Eğer içerik yoksa (204 No Content gibi), null dön.
+  if (response.status === 204) {
+    return null as T;
+  }
+
   return response.json();
 };
 
@@ -73,10 +81,14 @@ export function useApi<TData = unknown, TError extends Error = Error>(
 
   const fetchDataAsync = React.useCallback(
     async (currentUrl: string, fetchOptions?: { method?: string; body?: Record<string, unknown>; headers?: Record<string, string> }) => {
+      // --- HATA DÜZELTMESİ: Gelen URL'yi kontrol et ---
+      // Eski koddan kalan çift /api/v1 sorununu burada gideriyoruz.
+      const correctedUrl = currentUrl.startsWith('/api/v1') ? currentUrl : `/api/v1${currentUrl}`;
+
       setIsLoading(true);
       setError(undefined);
       try {
-        const result = await fetchData<TData>(currentUrl, fetchOptions);
+        const result = await fetchData<TData>(correctedUrl, fetchOptions);
         setData(result);
         onSuccess?.(result);
       } catch (err) {

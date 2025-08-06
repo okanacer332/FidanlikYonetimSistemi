@@ -1,36 +1,56 @@
-// src/components/common/StatusChip.tsx
+'use client';
+
 import * as React from 'react';
 import { Chip, ChipProps } from '@mui/material';
 
-// Hangi durumların hangi renkte olacağını belirleyen bir harita
+// Renk haritasını genişletiyoruz
 const STATUS_MAP: Record<string, ChipProps['color']> = {
-  pending: 'warning',
-  paid: 'success',
+  // Sipariş Durumları
+  preparing: 'warning',
+  shipped: 'info',
   delivered: 'success',
-  canceled: 'error',
-  refunded: 'secondary',
+  // Fatura Durumları
   draft: 'default',
+  sent: 'info',
+  paid: 'success',
+  // Genel Durumlar
+  canceled: 'error',
+  completed: 'success',
+  // Üretim Partisi Durumları
+  created: 'default',
+  growing: 'info',
+  harvested: 'warning',
+  cancelled: 'error', // Hem canceled hem cancelled için
 };
 
-// Hangi durumların hangi metinle gösterileceği
+// Etiket haritasını genişletiyoruz
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Beklemede',
-  paid: 'Ödendi',
+  // Sipariş Durumları
+  preparing: 'Hazırlanıyor',
+  shipped: 'Sevk Edildi',
   delivered: 'Teslim Edildi',
-  canceled: 'İptal Edildi',
-  refunded: 'İade Edildi',
+  // Fatura Durumları
   draft: 'Taslak',
+  sent: 'Gönderildi',
+  paid: 'Ödendi',
+  // Genel Durumlar
+  canceled: 'İptal Edildi',
+  completed: 'Tamamlandı',
+  // Üretim Partisi Durumları
+  created: 'Oluşturuldu',
+  growing: 'Büyümede',
+  harvested: 'Hasat Edildi',
+  cancelled: 'İptal Edildi',
 };
 
 interface StatusChipProps {
-  status: string; // Dışarıdan 'pending', 'paid' gibi bir durum adı alacağız
+  status: string;
 }
 
 export function StatusChip({ status }: StatusChipProps): React.JSX.Element {
-  // Durum adına göre doğru rengi ve etiketi haritalardan buluyoruz.
-  // Eğer haritada olmayan bir durum gelirse, varsayılan olarak 'default' kullanılır.
-  const color = STATUS_MAP[status.toLowerCase()] || 'default';
-  const label = STATUS_LABELS[status.toLowerCase()] || status;
+  const safeStatus = status?.toLowerCase() || 'default';
+  const color = STATUS_MAP[safeStatus] || 'default';
+  const label = STATUS_LABELS[safeStatus] || status;
 
   return <Chip label={label} color={color} size="small" />;
 }
