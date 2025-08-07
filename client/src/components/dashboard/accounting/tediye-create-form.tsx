@@ -1,3 +1,4 @@
+// Konum: src/components/dashboard/accounting/tediye-create-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -5,13 +6,12 @@ import { z as zod } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import {
-  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack,
-  TextField, CircularProgress, Typography
+  Alert, Button, FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack,
+  TextField, CircularProgress, Grid
 } from '@mui/material';
 import dayjs from 'dayjs';
 
-import type { Supplier } from '@/types/nursery';
+import type { Supplier, Transaction } from '@/types/nursery'; // <-- Transaction tipini import et
 import { PaymentMethod } from '@/types/nursery';
 
 const schema = zod.object({
@@ -25,15 +25,13 @@ const schema = zod.object({
 type FormValues = zod.infer<typeof schema>;
 
 interface TediyeCreateFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  onClose?: () => void;
+  onSuccess: (newTransaction: Transaction) => void; // <-- DEĞİŞİKLİK: onSuccess'i güncelle
   suppliers: Supplier[];
   preselectedSupplierId?: string | null;
 }
 
 export function TediyeCreateForm({
-  open,
   onClose,
   onSuccess,
   suppliers,
@@ -57,11 +55,9 @@ export function TediyeCreateForm({
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues });
 
   React.useEffect(() => {
-    if (open) {
-      reset(defaultValues);
-      setFormError(null);
-    }
-  }, [open, reset, defaultValues]);
+    reset(defaultValues);
+    setFormError(null);
+  }, [reset, defaultValues]);
 
   const onSubmit = React.useCallback(async (values: FormValues): Promise<void> => {
     setFormError(null);
@@ -74,113 +70,69 @@ export function TediyeCreateForm({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(values),
       });
+      
+      const newTransactionData = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Tediye kaydedilemedi.');
+        throw new Error(newTransactionData.message || 'Tediye kaydedilemedi.');
       }
-      onSuccess();
+      onSuccess(newTransactionData); // <-- DEĞİŞİKLİK: Yeni veriyi geri döndür
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
     }
   }, [onSuccess]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Yeni Tediye Ekle</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent sx={{ mt: 2 }}>
-          <Stack spacing={3}>
-            <Controller
-              name="supplierId"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.supplierId)}>
-                  <InputLabel required>Tedarikçi</InputLabel>
-                  <Select {...field} label="Tedarikçi" disabled={!!preselectedSupplierId}>
-                    {suppliers.map((supplier) => (
-                      <MenuItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.supplierId && <FormHelperText>{errors.supplierId.message}</FormHelperText>}
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="amount"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Tutar"
-                  type="number"
-                  inputProps={{ step: '0.01' }}
-                  fullWidth
-                  required
-                  error={Boolean(errors.amount)}
-                  helperText={errors.amount?.message}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack spacing={2} sx={{ p: 2 }}>
+        <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+                 <Controller
+                    name="amount"
+                    control={control}
+                    render={({ field }) => ( <TextField {...field} label="Tutar" type="number" inputProps={{ step: '0.01' }} fullWidth required size="small" error={Boolean(errors.amount)} helperText={errors.amount?.message} /> )}
                 />
-              )}
-            />
-            <Controller
-              name="paymentDate"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Ödeme Tarihi"
-                  type="date"
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                  error={Boolean(errors.paymentDate)}
-                  helperText={errors.paymentDate?.message}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <Controller
+                    name="paymentDate"
+                    control={control}
+                    render={({ field }) => ( <TextField {...field} label="Ödeme Tarihi" type="date" fullWidth required InputLabelProps={{ shrink: true }} size="small" error={Boolean(errors.paymentDate)} helperText={errors.paymentDate?.message} /> )}
                 />
-              )}
-            />
-            <Controller
-              name="method"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.method)}>
-                  <InputLabel required>Ödeme Yöntemi</InputLabel>
-                  <Select {...field} label="Ödeme Yöntemi">
-                    <MenuItem value={PaymentMethod.CASH}>Nakit</MenuItem>
-                    <MenuItem value={PaymentMethod.BANK_TRANSFER}>Banka Transferi</MenuItem>
-                    <MenuItem value={PaymentMethod.CREDIT_CARD}>Kredi Kartı</MenuItem>
-                  </Select>
-                  {errors.method && <FormHelperText>{errors.method.message}</FormHelperText>}
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="description"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Açıklama"
-                  fullWidth
-                  required
-                  multiline
-                  rows={2}
-                  error={Boolean(errors.description)}
-                  helperText={errors.description?.message}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <Controller
+                    name="method"
+                    control={control}
+                    render={({ field }) => (
+                        <FormControl fullWidth error={Boolean(errors.method)} size="small">
+                            <InputLabel required>Ödeme Yöntemi</InputLabel>
+                            <Select {...field} label="Ödeme Yöntemi">
+                                <MenuItem value={PaymentMethod.CASH}>Nakit</MenuItem>
+                                <MenuItem value={PaymentMethod.BANK_TRANSFER}>Banka Transferi</MenuItem>
+                                <MenuItem value={PaymentMethod.CREDIT_CARD}>Kredi Kartı</MenuItem>
+                            </Select>
+                            {errors.method && <FormHelperText>{errors.method.message}</FormHelperText>}
+                        </FormControl>
+                    )}
                 />
-              )}
-            />
-            {formError && <Alert severity="error">{formError}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+            </Grid>
+             <Grid size={{ xs: 12, md: 6 }}>
+                 <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => ( <TextField {...field} label="Açıklama" fullWidth required size="small" error={Boolean(errors.description)} helperText={errors.description?.message} /> )}
+                />
+             </Grid>
+        </Grid>
+        {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>}
+        <Stack direction="row" justifyContent="flex-end" spacing={1}>
+            <Button onClick={onClose} disabled={isSubmitting} color="secondary">İptal</Button>
+            <Button type="submit" variant="contained" disabled={isSubmitting}>
+                {isSubmitting ? <CircularProgress size={24} /> : 'Tediyeyi Kaydet'}
+            </Button>
+        </Stack>
+      </Stack>
+    </form>
   );
 }
