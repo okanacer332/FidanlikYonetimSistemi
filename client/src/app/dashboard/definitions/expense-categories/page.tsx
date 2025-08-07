@@ -144,7 +144,7 @@ export default function Page(): React.JSX.Element {
         columns={columns}
         rows={categories || []}
         count={categories?.length || 0}
-        page={0} // Bu sayfada sayfalama şimdilik gereksiz
+        page={0}
         rowsPerPage={categories?.length || 10}
         onPageChange={() => {}}
         onRowsPerPageChange={() => {}}

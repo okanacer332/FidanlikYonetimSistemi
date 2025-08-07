@@ -3,56 +3,50 @@ export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
   dashboard: {
+    // Ana Rotalar
     overview: '/dashboard',
-    account: '/dashboard/account',
-    
-    // --- DEĞİŞİKLİK BURADA ---
-    // Tanımlar için ayrı bir nesne oluşturup Gider Kategorilerini buraya ekliyoruz.
-    definitions: {
-      expenseCategories: '/dashboard/definitions/expense-categories',
+    account: '/dashboard/profilim',
+
+    // Tanımlar Grubu (Yeniden Yapılandırıldı ve Türkçeleştirildi)
+    tanimlar: {
+      plants: '/dashboard/tanimlar/fidan-yonetimi',
+      warehouses: '/dashboard/tanimlar/depo-yonetimi',
+      customers: '/dashboard/tanimlar/musteri-yonetimi',
+      suppliers: '/dashboard/tanimlar/tedarikci-yonetimi',
+      expenseCategories: '/dashboard/tanimlar/gider-kategorileri',
+      inflationData: '/dashboard/tanimlar/enflasyon-verileri',
+    },
+
+    // Operasyonlar Grubu (Türkçeleştirildi)
+    operasyonlar: {
+      orders: '/dashboard/operasyonlar/siparis-yonetimi',
+      goodsReceipts: '/dashboard/operasyonlar/mal-girisi',
+      productionBatches: '/dashboard/operasyonlar/uretim-partileri',
+      productionBatchesDetails: (id: string) => `/dashboard/operasyonlar/uretim-partileri/${id}`,
+      stockStatus: '/dashboard/operasyonlar/stok-durumu',
     },
     
-    customers: '/dashboard/customers',
-    goodsReceipts: '/dashboard/goods-receipts',
-    integrations: '/dashboard/integrations',
-    orders: '/dashboard/orders',
-    plants: '/dashboard/plants',
-    productionBatches: '/dashboard/production-batches',
-    productionBatchesDetails: (id: string) => `/dashboard/production-batches/${id}`, 
-    settings: {
-      root: '/dashboard/settings',
-      inflation: '/dashboard/settings/inflation',
+    // Muhasebe Grubu (Türkçeleştirildi)
+    muhasebe: {
+      currentAccounts: '/dashboard/muhasebe/cari-hesaplar-musteri',
+      currentAccountDetails: (customerId: string) => `/dashboard/muhasebe/cari-hesaplar-musteri/${customerId}`,
+      suppliers: '/dashboard/muhasebe/cari-hesaplar-tedarikci',
+      supplierDetails: (supplierId: string) => `/dashboard/muhasebe/cari-hesaplar-tedarikci/${supplierId}`,
+      invoices: '/dashboard/muhasebe/faturalar',
+      invoiceDetails: (invoiceId: string) => `/dashboard/muhasebe/faturalar/${invoiceId}`,
+      payments: '/dashboard/muhasebe/kasa-banka-hareketleri',
+      expenses: '/dashboard/muhasebe/gider-yonetimi',
     },
-    suppliers: '/dashboard/suppliers',
-    userManagement: '/dashboard/user-management',
-    warehouses: '/dashboard/warehouses',
-    accounting: {
-      currentAccounts: '/dashboard/accounting/current-accounts',
-      suppliers: '/dashboard/accounting/suppliers',
-      invoices: '/dashboard/accounting/invoices',
-      payments: '/dashboard/accounting/payments',
-      expenses: '/dashboard/accounting/expenses',
+    
+    // Raporlar Grubu (Türkçeleştirildi)
+    raporlar: {
+      profitability: '/dashboard/raporlar/kar-zarar-analizi',
     },
-    reports: {
-      overview: '/dashboard/reports',
-      financial: {
-        profitability: '/dashboard/reports/profitability',
-        cashFlow: '/dashboard/reports/financial/cash-flow',
-        expenseAnalysis: '/dashboard/reports/financial/expense-analysis',
-        receivablesAging: '/dashboard/reports/financial/receivables-aging',
-      },
-      sales: {
-        detailedSales: '/dashboard/reports/sales/detailed-sales',
-        salesByCustomer: '/dashboard/reports/sales/by-customer',
-        salesByProduct: '/dashboard/reports/sales/by-product',
-      },
-      inventory: {
-        valuation: '/dashboard/reports/inventory/valuation',
-        stockMovements: '/dashboard/reports/inventory/movements',
-        stockAging: '/dashboard/reports/inventory/aging',
-      },
+    
+    // Sistem Grubu (Türkçeleştirildi)
+    sistem: {
+      userManagement: '/dashboard/sistem/kullanici-yonetimi',
     },
-    stockStatus: '/dashboard/stok-durumu',
   },
   errors: { notFound: '/errors/not-found' },
 } as const;
