@@ -1,3 +1,4 @@
+// Konum: src/components/dashboard/accounting/collection-create-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -5,13 +6,12 @@ import { z as zod } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import {
-  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack,
-  TextField, CircularProgress, Typography
+  Alert, Button, FormControl, FormHelperText, InputLabel, MenuItem, Select, Stack,
+  TextField, CircularProgress, Grid
 } from '@mui/material';
 import dayjs from 'dayjs';
 
-import type { Customer } from '@/types/nursery';
+import type { Customer, Transaction } from '@/types/nursery'; // <-- Transaction tipini import et
 import { PaymentMethod } from '@/types/nursery';
 
 const schema = zod.object({
@@ -20,22 +20,19 @@ const schema = zod.object({
   paymentDate: zod.string().min(1, 'Ödeme tarihi zorunludur.'),
   method: zod.nativeEnum(PaymentMethod),
   description: zod.string().min(1, 'Açıklama zorunludur.'),
-  invoiceId: zod.string().optional(),
 });
 
 type FormValues = zod.infer<typeof schema>;
 
 interface CollectionCreateFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  onClose?: () => void;
+  // <-- DEĞİŞİKLİK: onSuccess artık yeni Transaction objesini parametre alacak
+  onSuccess: (newTransaction: Transaction) => void;
   customers: Customer[];
-  // Opsiyonel olarak, belirli bir müşteri önceden seçili gelebilir
   preselectedCustomerId?: string | null;
 }
 
 export function CollectionCreateForm({
-  open,
   onClose,
   onSuccess,
   customers,
@@ -49,7 +46,6 @@ export function CollectionCreateForm({
     paymentDate: dayjs().format('YYYY-MM-DD'),
     method: PaymentMethod.CASH,
     description: '',
-    invoiceId: '',
   }), [preselectedCustomerId]);
 
   const {
@@ -60,11 +56,9 @@ export function CollectionCreateForm({
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues });
 
   React.useEffect(() => {
-    if (open) {
-      reset(defaultValues);
-      setFormError(null);
-    }
-  }, [open, reset, defaultValues]);
+    reset(defaultValues);
+    setFormError(null);
+  }, [reset, defaultValues]);
 
   const onSubmit = React.useCallback(async (values: FormValues): Promise<void> => {
     setFormError(null);
@@ -78,76 +72,43 @@ export function CollectionCreateForm({
         body: JSON.stringify(values),
       });
 
+      // API'den dönen yeni veriyi al
+      const newTransactionData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Tahsilat kaydedilemedi.');
+        throw new Error(newTransactionData.message || 'Tahsilat kaydedilemedi.');
       }
-      onSuccess();
+      // <-- DEĞİŞİKLİK: Yeni veriyi onSuccess callback'i ile ana sayfaya gönder
+      onSuccess(newTransactionData);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
     }
   }, [onSuccess]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Yeni Tahsilat Ekle</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent sx={{ mt: 2 }}>
-          <Stack spacing={3}>
-            <Controller
-              name="customerId"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.customerId)}>
-                  <InputLabel required>Müşteri</InputLabel>
-                  <Select {...field} label="Müşteri" disabled={!!preselectedCustomerId}>
-                    {customers.map((customer) => (
-                      <MenuItem key={customer.id} value={customer.id}>
-                        {customer.firstName} {customer.lastName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.customerId && <FormHelperText>{errors.customerId.message}</FormHelperText>}
-                </FormControl>
-              )}
-            />
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack spacing={2} sx={{ p: 2 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Controller
               name="amount"
               control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Tutar"
-                  type="number"
-                  inputProps={{ step: '0.01' }}
-                  fullWidth
-                  required
-                  error={Boolean(errors.amount)}
-                  helperText={errors.amount?.message}
-                />
-              )}
+              render={({ field }) => ( <TextField {...field} label="Tutar" type="number" inputProps={{ step: '0.01' }} fullWidth required size="small" error={Boolean(errors.amount)} helperText={errors.amount?.message} /> )}
             />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Controller
               name="paymentDate"
               control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Ödeme Tarihi"
-                  type="date"
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                  error={Boolean(errors.paymentDate)}
-                  helperText={errors.paymentDate?.message}
-                />
-              )}
+              render={({ field }) => ( <TextField {...field} label="Ödeme Tarihi" type="date" fullWidth required InputLabelProps={{ shrink: true }} size="small" error={Boolean(errors.paymentDate)} helperText={errors.paymentDate?.message} /> )}
             />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Controller
               name="method"
               control={control}
               render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.method)}>
+                <FormControl fullWidth error={Boolean(errors.method)} size="small">
                   <InputLabel required>Ödeme Yöntemi</InputLabel>
                   <Select {...field} label="Ödeme Yöntemi">
                     <MenuItem value={PaymentMethod.CASH}>Nakit</MenuItem>
@@ -158,32 +119,23 @@ export function CollectionCreateForm({
                 </FormControl>
               )}
             />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Controller
               name="description"
               control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Açıklama"
-                  fullWidth
-                  required
-                  multiline
-                  rows={2}
-                  error={Boolean(errors.description)}
-                  helperText={errors.description?.message}
-                />
-              )}
+              render={({ field }) => ( <TextField {...field} label="Açıklama" fullWidth required size="small" error={Boolean(errors.description)} helperText={errors.description?.message} /> )}
             />
-            {formError && <Alert severity="error">{formError}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={isSubmitting}>İptal</Button>
+          </Grid>
+        </Grid>
+        {formError && <Alert severity="error" sx={{ mt: 2 }}>{formError}</Alert>}
+        <Stack direction="row" justifyContent="flex-end" spacing={1}>
+          <Button onClick={onClose} disabled={isSubmitting} color="secondary">İptal</Button>
           <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Kaydet'}
+            {isSubmitting ? <CircularProgress size={24} /> : 'Tahsilatı Kaydet'}
           </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+        </Stack>
+      </Stack>
+    </form>
   );
 }
