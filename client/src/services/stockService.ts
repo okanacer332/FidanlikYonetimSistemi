@@ -1,3 +1,5 @@
+// Konum: src/services/stockService.ts
+
 import { useApiSWR } from '@/hooks/use-api-swr';
 import type { StockSummary } from '@/types/nursery';
 
