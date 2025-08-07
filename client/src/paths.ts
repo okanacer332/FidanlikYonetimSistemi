@@ -1,17 +1,23 @@
-// client/src/paths.ts
+// Konum: src/paths.ts
 export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
   dashboard: {
     overview: '/dashboard',
     account: '/dashboard/account',
+    
+    // --- DEĞİŞİKLİK BURADA ---
+    // Tanımlar için ayrı bir nesne oluşturup Gider Kategorilerini buraya ekliyoruz.
+    definitions: {
+      expenseCategories: '/dashboard/definitions/expense-categories',
+    },
+    
     customers: '/dashboard/customers',
     goodsReceipts: '/dashboard/goods-receipts',
     integrations: '/dashboard/integrations',
     orders: '/dashboard/orders',
     plants: '/dashboard/plants',
-    productionBatches: '/dashboard/production-batches', // Mevcut yol
-    // YENİ EKLENEN YOL: Detay sayfası için dinamik yol
+    productionBatches: '/dashboard/production-batches',
     productionBatchesDetails: (id: string) => `/dashboard/production-batches/${id}`, 
     settings: {
       root: '/dashboard/settings',

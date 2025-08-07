@@ -54,6 +54,16 @@ export const navItems: NavItemConfig[] = [
         roles: ['ADMIN', 'WAREHOUSE_STAFF'],
         matcher: { type: 'startsWith', href: paths.dashboard.suppliers },
       },
+      {
+        type: 'item',
+        key: 'expense-categories',
+        title: 'Gider Kategorileri',
+        // 'paths' objesinde bu yolu birazdan oluşturacağız.
+        href: paths.dashboard.definitions.expenseCategories, 
+        icon: 'stack', 
+        roles: ['ADMIN', 'ACCOUNTANT'],
+        matcher: { type: 'startsWith', href: paths.dashboard.definitions.expenseCategories },
+      },
     ],
   },
   {

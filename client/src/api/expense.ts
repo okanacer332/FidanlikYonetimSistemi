@@ -4,14 +4,8 @@ import type { Expense, ExpenseCategory } from '@/types/expense';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// --- YENİ EKLENEN FONKSİYON ---
-// Yeni gider oluşturma
-export const createExpense = async (data: {
-  description: string;
-  amount: number;
-  expenseDate: string;
-  categoryId: string;
-}): Promise<Expense> => {
+// Gider Oluşturma
+export const createExpense = async (data: { description: string; amount: number; expenseDate: string; categoryId: string; }): Promise<Expense> => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error('Oturum bulunamadı.');
   const response = await fetch(`${API_BASE_URL}/expenses`, {
@@ -25,9 +19,8 @@ export const createExpense = async (data: {
   }
   return response.json();
 };
-// --- YENİ EKLENEN FONKSİYON SONU ---
 
-// Tüm giderleri getirme
+// Giderleri Listeleme
 export const getExpenses = async (): Promise<Expense[]> => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error('Oturum bulunamadı.');
@@ -41,7 +34,7 @@ export const getExpenses = async (): Promise<Expense[]> => {
   return response.json();
 };
 
-// Tüm gider kategorilerini getirme
+// Gider Kategorilerini Listeleme
 export const getExpenseCategories = async (): Promise<ExpenseCategory[]> => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error('Oturum bulunamadı.');
@@ -55,7 +48,7 @@ export const getExpenseCategories = async (): Promise<ExpenseCategory[]> => {
   return response.json();
 };
 
-// Yeni gider kategorisi oluşturma
+// Yeni Gider Kategorisi Oluşturma
 export const createExpenseCategory = async (data: { name: string, description?: string }): Promise<ExpenseCategory> => {
     const token = localStorage.getItem('authToken');
     if (!token) throw new Error('Oturum bulunamadı.');
@@ -69,4 +62,36 @@ export const createExpenseCategory = async (data: { name: string, description?: 
         throw new Error(errorData.message || 'Kategori oluşturulamadı.');
     }
     return response.json();
+};
+
+// --- EKSİK OLAN FONKSİYONLAR ---
+
+// Gider Kategorisi Güncelleme
+export const updateExpenseCategory = async (id: string, data: { name: string, description?: string }): Promise<ExpenseCategory> => {
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error('Oturum bulunamadı.');
+    const response = await fetch(`${API_BASE_URL}/expense-categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Kategori güncellenemedi.');
+    }
+    return response.json();
+};
+
+// Gider Kategorisi Silme
+export const deleteExpenseCategory = async (id: string): Promise<void> => {
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error('Oturum bulunamadı.');
+    const response = await fetch(`${API_BASE_URL}/expense-categories/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Kategori silinemedi.');
+    }
 };
