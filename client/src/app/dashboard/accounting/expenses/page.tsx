@@ -1,143 +1,136 @@
+// Konum: src/app/dashboard/accounting/expenses/page.tsx
 'use client';
 
 import * as React from 'react';
-import { Button, Stack, Typography, CircularProgress, Alert, Tabs, Tab, Box } from '@mui/material';
+import { Stack, CircularProgress, Alert, Button } from '@mui/material'; // <-- Stack import'u burada
 import { Plus as PlusIcon } from '@phosphor-icons/react';
-import { toast } from 'react-hot-toast'; // toast import edildi
+import dayjs from 'dayjs';
 
+// Ortak Bileşenler ve Hook'lar
+import { PageHeader } from '@/components/common/PageHeader';
+import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
+import { InlineCreateForm } from '@/components/common/InlineCreateForm';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
 import { useUser } from '@/hooks/use-user';
-import type { Expense, ExpenseCategory } from '@/types/expense'; // Tip import'u düzeltildi
-import { ExpensesTable } from '@/components/dashboard/expense/expenses-table';
+import { useApiSWR } from '@/hooks/use-api-swr';
+import { useNotifier } from '@/hooks/useNotifier';
+
+// Modüle Özel Bileşenler, API ve Tipler
+import type { Expense, ExpenseCategory } from '@/types/expense';
 import { ExpenseCreateForm } from '@/components/dashboard/expense/expense-create-form';
-import { ExpenseCategoryList } from '@/components/dashboard/expense/expense-category-list';
-import { getExpenses, getExpenseCategories } from '@/api/expense'; // API fonksiyonları import edildi
+// 'api/expense' dosyası artık sayfa tarafından değil, SWR hook'u tarafından kullanılacak.
 
-function a11yProps(index: number) {
-  return {
-    id: `simple-tab-${index}`,
-    'aria-controls': `simple-tabpanel-${index}`,
-  };
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
+// SWR Hook'ları
+const useExpenses = () => useApiSWR<Expense[]>('/expenses');
+const useExpenseCategories = () => useApiSWR<ExpenseCategory[]>('/expense-categories');
 
 export default function Page(): React.JSX.Element {
   const { user: currentUser } = useUser();
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  const [categories, setCategories] = React.useState<ExpenseCategory[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
+  const notify = useNotifier();
 
-  const [tabValue, setTabValue] = React.useState(0);
+  // Veri çekme
+  const { data: expensesData, error: expensesError, isLoading: isLoadingExpenses, mutate: mutateExpenses } = useExpenses();
+  const { data: categoriesData, error: categoriesError, isLoading: isLoadingCategories } = useExpenseCategories();
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  // State'ler
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
+  const [orderBy, setOrderBy] = React.useState<string>('expenseDate');
+  const [isCreateFormOpen, setCreateFormOpen] = React.useState(false);
+  const [newlyAddedId, setNewlyAddedId] = React.useState<string | null>(null);
+
+  const isLoading = isLoadingExpenses || isLoadingCategories;
+  const error = expensesError || categoriesError;
+  const canManage = currentUser?.roles?.some(role => ['ADMIN', 'ACCOUNTANT'].includes(role.name));
+
+  const handleSuccess = (newExpense: Expense) => {
+    setCreateFormOpen(false);
+    setNewlyAddedId(newExpense.id);
+    mutateExpenses();
+    notify.success('Gider başarıyla kaydedildi.');
+    setTimeout(() => setNewlyAddedId(null), 2000);
   };
 
-  const canView = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
+  const handleRequestSort = React.useCallback((property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  }, [order, orderBy]);
 
-  const fetchData = React.useCallback(async () => {
-    if (!canView) {
-      setError('Bu sayfayı görüntüleme yetkiniz yok.');
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      // YENİ: getExpenses ve getExpenseCategories fonksiyonları kullanıldı
-      const [expensesData, categoriesData] = await Promise.all([
-        getExpenses(),
-        getExpenseCategories(),
-      ]);
+  const sortedAndFilteredExpenses = React.useMemo(() => {
+    const expenses = expensesData || [];
+    const filtered = searchTerm
+      ? expenses.filter(e =>
+          e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (e.category && e.category.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      : expenses;
 
-      setExpenses(expensesData);
-      setCategories(categoriesData);
+    return [...filtered].sort((a, b) => {
+      const aValue = (a as any)[orderBy] || '';
+      const bValue = (b as any)[orderBy] || '';
+      return order === 'asc' ? String(aValue).localeCompare(String(bValue), 'tr') : String(bValue).localeCompare(String(aValue), 'tr');
+    });
+  }, [expensesData, searchTerm, order, orderBy]);
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-      toast.error(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-    } finally {
-      setLoading(false);
-    }
-  }, [canView]);
+  const paginatedExpenses = React.useMemo(() => {
+    return sortedAndFilteredExpenses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredExpenses, page, rowsPerPage]);
 
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const columns: ColumnDef<Expense>[] = React.useMemo(() => [
+    { key: 'expenseDate', header: 'Tarih', sortable: true, render: (row) => dayjs(row.expenseDate).format('DD.MM.YYYY'), getValue: (row) => row.expenseDate },
+    { key: 'category.name', header: 'Kategori', sortable: true, render: (row) => row.category?.name || 'N/A', getValue: (row) => row.category?.name || '' },
+    { key: 'description', header: 'Açıklama', sortable: true, render: (row) => row.description, getValue: (row) => row.description },
+    { key: 'amount', header: 'Tutar', sortable: true, render: (row) => row.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }), getValue: (row) => row.amount },
+  ], []);
 
-  const handleSuccess = () => {
-    setCreateModalOpen(false);
-    fetchData();
-  };
+  if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (!canManage) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
 
   return (
     <Stack spacing={3}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h4">Gider Yönetimi</Typography>
-            <Button
-                startIcon={<PlusIcon />}
-                variant="contained"
-                onClick={() => setCreateModalOpen(true)}
-                disabled={!canView}
-            >
-                Yeni Gider Ekle
-            </Button>
-        </Stack>
-        
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="gider yönetimi sekmesi">
-                <Tab label="Giderler" {...a11yProps(0)} />
-                <Tab label="Gider Kategorileri" {...a11yProps(1)} />
-            </Tabs>
-        </Box>
-        
-        {loading ? (
-            <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>
-        ) : error ? (
-            <Alert severity="error">{error}</Alert>
-        ) : (
-            <>
-                <CustomTabPanel value={tabValue} index={0}>
-                    <ExpensesTable expenses={expenses} />
-                </CustomTabPanel>
-                <CustomTabPanel value={tabValue} index={1}>
-                    <ExpenseCategoryList categories={categories} onUpdate={fetchData} />
-                </CustomTabPanel>
-            </>
-        )}
-        
+      <AppBreadcrumbs />
+      <PageHeader
+        title="Gider Yönetimi"
+        action={
+          <Button startIcon={<PlusIcon />} variant="contained" onClick={() => setCreateFormOpen(prev => !prev)}>
+            Yeni Gider Ekle
+          </Button>
+        }
+      />
+      
+      <InlineCreateForm
+        title="Yeni Gider Girişi"
+        isOpen={isCreateFormOpen}
+        onClose={() => setCreateFormOpen(false)}
+      >
         <ExpenseCreateForm
-            open={isCreateModalOpen}
-            onClose={() => setCreateModalOpen(false)}
-            onSuccess={handleSuccess}
-            categories={categories}
+          onSuccess={handleSuccess}
+          onCancel={() => setCreateFormOpen(false)}
+          categories={categoriesData || []}
         />
+      </InlineCreateForm>
+
+      <ActionableTable
+        columns={columns}
+        rows={paginatedExpenses}
+        count={sortedAndFilteredExpenses.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); }}
+        searchTerm={searchTerm}
+        onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+        selectionEnabled={false}
+        highlightedId={newlyAddedId}
+        order={order}
+        orderBy={orderBy}
+        onSort={handleRequestSort}
+        entity="expenses"
+      />
     </Stack>
   );
 }

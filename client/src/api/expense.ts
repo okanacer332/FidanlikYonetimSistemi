@@ -1,117 +1,72 @@
-// client/src/api/expense.ts
+// Konum: src/api/expense.ts
 
 import type { Expense, ExpenseCategory } from '@/types/expense';
-import type { PaymentMethod } from '@/types/payment';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// Gider Oluşturma isteği için DTO
-interface CreateExpenseRequest {
+// --- YENİ EKLENEN FONKSİYON ---
+// Yeni gider oluşturma
+export const createExpense = async (data: {
   description: string;
   amount: number;
   expenseDate: string;
   categoryId: string;
-  productionBatchId?: string;
-  paymentMethod?: string;
-}
-
-// Gider oluşturma API çağrısı
-export const createExpense = async (
-  request: CreateExpenseRequest
-): Promise<Expense> => {
+}): Promise<Expense> => {
   const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/expenses`, {
+  if (!token) throw new Error('Oturum bulunamadı.');
+  const response = await fetch(`${API_BASE_URL}/expenses`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(request),
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(data),
   });
-
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || `Gider oluşturulurken bir hata oluştu: ${response.status}`);
+    throw new Error(errorData.message || 'Gider oluşturulamadı.');
   }
-
   return response.json();
 };
+// --- YENİ EKLENEN FONKSİYON SONU ---
 
-// Gider kategorilerini getirme API çağrısı
-export const getExpenseCategories = async (): Promise<ExpenseCategory[]> => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/expense-categories`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || `Gider kategorileri alınamadı: ${response.status}`);
-  }
-
-  return response.json();
-};
-
-// Tüm giderleri getirme API çağrısı
+// Tüm giderleri getirme
 export const getExpenses = async (): Promise<Expense[]> => {
   const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/expenses`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
+  if (!token) throw new Error('Oturum bulunamadı.');
+  const response = await fetch(`${API_BASE_URL}/expenses`, {
+    headers: { 'Authorization': `Bearer ${token}` },
   });
-
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || `Giderler alınamadı: ${response.status}`);
+    throw new Error(errorData.message || 'Giderler alınamadı.');
   }
-
   return response.json();
 };
 
-// YENİ EKLENEN: Yeni gider kategorisi oluşturma API çağrısı
-interface CreateExpenseCategoryRequest {
-  name: string;
-  description?: string;
-}
-
-export const createExpenseCategory = async (
-  request: CreateExpenseCategoryRequest
-): Promise<ExpenseCategory> => {
+// Tüm gider kategorilerini getirme
+export const getExpenseCategories = async (): Promise<ExpenseCategory[]> => {
   const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/expense-categories`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(request),
+  if (!token) throw new Error('Oturum bulunamadı.');
+  const response = await fetch(`${API_BASE_URL}/expense-categories`, {
+    headers: { 'Authorization': `Bearer ${token}` },
   });
-
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || `Gider kategorisi oluşturulurken bir hata oluştu: ${response.status}`);
+    throw new Error(errorData.message || 'Gider kategorileri alınamadı.');
   }
-
   return response.json();
+};
+
+// Yeni gider kategorisi oluşturma
+export const createExpenseCategory = async (data: { name: string, description?: string }): Promise<ExpenseCategory> => {
+    const token = localStorage.getItem('authToken');
+    if (!token) throw new Error('Oturum bulunamadı.');
+    const response = await fetch(`${API_BASE_URL}/expense-categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Kategori oluşturulamadı.');
+    }
+    return response.json();
 };
