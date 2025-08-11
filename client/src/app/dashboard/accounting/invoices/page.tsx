@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import NextLink from 'next/link'; // Yönlendirme için NextLink
+import NextLink from 'next/link';
 import { Stack, CircularProgress, Alert, Chip, Typography, IconButton, Tooltip } from '@mui/material';
 import { Eye as EyeIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
@@ -20,6 +20,7 @@ import type { Invoice } from '@/types/nursery';
 import { InvoiceStatus } from '@/types/nursery';
 import { paths } from '@/paths';
 
+// Fatura durumları için Türkçe harita
 const statusMap: Record<string, { label: string; color: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
   [InvoiceStatus.PAID]: { label: 'Ödendi', color: 'success' },
   [InvoiceStatus.SENT]: { label: 'Gönderildi', color: 'info' },
@@ -32,7 +33,7 @@ export default function Page(): React.JSX.Element {
   const { data: invoicesData, error: invoicesError, isLoading: isLoadingInvoices } = useInvoices();
   const { data: customersData, error: customersError, isLoading: isLoadingCustomers } = useCustomers();
 
-  // State'ler ve sıralama/filtreleme mantığı aynı kalıyor...
+  // State'ler
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -93,7 +94,8 @@ export default function Page(): React.JSX.Element {
       header: 'İşlemler',
       render: (row) => (
         <Tooltip title="Faturayı Görüntüle">
-          <IconButton component={NextLink} href={`${paths.dashboard.accounting.invoices}/${row.id}`} size="small">
+          {/* DÜZELTME: `paths.dashboard.muhasebe.invoices` olarak güncellendi */}
+          <IconButton component={NextLink} href={`${paths.dashboard.muhasebe.invoices}/${row.id}`} size="small">
             <EyeIcon />
           </IconButton>
         </Tooltip>
