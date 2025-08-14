@@ -12,6 +12,7 @@ import com.fidanlik.fidanysserver.fidan.service.PlantService;
 import com.fidanlik.fidanysserver.fidan.service.ProductionBatchService;
 import com.fidanlik.fidanysserver.goodsreceipt.service.GoodsReceiptService;
 import com.fidanlik.fidanysserver.inflation.service.InflationService;
+import com.fidanlik.fidanysserver.invoicing.service.InvoiceService;
 import com.fidanlik.fidanysserver.order.service.OrderService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
 import com.fidanlik.fidanysserver.supplier.repository.SupplierRepository;
@@ -61,6 +62,7 @@ public class ExportController {
     private final PlantTypeRepository plantTypeRepository;
     private final StockService stockService;
     private final TransactionRepository transactionRepository;
+    private final InvoiceService invoiceService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -337,6 +339,32 @@ public class ExportController {
                     row.put("Toplam Alacak", totalCredit);
                     row.put("Toplam Borç (Ödenen)", totalDebit);
                     row.put("Bakiye", balance);
+                    data.add(row);
+                });
+                break;
+
+            case "invoices":
+                reportTitle = "Fatura Raporu";
+                headers = List.of("Fatura No", "Müşteri", "Oluşturma Tarihi", "Vade Tarihi", "Durum", "Tutar");
+
+                invoiceService.getAllInvoices(tenantId).forEach(invoice -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    String customerName = customerRepository.findById(invoice.getCustomerId())
+                            .map(c -> c.getFirstName() + " " + c.getLastName())
+                            .orElse("Müşteri Bulunamadı");
+
+                    java.time.format.DateTimeFormatter dateFormatter =
+                            java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+                    row.put("Fatura No", invoice.getInvoiceNumber());
+                    row.put("Müşteri", customerName);
+
+                    row.put("Oluşturma Tarihi", invoice.getIssueDate() != null ? invoice.getIssueDate().format(dateFormatter) : "");
+                    row.put("Vade Tarihi", invoice.getDueDate() != null ? invoice.getDueDate().format(dateFormatter) : "");
+
+                    row.put("Durum", invoice.getStatus() != null ? invoice.getStatus().name() : "Bilinmiyor");
+                    row.put("Tutar", invoice.getTotalAmount());
                     data.add(row);
                 });
                 break;

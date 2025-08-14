@@ -77,6 +77,7 @@ const entityNameMap: { [key: string]: string } = {
   'stocks': 'stok',
   'customer-accounts': 'cari-hesaplar-müşteri',
   'supplier-accounts': 'cari-hesaplar-tedarikçi',
+  'invoices': 'faturalar',
 };
 
 
