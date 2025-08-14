@@ -14,6 +14,7 @@ import com.fidanlik.fidanysserver.goodsreceipt.service.GoodsReceiptService;
 import com.fidanlik.fidanysserver.inflation.service.InflationService;
 import com.fidanlik.fidanysserver.invoicing.service.InvoiceService;
 import com.fidanlik.fidanysserver.order.service.OrderService;
+import com.fidanlik.fidanysserver.payment.service.PaymentService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
 import com.fidanlik.fidanysserver.supplier.repository.SupplierRepository;
 import com.fidanlik.fidanysserver.supplier.service.SupplierService;
@@ -63,6 +64,7 @@ public class ExportController {
     private final StockService stockService;
     private final TransactionRepository transactionRepository;
     private final InvoiceService invoiceService;
+    private final PaymentService paymentService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -365,6 +367,33 @@ public class ExportController {
 
                     row.put("Durum", invoice.getStatus() != null ? invoice.getStatus().name() : "Bilinmiyor");
                     row.put("Tutar", invoice.getTotalAmount());
+                    data.add(row);
+                });
+                break;
+
+            case "payments":
+                reportTitle = "Kasa ve Banka Hareketleri Raporu";
+                headers = List.of("Tarih", "İşlem Tipi", "Açıklama", "Yöntem", "Tutar");
+
+                paymentService.getAllPayments(tenantId).forEach(payment -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    java.time.format.DateTimeFormatter dateFormatter =
+                            java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+                    // İşlem tipini Türkçeleştiriyoruz
+                    String paymentType = "";
+                    if (payment.getType() == com.fidanlik.fidanysserver.payment.model.Payment.PaymentType.COLLECTION) {
+                        paymentType = "Tahsilat (Para Girişi)";
+                    } else if (payment.getType() == com.fidanlik.fidanysserver.payment.model.Payment.PaymentType.PAYMENT) {
+                        paymentType = "Tediye (Para Çıkışı)";
+                    }
+
+                    row.put("Tarih", payment.getPaymentDate() != null ? payment.getPaymentDate().format(dateFormatter) : "");
+                    row.put("İşlem Tipi", paymentType);
+                    row.put("Açıklama", payment.getDescription());
+                    row.put("Yöntem", payment.getMethod() != null ? payment.getMethod().name() : "");
+                    row.put("Tutar", payment.getAmount());
                     data.add(row);
                 });
                 break;
