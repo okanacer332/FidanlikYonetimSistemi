@@ -73,6 +73,7 @@ const entityNameMap: { [key: string]: string } = {
   'inflation-data': 'enflasyon-verileri',
   'orders': 'siparisler',
   'goods-receipts': 'mal-girişi',
+  'production-batches': 'üretim-partileri',
 };
 
 

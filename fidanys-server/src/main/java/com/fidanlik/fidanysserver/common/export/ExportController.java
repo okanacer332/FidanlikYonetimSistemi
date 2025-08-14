@@ -5,8 +5,10 @@ import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
+import com.fidanlik.fidanysserver.fidan.repository.PlantTypeRepository;
 import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
+import com.fidanlik.fidanysserver.fidan.service.ProductionBatchService;
 import com.fidanlik.fidanysserver.goodsreceipt.service.GoodsReceiptService;
 import com.fidanlik.fidanysserver.inflation.service.InflationService;
 import com.fidanlik.fidanysserver.order.service.OrderService;
@@ -53,6 +55,8 @@ public class ExportController {
     private final SupplierRepository supplierRepository;
     private final ProductionBatchRepository productionBatchRepository;
     private final WarehouseRepository warehouseRepository;
+    private final ProductionBatchService productionBatchService;
+    private final PlantTypeRepository plantTypeRepository;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -220,6 +224,27 @@ public class ExportController {
                     }
 
                     row.put("Tutar", receipt.getTotalValue());
+                    data.add(row);
+                });
+                break;
+
+            case "production-batches":
+                reportTitle = "Üretim Partileri Raporu";
+                headers = List.of("Parti Adı", "Fidan Türü", "Durum", "Başlangıç Miktarı", "Mevcut Miktar", "Maliyet Havuzu");
+
+                productionBatchService.getAllProductionBatches(tenantId).forEach(batch -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    String plantTypeName = plantTypeRepository.findById(batch.getPlantTypeId())
+                            .map(pt -> pt.getName())
+                            .orElse("Tür Bulunamadı");
+
+                    row.put("Parti Adı", batch.getBatchName());
+                    row.put("Fidan Türü", plantTypeName);
+                    row.put("Durum", batch.getStatus() != null ? batch.getStatus().name() : "Bilinmiyor");
+                    row.put("Başlangıç Miktarı", batch.getInitialQuantity());
+                    row.put("Mevcut Miktar", batch.getCurrentQuantity());
+                    row.put("Maliyet Havuzu", batch.getCostPool());
                     data.add(row);
                 });
                 break;
