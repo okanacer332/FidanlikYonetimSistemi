@@ -1,11 +1,13 @@
 package com.fidanlik.fidanysserver.common.export;
 
 import com.fidanlik.fidanysserver.customer.model.Customer;
+import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
 import com.fidanlik.fidanysserver.inflation.service.InflationService;
+import com.fidanlik.fidanysserver.order.service.OrderService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
 import com.fidanlik.fidanysserver.supplier.service.SupplierService;
 import com.fidanlik.fidanysserver.user.model.User;
@@ -41,6 +43,8 @@ public class ExportController {
     private final SupplierService supplierService;
     private final ExpenseService expenseService;
     private final InflationService inflationService;
+    private final OrderService orderService; // <-- BU SATIRI EKLEYİN
+    private final CustomerRepository customerRepository;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -141,7 +145,33 @@ public class ExportController {
                     data.add(row);
                 });
                 break;
+            case "orders":
+                reportTitle = "Sipariş Raporu";
+                headers = List.of("Sipariş No", "Müşteri", "Sipariş Tarihi", "Durum", "Tutar");
 
+                orderService.getAllOrdersByTenant(tenantId).forEach(order -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    String customerName = customerRepository.findById(order.getCustomerId())
+                            .map(c -> c.getFirstName() + " " + c.getLastName())
+                            .orElse("Müşteri Bulunamadı");
+
+                    row.put("Sipariş No", order.getOrderNumber());
+                    row.put("Müşteri", customerName);
+
+                    if (order.getOrderDate() != null) {
+                        java.time.format.DateTimeFormatter formatter =
+                                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+                        row.put("Sipariş Tarihi", order.getOrderDate().format(formatter));
+                    } else {
+                        row.put("Sipariş Tarihi", "");
+                    }
+
+                    row.put("Durum", order.getStatus() != null ? order.getStatus().name() : "Bilinmiyor");
+                    row.put("Tutar", order.getTotalAmount());
+                    data.add(row);
+                });
+                break;
             default:
                 return ResponseEntity.badRequest().build();
         }
