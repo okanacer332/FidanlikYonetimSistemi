@@ -15,4 +15,5 @@ public interface PlantRepository extends MongoRepository<Plant, String> {
 
     // YENİ EKLENEN METOT: Fidan türü, çeşidi ve tenant ID'sine göre ilk eşleşen fidanı bulma
     Optional<Plant> findFirstByPlantTypeIdAndPlantVarietyIdAndTenantId(String plantTypeId, String plantVarietyId, String tenantId);
+    Optional<Plant> findById(String id);
 }

@@ -10,4 +10,5 @@ public interface StockRepository extends MongoRepository<Stock, String> {
     Optional<Stock> findByPlantIdAndWarehouseIdAndTenantId(String plantId, String warehouseId, String tenantId);
     List<Stock> findAllByWarehouseIdAndTenantId(String warehouseId, String tenantId);
     List<Stock> findAllByTenantId(String tenantId);
+    List<Stock> findByWarehouseIdAndTenantId(String warehouseId, String tenantId);
 }
