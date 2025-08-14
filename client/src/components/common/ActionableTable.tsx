@@ -63,6 +63,18 @@ const flashAnimation = {
   },
 };
 
+// YENİ: İngilizce entity adlarını Türkçe dosya adlarına çeviren sözlük
+const entityNameMap: { [key: string]: string } = {
+  'plants': 'fidan-kimlikleri',
+  'customers': 'musteriler',
+  'suppliers': 'tedarikciler',
+  'warehouses': 'depolar',
+  'expense-categories': 'gider-kategorileri',
+  'inflation-data': 'enflasyon-verileri',
+  'orders': 'siparisler',
+};
+
+
 export function ActionableTable<T extends { id: string }>({
   columns,
   rows,
@@ -105,7 +117,11 @@ export function ActionableTable<T extends { id: string }>({
       }
 
       const blob = await response.blob();
-      saveAs(blob, `${entity}-raporu.${format}`);
+      
+      // YENİ: Sözlüğü kullanarak Türkçe dosya adını alıyoruz.
+      // Eğer sözlükte karşılığı yoksa, yine de İngilizce adını kullanır.
+      const turkishEntityName = entityNameMap[entity] || entity;
+      saveAs(blob, `${turkishEntityName}-raporu.${format}`);
 
     } catch (error) {
       console.error(`${format.toUpperCase()} indirilirken hata oluştu:`, error);
