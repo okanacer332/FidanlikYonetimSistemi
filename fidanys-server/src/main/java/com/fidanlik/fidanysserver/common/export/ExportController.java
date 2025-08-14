@@ -305,6 +305,41 @@ public class ExportController {
                     data.add(row);
                 });
                 break;
+
+            case "supplier-accounts":
+                reportTitle = "Tedarikçi Cari Hesap Raporu";
+                headers = List.of("Tedarikçi", "Toplam Alacak", "Toplam Borç (Ödenen)", "Bakiye");
+
+                // 1. Tenant'a ait tüm tedarikçileri çek
+                supplierRepository.findAllByTenantId(tenantId).forEach(supplier -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    // 2. Her tedarikçinin tüm işlemlerini çek
+                    List<com.fidanlik.fidanysserver.accounting.model.Transaction> transactions =
+                            transactionRepository.findBySupplierIdAndTenantIdOrderByTransactionDateDesc(supplier.getId(), tenantId);
+
+                    BigDecimal totalCredit = BigDecimal.ZERO; // Tedarikçinin bizden alacağı
+                    BigDecimal totalDebit = BigDecimal.ZERO;  // Bizim tedarikçiye ödediğimiz
+
+                    // 3. Alacak ve borçları hesapla
+                    for (com.fidanlik.fidanysserver.accounting.model.Transaction tx : transactions) {
+                        if (tx.getType() == com.fidanlik.fidanysserver.accounting.model.Transaction.TransactionType.CREDIT) {
+                            totalCredit = totalCredit.add(tx.getAmount());
+                        } else if (tx.getType() == com.fidanlik.fidanysserver.accounting.model.Transaction.TransactionType.DEBIT) {
+                            totalDebit = totalDebit.add(tx.getAmount());
+                        }
+                    }
+
+                    // 4. Bakiyeyi hesapla (Alacak - Borç)
+                    BigDecimal balance = totalCredit.subtract(totalDebit);
+
+                    row.put("Tedarikçi", supplier.getName());
+                    row.put("Toplam Alacak", totalCredit);
+                    row.put("Toplam Borç (Ödenen)", totalDebit);
+                    row.put("Bakiye", balance);
+                    data.add(row);
+                });
+                break;
             default:
                 return ResponseEntity.badRequest().build();
         }
