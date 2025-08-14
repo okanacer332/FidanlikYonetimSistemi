@@ -74,6 +74,7 @@ const entityNameMap: { [key: string]: string } = {
   'orders': 'siparisler',
   'goods-receipts': 'mal-girişi',
   'production-batches': 'üretim-partileri',
+  'stocks': 'stok',
 };
 
 

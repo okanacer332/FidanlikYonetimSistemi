@@ -150,7 +150,7 @@ export default function Page(): React.JSX.Element {
         order={order}
         orderBy={orderBy}
         onSort={handleRequestSort}
-        entity="stock"
+        entity="stocks"
       />
     </Stack>
   );

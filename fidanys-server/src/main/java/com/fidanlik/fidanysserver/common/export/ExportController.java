@@ -57,6 +57,7 @@ public class ExportController {
     private final WarehouseRepository warehouseRepository;
     private final ProductionBatchService productionBatchService;
     private final PlantTypeRepository plantTypeRepository;
+    private final StockService stockService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -224,6 +225,24 @@ public class ExportController {
                     }
 
                     row.put("Tutar", receipt.getTotalValue());
+                    data.add(row);
+                });
+                break;
+
+            case "stocks":
+                reportTitle = "Stok Durum Raporu";
+                headers = List.of("Fidan Türü", "Fidan Çeşidi", "Anaç", "Boy", "Yaş", "Depo", "Miktar");
+
+                stockService.getStockSummary(tenantId).forEach(stockSummary -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    row.put("Fidan Türü", stockSummary.getPlantTypeName());
+                    row.put("Fidan Çeşidi", stockSummary.getPlantVarietyName());
+                    row.put("Anaç", stockSummary.getRootstockName());
+                    row.put("Boy", stockSummary.getPlantSizeName());
+                    row.put("Yaş", stockSummary.getPlantAgeName());
+                    row.put("Depo", stockSummary.getWarehouseName());
+                    row.put("Miktar", stockSummary.getTotalQuantity());
                     data.add(row);
                 });
                 break;
