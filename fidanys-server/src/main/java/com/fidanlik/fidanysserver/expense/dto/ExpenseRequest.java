@@ -13,4 +13,6 @@ public class ExpenseRequest {
     private LocalDate expenseDate;
     private String categoryId;
     private Payment.PaymentMethod paymentMethod; // Giderin nasıl ödendiğini belirtir
+    // YENİ EKLENEN ALAN
+    private String productionBatchId; // Bu giderin ilişkili olduğu üretim partisinin ID'si
 }

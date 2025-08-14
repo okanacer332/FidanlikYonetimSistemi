@@ -5,7 +5,8 @@ import {
   Box, Card, Table, TableBody, TableCell, TableHead, TableRow, Typography, Chip
 } from '@mui/material';
 import dayjs from 'dayjs';
-import type { Expense } from '@/types/nursery';
+// Tip import'u düzeltildi
+import type { Expense } from '@/types/expense';
 
 interface ExpensesTableProps {
   expenses: Expense[];
@@ -36,8 +37,9 @@ export function ExpensesTable({ expenses = [] }: ExpensesTableProps): React.JSX.
             {expenses.map((expense) => (
               <TableRow hover key={expense.id}>
                 <TableCell>{dayjs(expense.expenseDate).format('DD/MM/YYYY')}</TableCell>
+                {/* expense.category objesinin null veya undefined olabileceği durumu için kontrol eklendi */}
                 <TableCell>
-                  <Chip label={expense.category.name} size="small" variant="outlined" />
+                  {expense.category && <Chip label={expense.category.name} size="small" variant="outlined" />}
                 </TableCell>
                 <TableCell>{expense.description}</TableCell>
                 <TableCell align="right">

@@ -15,6 +15,8 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
+// DÜZELTME 1: Land tipi import edildi
+import type { Land } from '@/types/nursery';
 
 // LandCreate için bir schema tanımlayın
 const schema = zod.object({
@@ -28,7 +30,8 @@ type LandCreateFormValues = zod.infer<typeof schema>;
 interface LandCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME 2: onSuccess prop'u güncellendi
+  onSuccess: (newLand: Land) => void | Promise<void>;
 }
 
 export function LandCreateForm({ open, onClose, onSuccess }: LandCreateFormProps): React.JSX.Element {
@@ -64,7 +67,11 @@ export function LandCreateForm({ open, onClose, onSuccess }: LandCreateFormProps
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess(); // Başarılı olduğunda ana formu bilgilendir.
+      
+      // DÜZELTME 3: Yeni veri alınıp onSuccess ile geri gönderildi
+      const newLand = await response.json();
+      onSuccess(newLand);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

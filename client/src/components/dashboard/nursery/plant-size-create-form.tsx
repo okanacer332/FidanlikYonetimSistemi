@@ -14,14 +14,16 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { PlantSizeCreate } from '@/types/nursery';
+// DÜZELTME 1: PlantSize tipi import edildi
+import type { PlantSize, PlantSizeCreate } from '@/types/nursery';
 
 const schema = zod.object({ name: zod.string().min(1, { message: 'Fidan boyu adı gereklidir.' }) });
 
 interface PlantSizeCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME 2: onSuccess prop'u güncellendi
+  onSuccess: (newPlantSize: PlantSize) => void | Promise<void>;
 }
 
 export function PlantSizeCreateForm({ open, onClose, onSuccess }: PlantSizeCreateFormProps): React.JSX.Element {
@@ -47,7 +49,11 @@ export function PlantSizeCreateForm({ open, onClose, onSuccess }: PlantSizeCreat
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess();
+      
+      // DÜZELTME 3: Yeni veri alınıp onSuccess ile geri gönderildi
+      const newPlantSize = await response.json();
+      onSuccess(newPlantSize);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

@@ -33,7 +33,7 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final WarehouseRepository warehouseRepository;
     private final PlantRepository plantRepository;
-    private final TransactionService transactionService; // YENİ: TransactionService enjekte edildi
+    private final TransactionService transactionService;
 
     @Transactional
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
@@ -92,11 +92,12 @@ public class OrderService {
             stockService.changeStock(
                     item.getPlantId(), order.getWarehouseId(), -item.getQuantity(),
                     StockMovement.MovementType.SALE, order.getId(),
-                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId
+                    "Sipariş Sevkiyatı - No: " + order.getOrderNumber(), userId, tenantId,
+                    item.getSalePrice() // YENİ: SalePrice'ı unitCost olarak geçiyoruz
             );
         }
 
-        // --- YENİ: CARİ HESABA BORÇ KAYDI OLUŞTURMA ---
+        // CARİ HESABA BORÇ KAYDI OLUŞTURMA
         transactionService.createCustomerTransaction(
                 order.getCustomerId(),
                 Transaction.TransactionType.DEBIT, // Müşteri Borçlandırılıyor
@@ -133,10 +134,11 @@ public class OrderService {
                 stockService.changeStock(
                         item.getPlantId(), order.getWarehouseId(), item.getQuantity(), // Pozitif miktar ile stoğa iade
                         StockMovement.MovementType.SALE_CANCEL, order.getId(),
-                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId
+                        "İptal Edilen Sevkiyat İadesi - Sipariş No: " + order.getOrderNumber(), userId, tenantId,
+                        item.getSalePrice() // YENİ: SalePrice'ı unitCost olarak geçiyoruz
                 );
             }
-            // --- YENİ: CARİ HESAPTAN BORCU SİLME (ALACAK KAYDI) ---
+            // CARİ HESAPTAN BORCU SİLME (ALACAK KAYDI)
             transactionService.createCustomerTransaction(
                     order.getCustomerId(),
                     Transaction.TransactionType.CREDIT, // Borç iptali için Alacak kaydı

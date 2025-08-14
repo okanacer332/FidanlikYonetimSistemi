@@ -1,7 +1,10 @@
+'use client';
+
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import GlobalStyles from '@mui/material/GlobalStyles';
+import { Toaster } from 'react-hot-toast';
 
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { MainNav } from '@/components/dashboard/layout/main-nav';
@@ -14,6 +17,9 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <AuthGuard>
+      {/* Bildirimlerin tüm sayfalarda gösterilmesi için Toaster bileşeni */}
+      <Toaster position="bottom-right" />
+      
       <GlobalStyles
         styles={{
           body: {

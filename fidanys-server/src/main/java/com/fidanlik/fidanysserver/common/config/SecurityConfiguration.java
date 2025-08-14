@@ -4,13 +4,13 @@ package com.fidanlik.fidanysserver.common.config;
 import com.fidanlik.fidanysserver.common.security.CustomAccessDeniedHandler;
 import com.fidanlik.fidanysserver.common.security.JwtAuthenticationEntryPoint;
 import com.fidanlik.fidanysserver.common.security.JwtAuthenticationFilter;
-import com.fidanlik.fidanysserver.common.security.TenantAuthenticationProvider; // YENİ IMPORT
+import com.fidanlik.fidanysserver.common.security.TenantAuthenticationProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager; // YENİ IMPORT
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder; // YENİ IMPORT
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,7 +33,7 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
-    private final TenantAuthenticationProvider tenantAuthenticationProvider; // YENİ: Provider'ı buraya enjekte et
+    private final TenantAuthenticationProvider tenantAuthenticationProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -50,15 +50,12 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
-                // YENİ: AuthenticationProvider'ı burada HttpSecurity'e tanıtıyoruz.
                 .authenticationProvider(tenantAuthenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // YENİ: AuthenticationManager bean'ini HttpSecurity üzerinden yapılandırıyoruz.
-    // Bu, ApplicationConfig'deki eski bean'in yerini alacak ve daha doğru bir entegrasyon sağlayacak.
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
@@ -76,7 +73,8 @@ public class SecurityConfiguration {
                 "https://ata.fidanys.xyz",
                 "http://ata.fidanys.xyz"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // YENİ: PATCH metodu izin verilenler listesine eklendi
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Tenant-Id"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

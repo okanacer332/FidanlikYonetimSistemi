@@ -1,98 +1,116 @@
+// Konum: src/app/dashboard/accounting/suppliers/page.tsx
 'use client';
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Stack, Typography, CircularProgress, Alert, Box, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Stack, CircularProgress, Alert, Button } from '@mui/material';
 
-import type { Supplier } from '@/types/nursery';
+// Ortak Bileşenler ve Hook'lar
+import { PageHeader } from '@/components/common/PageHeader';
+import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
 import { useUser } from '@/hooks/use-user';
+
+// Servis Katmanı ve Tipler
+import { useSuppliers } from '@/services/supplierService';
+import type { Supplier } from '@/types/nursery';
 import { paths } from '@/paths';
 
 export default function Page(): React.JSX.Element {
+  // 1. Gerekli Hook'lar ve Veri Çekme
   const { user: currentUser } = useUser();
   const router = useRouter();
-  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const { data: suppliersData, error, isLoading } = useSuppliers();
 
+  // 2. Tablo için State'ler
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [order, setOrder] = React.useState<'asc' | 'desc'>('asc');
+  const [orderBy, setOrderBy] = React.useState<string>('name');
+
+  // Yetki Kontrolü
   const canView = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
 
-  React.useEffect(() => {
-    const fetchSuppliers = async () => {
-      if (!canView) {
-        setError('Bu sayfayı görüntüleme yetkiniz yok.');
-        setLoading(false);
-        return;
+  // 3. Sıralama Fonksiyonu
+  const handleRequestSort = React.useCallback((property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  }, [order, orderBy]);
+
+  // 4. Arama ve Sıralama İşlemleri
+  const sortedAndFilteredSuppliers = React.useMemo(() => {
+    const suppliers = suppliersData || [];
+    
+    const filtered = searchTerm
+      ? suppliers.filter(s =>
+          s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : suppliers;
+
+    return [...filtered].sort((a, b) => {
+      const aValue = (a as any)[orderBy] || '';
+      const bValue = (b as any)[orderBy] || '';
+      if (order === 'asc') {
+        return String(aValue).localeCompare(String(bValue), 'tr');
       }
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı.');
+      return String(bValue).localeCompare(String(aValue), 'tr');
+    });
+  }, [suppliersData, searchTerm, order, orderBy]);
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+  // 5. Sayfalama
+  const paginatedSuppliers = React.useMemo(() => {
+    return sortedAndFilteredSuppliers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredSuppliers, page, rowsPerPage]);
 
-        if (!response.ok) throw new Error('Tedarikçiler yüklenemedi.');
-
-        setSuppliers(await response.json());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (currentUser) { // currentUser'ın yüklenmesini bekleyelim
-        fetchSuppliers();
-    }
-  }, [canView, currentUser]);
-
-  if (loading) {
-    return <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>;
-  }
-
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
+  // 6. Sütun Tanımları
+  const columns: ColumnDef<Supplier>[] = React.useMemo(() => [
+    { key: 'name', header: 'Tedarikçi Adı', sortable: true, getValue: (row) => row.name, render: (row) => row.name },
+    { key: 'contactPerson', header: 'Yetkili Kişi', sortable: true, getValue: (row) => row.contactPerson, render: (row) => row.contactPerson },
+    { key: 'phone', header: 'Telefon', sortable: false, render: (row) => row.phone },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      render: (row) => (
+        <Button 
+          variant="outlined" 
+          size="small" 
+          onClick={() => router.push(`${paths.dashboard.accounting.suppliers}/${row.id}`)}
+        >
+          Ekstreyi Görüntüle
+        </Button>
+      ),
+    },
+  ], [router]);
+  
+  // 7. Render Logic
+  if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (!canView) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4">Cari Hesaplar (Tedarikçi)</Typography>
+      <AppBreadcrumbs />
+      <PageHeader title="Cari Hesaplar (Tedarikçi)" />
       
-      <Card>
-        <Box sx={{ overflowX: 'auto' }}>
-          <Table sx={{ minWidth: '800px' }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Tedarikçi Adı</TableCell>
-                <TableCell>Yetkili Kişi</TableCell>
-                <TableCell align="right">İşlemler</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {suppliers.map((supplier) => (
-                <TableRow hover key={supplier.id}>
-                  <TableCell>
-                    <Typography variant="subtitle2">{supplier.name}</Typography>
-                  </TableCell>
-                  <TableCell>{supplier.contactPerson}</TableCell>
-                  <TableCell align="right">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      // --- DÜZELTME BURADA ---
-                      // "customer.id" yerine "supplier.id" kullanılıyor.
-                      onClick={() => router.push(`${paths.dashboard.accounting.suppliers}/${supplier.id}`)}
-                    >
-                      Ekstreyi Görüntüle
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Box>
-      </Card>
+      <ActionableTable
+        columns={columns}
+        rows={paginatedSuppliers}
+        count={sortedAndFilteredSuppliers.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); }}
+        searchTerm={searchTerm}
+        onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+        selectionEnabled={false}
+        order={order}
+        orderBy={orderBy}
+        onSort={handleRequestSort}
+        entity="supplier-accounts"
+      />
     </Stack>
   );
 }

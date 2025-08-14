@@ -20,8 +20,13 @@ public class Expense {
     private BigDecimal amount;
     private LocalDate expenseDate;
 
+    // YENİ EKLENEN: Kategori ID'sini tutmak için string alan
+    private String categoryId;
+
     @DBRef
     private ExpenseCategory category;
 
     private String paymentId; // Giderin hangi ödeme ile yapıldığını belirtir
+
+    private String productionBatchId; // Bu giderin ilişkili olduğu üretim partisinin ID'si
 }

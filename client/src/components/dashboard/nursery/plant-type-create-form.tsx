@@ -15,7 +15,8 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { PlantTypeCreate } from '@/types/nursery';
+// DÜZELTME 1: Geri dönen verinin tipini belirtmek için PlantType import edildi.
+import type { PlantType, PlantTypeCreate } from '@/types/nursery';
 
 const schema = zod.object({
   name: zod.string().min(2, { message: 'Fidan türü adı en az 2 karakter olmalıdır.' }),
@@ -24,7 +25,8 @@ const schema = zod.object({
 interface PlantTypeCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME 2: onSuccess prop'u Promise<void> kabul edecek şekilde güncellendi.
+  onSuccess: (newPlantType: PlantType) => void | Promise<void>;
 }
 
 export function PlantTypeCreateForm({ open, onClose, onSuccess }: PlantTypeCreateFormProps): React.JSX.Element {
@@ -60,7 +62,13 @@ export function PlantTypeCreateForm({ open, onClose, onSuccess }: PlantTypeCreat
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess(); // Başarılı olduğunda ana formu bilgilendir.
+      
+      // API'den dönen yeni objeyi al
+      const newPlantType = await response.json();
+      
+      // Ana componente bu yeni objeyi gönder
+      onSuccess(newPlantType);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

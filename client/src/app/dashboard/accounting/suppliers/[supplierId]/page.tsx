@@ -1,115 +1,131 @@
+// Konum: src/app/dashboard/accounting/suppliers/[supplierId]/page.tsx
 'use client';
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { Stack, Typography, CircularProgress, Alert, Breadcrumbs, Link, Button, Box } from '@mui/material';
-import NextLink from 'next/link';
+import { Stack, Typography, CircularProgress, Alert, Button, Chip } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
+import dayjs from 'dayjs';
 
-import type { Transaction, Supplier } from '@/types/nursery';
+// Ortak Bileşenler ve Hook'lar
+import { PageHeader } from '@/components/common/PageHeader';
+import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
+import { InlineCreateForm } from '@/components/common/InlineCreateForm';
 import { useUser } from '@/hooks/use-user';
-import { paths } from '@/paths';
-import { TransactionTable } from '@/components/dashboard/accounting/transaction-table';
+import { useApiSWR } from '@/hooks/use-api-swr';
+import { useNotifier } from '@/hooks/useNotifier';
+
+// Servis Katmanı ve Tipler
+import type { Transaction, Supplier } from '@/types/nursery';
 import { TediyeCreateForm } from '@/components/dashboard/accounting/tediye-create-form';
+
+interface TransactionRow extends Transaction {
+  balance: number;
+}
+
+// SWR Hook'ları
+const useSupplier = (id: string | null) => useApiSWR<Supplier>(id ? `/suppliers/${id}` : null);
+const useTransactions = (id: string | null) => useApiSWR<Transaction[]>(id ? `/accounting/suppliers/${id}/transactions` : null);
 
 export default function Page(): React.JSX.Element {
   const params = useParams();
-  const supplierId = params.supplierId as string | undefined;
+  const supplierId = params.supplierId as string | null;
 
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [supplier, setSupplier] = React.useState<Supplier | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { user: currentUser } = useUser();
+  const notify = useNotifier();
+  const { data: supplier, error: supplierError, isLoading: isLoadingSupplier } = useSupplier(supplierId);
+  const { data: transactionsData, error: transactionsError, isLoading: isLoadingTransactions, mutate: mutateTransactions } = useTransactions(supplierId);
+  
+  const [isCreateFormOpen, setCreateFormOpen] = React.useState(false);
+  const [newlyAddedId, setNewlyAddedId] = React.useState<string | null>(null);
 
-  const handleSuccess = React.useCallback(async () => {
-    setIsModalOpen(false);
-    if (supplierId) {
-      // Sadece işlem listesini yenile
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı.');
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/accounting/suppliers/${supplierId}/transactions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error('İşlemler yenilenemedi.');
-        setTransactions(await res.json());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+  const isLoading = isLoadingSupplier || isLoadingTransactions;
+  const error = supplierError || transactionsError;
+  const canView = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
+
+  const handleSuccess = React.useCallback(async (newTransaction: Transaction) => {
+    setCreateFormOpen(false);
+    notify.success('Tediye başarıyla kaydedildi.');
+    setNewlyAddedId(newTransaction.id);
+    await mutateTransactions();
+    setTimeout(() => setNewlyAddedId(null), 2000);
+  }, [mutateTransactions, notify]);
+
+  const transactionRows = React.useMemo((): TransactionRow[] => {
+    const transactions = transactionsData || [];
+    let currentBalance = 0;
+    const rowsWithBalance: TransactionRow[] = [];
+
+    for (let i = transactions.length - 1; i >= 0; i--) {
+      const txn = transactions[i];
+      if (txn.type === 'DEBIT') { // Tedarikçiye borç (Mal Alımı)
+        currentBalance += txn.amount;
+      } else { // Tedarikçiye alacak (Ödeme)
+        currentBalance -= txn.amount;
       }
+      rowsWithBalance.push({ ...txn, balance: currentBalance });
     }
-  }, [supplierId]);
+    return rowsWithBalance.reverse();
+  }, [transactionsData]);
 
-  React.useEffect(() => {
-    if (!supplierId) {
-      setLoading(false);
-      setError("URL'den tedarikçi kimliği okunamadı.");
-      return;
-    }
+  const columns: ColumnDef<TransactionRow>[] = React.useMemo(() => [
+    { key: 'transactionDate', header: 'Tarih', render: (row) => dayjs(row.transactionDate).format('DD.MM.YYYY HH:mm') },
+    { key: 'description', header: 'Açıklama', render: (row) => row.description },
+    { key: 'type', header: 'İşlem Tipi', render: (row) => <Chip label={row.type === 'DEBIT' ? 'Borç' : 'Alacak'} color={row.type === 'DEBIT' ? 'error' : 'success'} size="small" /> },
+    { key: 'debit', header: 'Borç', align: 'right', render: (row) => row.type === 'DEBIT' ? row.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) : '-' },
+    { key: 'credit', header: 'Alacak', align: 'right', render: (row) => row.type === 'CREDIT' ? row.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) : '-' },
+    { key: 'balance', header: 'Bakiye', align: 'right', render: (row) => row.balance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) },
+  ], []);
 
-    const fetchDataForSupplier = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı.');
+  if (isLoading) return <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (!canView) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
 
-        const [transactionsRes, supplierRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/accounting/suppliers/${supplierId}/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers/${supplierId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-
-        if (!transactionsRes.ok) throw new Error('İşlem verileri yüklenemedi.');
-        if (!supplierRes.ok) throw new Error('Tedarikçi bilgisi yüklenemedi.');
-        
-        setTransactions(await transactionsRes.json());
-        setSupplier(await supplierRes.json());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDataForSupplier();
-  }, [supplierId]);
-
-  if (loading) return <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  const currentBalance = transactionRows[0]?.balance ?? 0;
 
   return (
-    <>
-      <TediyeCreateForm
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleSuccess}
-        suppliers={supplier ? [supplier] : []}
-        preselectedSupplierId={supplierId}
-      />
-      <Stack spacing={3}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Breadcrumbs separator=">">
-    <Link component={NextLink} href={paths.dashboard.accounting.suppliers}>
-        Tedarikçi Hesapları
-    </Link>
-    <Typography>Tedarikçi Ekstresi</Typography>
-</Breadcrumbs>
-            <Typography variant="h4" sx={{ mt: 1 }}>
-                {supplier ? supplier.name : 'Tedarikçi Bilgisi Yükleniyor...'}
-            </Typography>
-          </Box>
-          <Button
-            startIcon={<PlusIcon />}
-            variant="contained"
-            onClick={() => setIsModalOpen(true)}
-            disabled={!supplier}
-          >
+    <Stack spacing={3}>
+      <AppBreadcrumbs />
+      <PageHeader
+        title={supplier ? `${supplier.name} Ekstresi` : 'Tedarikçi Ekstresi'}
+        action={
+          <Button startIcon={<PlusIcon />} variant="contained" onClick={() => setCreateFormOpen(prev => !prev)} disabled={!supplier}>
             Tediye Ekle
           </Button>
-        </Stack>
-        <TransactionTable transactions={transactions} />
+        }
+      />
+      <InlineCreateForm
+        title="Yeni Tediye (Ödeme) Girişi"
+        isOpen={isCreateFormOpen}
+        onClose={() => setCreateFormOpen(false)}
+      >
+        <TediyeCreateForm
+          onClose={() => setCreateFormOpen(false)}
+          onSuccess={handleSuccess}
+          suppliers={supplier ? [supplier] : []}
+          preselectedSupplierId={supplierId}
+        />
+      </InlineCreateForm>
+      <Stack direction="row" justifyContent="flex-end">
+        <Typography variant="h6">
+          Güncel Bakiye: <Typography component="span" variant="h6" color={currentBalance >= 0 ? 'error.main' : 'success.main'} fontWeight="bold">
+            {currentBalance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+          </Typography>
+        </Typography>
       </Stack>
-    </>
+      <ActionableTable<TransactionRow>
+        columns={columns}
+        rows={transactionRows}
+        count={transactionRows.length}
+        page={0}
+        rowsPerPage={transactionRows.length || 10}
+        onPageChange={() => {}}
+        onRowsPerPageChange={() => {}}
+        selectionEnabled={false}
+        entity="supplier-transactions"
+        highlightedId={newlyAddedId}
+      />
+    </Stack>
   );
 }

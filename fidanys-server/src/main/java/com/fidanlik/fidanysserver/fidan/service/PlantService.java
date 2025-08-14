@@ -1,4 +1,3 @@
-// fidanys-server/src/main/java/com/fidanlik/fidanysserver/fidan/service/PlantService.java
 package com.fidanlik.fidanysserver.fidan.service;
 
 import com.fidanlik.fidanysserver.fidan.model.*;
@@ -53,6 +52,14 @@ public class PlantService {
             landRepository.findById(plant.getLandId()).ifPresent(plant::setLand);
         });
         return plants;
+    }
+
+    // YENİ EKLENEN METOT: Fidan türü ve çeşidine göre tek bir fidan bulma
+    public Optional<Plant> getPlantByTypeIdAndVarietyId(String plantTypeId, String plantVarietyId, String tenantId) {
+        // Sadece PlantType ve PlantVariety ID'sine göre arama yapıyoruz.
+        // Diğer alanlar (Rootstock, PlantSize, PlantAge, Land) varsayılan olarak null veya boş olabilir.
+        // Bu sorgu, bir üretim partisinden hasat yapıldığında hangi Fidan ID'sinin kullanılacağını belirlemek için en uygun olanıdır.
+        return plantRepository.findFirstByPlantTypeIdAndPlantVarietyIdAndTenantId(plantTypeId, plantVarietyId, tenantId);
     }
 
     // Fidan Kimliği Güncelleme

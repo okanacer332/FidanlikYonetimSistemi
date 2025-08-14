@@ -18,6 +18,8 @@ public class Transaction {
     private LocalDateTime transactionDate;
     private String customerId; // Borç/Alacak sahibi müşteri
     private String supplierId; // Borç/Alacak sahibi tedarikçi
+    // YENİ EKLENEN ALAN
+    private String relatedEntityId; // Üretim partisi ID'si gibi ilgili dahili varlık ID'si
     private TransactionType type; // BORC veya ALACAK
     private BigDecimal amount;
     private String description;

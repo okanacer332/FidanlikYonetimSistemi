@@ -14,14 +14,16 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { RootstockCreate } from '@/types/nursery';
+// DÜZELTME 1: Rootstock tipi import edildi
+import type { Rootstock, RootstockCreate } from '@/types/nursery';
 
 const schema = zod.object({ name: zod.string().min(1, { message: 'Anaç adı gereklidir.' }) });
 
 interface RootstockCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME 2: onSuccess prop'u güncellendi
+  onSuccess: (newRootstock: Rootstock) => void | Promise<void>;
 }
 
 export function RootstockCreateForm({ open, onClose, onSuccess }: RootstockCreateFormProps): React.JSX.Element {
@@ -47,7 +49,11 @@ export function RootstockCreateForm({ open, onClose, onSuccess }: RootstockCreat
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess();
+      
+      // DÜZELTME 3: Yeni veri alınıp onSuccess ile geri gönderildi
+      const newRootstock = await response.json();
+      onSuccess(newRootstock);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

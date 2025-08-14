@@ -16,7 +16,7 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import type { PlantVarietyCreate } from '@/types/nursery';
+import type { PlantVariety, PlantVarietyCreate } from '@/types/nursery';
 
 const schema = zod.object({
   name: zod.string().min(2, { message: 'Fidan çeşidi adı gereklidir.' }),
@@ -26,7 +26,8 @@ const schema = zod.object({
 interface PlantVarietyCreateFormProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  // DÜZELTME: onSuccess prop'u güncellendi
+  onSuccess: (newPlantVariety: PlantVariety) => void | Promise<void>;
   plantTypeId: string | null;
 }
 
@@ -60,7 +61,11 @@ export function PlantVarietyCreateForm({ open, onClose, onSuccess, plantTypeId }
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kayıt başarısız.');
       }
-      onSuccess();
+      
+      // DÜZELTME: Yeni oluşturulan veriyi al ve onSuccess ile geri gönder
+      const newPlantVariety = await response.json();
+      onSuccess(newPlantVariety);
+
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Bir hata oluştu.');
     }

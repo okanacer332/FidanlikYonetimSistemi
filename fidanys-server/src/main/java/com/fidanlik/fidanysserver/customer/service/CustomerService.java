@@ -77,4 +77,8 @@ public class CustomerService {
         // İleride bu müşteriye bağlı siparişler varsa silmeyi engellemek için bir kontrol eklenebilir.
         customerRepository.delete(customerToDelete);
     }
+    public Optional<Customer> findCustomerById(String id, String tenantId) {
+        return customerRepository.findById(id)
+                .filter(customer -> customer.getTenantId().equals(tenantId));
+    }
 }

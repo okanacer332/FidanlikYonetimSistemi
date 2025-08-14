@@ -6,4 +6,7 @@ import java.util.List;
 
 public interface ExpenseRepository extends MongoRepository<Expense, String> {
     List<Expense> findAllByTenantIdOrderByExpenseDateDesc(String tenantId);
+
+    // YENİ EKLENEN METOT: Belirli bir üretim partisine ait giderleri getirme
+    List<Expense> findAllByProductionBatchIdAndTenantIdOrderByExpenseDateDesc(String productionBatchId, String tenantId);
 }

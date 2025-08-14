@@ -1,80 +1,132 @@
+// Konum: src/app/dashboard/accounting/invoices/page.tsx
 'use client';
 
 import * as React from 'react';
-import { Stack, Typography, CircularProgress, Alert, Card, Box } from '@mui/material';
+import NextLink from 'next/link';
+import { Stack, CircularProgress, Alert, Chip, Typography, IconButton, Tooltip } from '@mui/material';
+import { Eye as EyeIcon } from '@phosphor-icons/react';
+import dayjs from 'dayjs';
 
+// Ortak Bileşenler ve Hook'lar
+import { PageHeader } from '@/components/common/PageHeader';
+import { AppBreadcrumbs } from '@/components/common/AppBreadcrumbs';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
 import { useUser } from '@/hooks/use-user';
-import type { Invoice, Customer } from '@/types/nursery';
-import { InvoicesTable, type InvoiceRow } from '@/components/dashboard/invoicing/invoices-table';
+
+// Servis Katmanı ve Tipler
+import { useInvoices } from '@/services/invoiceService';
+import { useCustomers } from '@/services/customerService';
+import type { Invoice } from '@/types/nursery';
+import { InvoiceStatus } from '@/types/nursery';
+import { paths } from '@/paths';
+
+// Fatura durumları için Türkçe harita
+const statusMap: Record<string, { label: string; color: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
+  [InvoiceStatus.PAID]: { label: 'Ödendi', color: 'success' },
+  [InvoiceStatus.SENT]: { label: 'Gönderildi', color: 'info' },
+  [InvoiceStatus.DRAFT]: { label: 'Taslak', color: 'default' },
+  [InvoiceStatus.CANCELED]: { label: 'İptal Edildi', color: 'error' },
+};
 
 export default function Page(): React.JSX.Element {
   const { user: currentUser } = useUser();
-  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
-  const [customers, setCustomers] = React.useState<Customer[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const { data: invoicesData, error: invoicesError, isLoading: isLoadingInvoices } = useInvoices();
+  const { data: customersData, error: customersError, isLoading: isLoadingCustomers } = useCustomers();
 
+  // State'ler
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
+  const [orderBy, setOrderBy] = React.useState<string>('issueDate');
+
+  const isLoading = isLoadingInvoices || isLoadingCustomers;
+  const error = invoicesError || customersError;
   const canView = currentUser?.roles?.some(role => role.name === 'ADMIN' || role.name === 'ACCOUNTANT');
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      if (!canView) {
-        setError('Bu sayfayı görüntüleme yetkiniz yok.');
-        setLoading(false);
-        return;
+  const handleRequestSort = React.useCallback((property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  }, [order, orderBy]);
+
+  const customerMap = React.useMemo(() => new Map(customersData?.map(c => [c.id, `${c.firstName} ${c.lastName}`])), [customersData]);
+  const getPartyName = (invoice: Invoice) => customerMap.get(invoice.customerId) || 'Silinmiş Müşteri';
+
+  const sortedAndFilteredInvoices = React.useMemo(() => {
+    const invoices = invoicesData || [];
+    const filtered = searchTerm
+      ? invoices.filter(i =>
+          i.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          getPartyName(i).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : invoices;
+
+    return [...filtered].sort((a, b) => {
+        const aValue = (a as any)[orderBy] || '';
+        const bValue = (b as any)[orderBy] || '';
+        const comparison = String(aValue).localeCompare(String(bValue), 'tr');
+        return order === 'asc' ? comparison : -comparison;
+    });
+  }, [invoicesData, searchTerm, order, orderBy, customerMap]);
+
+  const paginatedInvoices = React.useMemo(() => {
+    return sortedAndFilteredInvoices.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredInvoices, page, rowsPerPage]);
+
+  const columns: ColumnDef<Invoice>[] = React.useMemo(() => [
+    { key: 'invoiceNumber', header: 'Fatura No', sortable: true, getValue: (row) => row.invoiceNumber, render: (row) => row.invoiceNumber },
+    { key: 'customerId', header: 'Müşteri', sortable: false, getValue: (row) => getPartyName(row), render: (row) => getPartyName(row) },
+    { key: 'issueDate', header: 'Tarih', sortable: true, getValue: (row) => row.issueDate, render: (row) => dayjs(row.issueDate).format('DD.MM.YYYY') },
+    { key: 'totalAmount', header: 'Tutar', sortable: true, getValue: (row) => row.totalAmount, render: (row) => row.totalAmount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }) },
+    { 
+      key: 'status', 
+      header: 'Durum', 
+      sortable: true, 
+      getValue: (row) => row.status, 
+      render: (row) => {
+        const statusInfo = statusMap[row.status] || { label: row.status, color: 'default' };
+        return <Chip label={statusInfo.label} color={statusInfo.color} size="small" variant="outlined" />;
       }
+    },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      render: (row) => (
+        <Tooltip title="Faturayı Görüntüle">
+          {/* DÜZELTME: `paths.dashboard.muhasebe.invoices` olarak güncellendi */}
+          <IconButton component={NextLink} href={`${paths.dashboard.muhasebe.invoices}/${row.id}`} size="small">
+            <EyeIcon />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+  ], [customerMap]);
 
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error('Oturum bulunamadı.');
-
-        const [invoicesRes, customersRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/invoices`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-
-        if (!invoicesRes.ok || !customersRes.ok) {
-          throw new Error('Veriler yüklenirken bir hata oluştu.');
-        }
-
-        setInvoices(await invoicesRes.json());
-        setCustomers(await customersRes.json());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [canView]);
-
-  const preparedData = React.useMemo((): InvoiceRow[] => {
-    const customerMap = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`]));
-
-    return invoices
-      .map(invoice => ({
-        ...invoice,
-        customerName: customerMap.get(invoice.customerId) || 'Bilinmeyen Müşteri',
-      }))
-      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
-  }, [invoices, customers]);
-
-  if (loading) {
-    return <Stack sx={{ alignItems: 'center', mt: 4 }}><CircularProgress /></Stack>;
-  }
-
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
+  if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{minHeight: '80vh'}}><CircularProgress /></Stack>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
+  if (!canView) return <Alert severity="error">Bu sayfayı görüntüleme yetkiniz yok.</Alert>;
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4">Faturalar</Typography>
-      <InvoicesTable rows={preparedData} />
+      <AppBreadcrumbs />
+      <PageHeader title="Fatura Yönetimi" />
+      <ActionableTable
+        columns={columns}
+        rows={paginatedInvoices}
+        count={sortedAndFilteredInvoices.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(event) => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); }}
+        searchTerm={searchTerm}
+        onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+        selectionEnabled={false}
+        order={order}
+        orderBy={orderBy}
+        onSort={handleRequestSort}
+        entity="invoices"
+      />
     </Stack>
   );
 }

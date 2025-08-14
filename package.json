@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@types/big.js": "^6.2.2",
+    "big.js": "^7.0.1",
+    "date-fns": "^4.1.0"
+  }
+}

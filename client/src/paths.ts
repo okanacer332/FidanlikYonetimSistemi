@@ -1,47 +1,51 @@
+// Konum: src/paths.ts
 export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
   dashboard: {
+    // Ana Rotalar
     overview: '/dashboard',
-    account: '/dashboard/account',
-    customers: '/dashboard/customers',
-    goodsReceipts: '/dashboard/goods-receipts',
-    integrations: '/dashboard/integrations',
-    orders: '/dashboard/orders',
-    plants: '/dashboard/plants',
-    settings: '/dashboard/settings',
-    suppliers: '/dashboard/suppliers',
-    userManagement: '/dashboard/user-management',
-    warehouses: '/dashboard/warehouses',
-    accounting: {
-      currentAccounts: '/dashboard/accounting/current-accounts',
-      suppliers: '/dashboard/accounting/suppliers',
-      invoices: '/dashboard/accounting/invoices',
-      payments: '/dashboard/accounting/payments',
-      expenses: '/dashboard/accounting/expenses',
+    account: '/dashboard/profilim',
+
+    // Tanımlar Grubu (Yeniden Yapılandırıldı ve Türkçeleştirildi)
+    tanimlar: {
+      plants: '/dashboard/tanimlar/fidan-yonetimi',
+      warehouses: '/dashboard/tanimlar/depo-yonetimi',
+      customers: '/dashboard/tanimlar/musteri-yonetimi',
+      suppliers: '/dashboard/tanimlar/tedarikci-yonetimi',
+      expenseCategories: '/dashboard/tanimlar/gider-kategorileri',
+      inflationData: '/dashboard/tanimlar/enflasyon-verileri',
     },
-    // --- YENİ RAPOR ROTALARI ---
-    reports: {
-      overview: '/dashboard/reports',
-      // Finansal
-      financial: {
-        profitability: '/dashboard/reports/profitability',
-        cashFlow: '/dashboard/reports/financial/cash-flow',
-        expenseAnalysis: '/dashboard/reports/financial/expense-analysis',
-        receivablesAging: '/dashboard/reports/financial/receivables-aging',
-      },
-      // Satış
-      sales: {
-        detailedSales: '/dashboard/reports/sales/detailed-sales',
-        salesByCustomer: '/dashboard/reports/sales/by-customer',
-        salesByProduct: '/dashboard/reports/sales/by-product',
-      },
-      // Stok
-      inventory: {
-        valuation: '/dashboard/reports/inventory/valuation',
-        stockMovements: '/dashboard/reports/inventory/movements',
-        stockAging: '/dashboard/reports/inventory/aging',
-      },
+
+    // Operasyonlar Grubu (Türkçeleştirildi)
+    operasyonlar: {
+      orders: '/dashboard/operasyonlar/siparis-yonetimi',
+      goodsReceipts: '/dashboard/operasyonlar/mal-girisi',
+      productionBatches: '/dashboard/operasyonlar/uretim-partileri',
+      productionBatchesDetails: (id: string) => `/dashboard/operasyonlar/uretim-partileri/${id}`,
+      stockStatus: '/dashboard/operasyonlar/stok-durumu',
+    },
+    
+    // Muhasebe Grubu (Türkçeleştirildi)
+    muhasebe: {
+      currentAccounts: '/dashboard/muhasebe/cari-hesaplar-musteri',
+      currentAccountDetails: (customerId: string) => `/dashboard/muhasebe/cari-hesaplar-musteri/${customerId}`,
+      suppliers: '/dashboard/muhasebe/cari-hesaplar-tedarikci',
+      supplierDetails: (supplierId: string) => `/dashboard/muhasebe/cari-hesaplar-tedarikci/${supplierId}`,
+      invoices: '/dashboard/muhasebe/faturalar',
+      invoiceDetails: (invoiceId: string) => `/dashboard/muhasebe/faturalar/${invoiceId}`,
+      payments: '/dashboard/muhasebe/kasa-banka-hareketleri',
+      expenses: '/dashboard/muhasebe/gider-yonetimi',
+    },
+    
+    // Raporlar Grubu (Türkçeleştirildi)
+    raporlar: {
+      profitability: '/dashboard/raporlar/kar-zarar-analizi',
+    },
+    
+    // Sistem Grubu (Türkçeleştirildi)
+    sistem: {
+      userManagement: '/dashboard/sistem/kullanici-yonetimi',
     },
   },
   errors: { notFound: '/errors/not-found' },
