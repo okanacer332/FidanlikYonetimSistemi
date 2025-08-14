@@ -1,33 +1,6 @@
 import { useApiSWR } from '@/hooks/use-api-swr';
 import type { Plant, MasterData, PlantCreateFormValues } from '@/types/nursery';
-import { gql } from 'graphql-request';
 
-// --- GraphQL Sorguları ---
-const GET_PLANTS_QUERY = gql`
-  query GetPlants {
-    plants {
-      id
-      tenantId
-      plantType { id name }
-      plantVariety { id name }
-      rootstock { id name }
-      plantSize { id name }
-      plantAge { id name }
-      land { id name }
-    }
-  }
-`;
-
-// --- Servis Hook'ları ve Fonksiyonları ---
-
-/**
- * Fidan listesini SWR ve GraphQL ile çeker.
- * @returns SWR response objesi (data, error, isLoading, mutate)
- */
-export const usePlants = () => {
-  const { data, ...rest } = useApiSWR<{ plants: Plant[] }>(GET_PLANTS_QUERY);
-  return { data: data?.plants, ...rest };
-};
 
 /**
  * Master datayı (fidan türleri, çeşitleri vb.) SWR ve REST API ile çeker.

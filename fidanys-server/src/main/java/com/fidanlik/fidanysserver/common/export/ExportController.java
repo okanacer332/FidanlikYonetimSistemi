@@ -2,6 +2,7 @@ package com.fidanlik.fidanysserver.common.export;
 
 import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
+import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
@@ -37,6 +38,7 @@ public class ExportController {
     private final WarehouseService warehouseService;
     private final CustomerService customerService;
     private final SupplierService supplierService;
+    private final ExpenseService expenseService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -101,6 +103,19 @@ public class ExportController {
                     row.put("Telefon", supplier.getPhone());
                     row.put("E-posta", supplier.getEmail());
                     row.put("Adres", supplier.getAddress());
+                    data.add(row);
+                });
+                break;
+
+            case "expense-categories":
+                reportTitle = "Gider Kategorileri Raporu";
+                headers = List.of("Kategori Adı", "Açıklama");
+                // Not: ExpenseService'inizde tüm kategorileri getiren bir metod olduğunu varsayıyoruz.
+                // Metod adı farklıysa (örn: findAllCategoriesByTenant), lütfen güncelleyin.
+                expenseService.getAllCategories(tenantId).forEach(category -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("Kategori Adı", category.getName());
+                    row.put("Açıklama", category.getDescription());
                     data.add(row);
                 });
                 break;
