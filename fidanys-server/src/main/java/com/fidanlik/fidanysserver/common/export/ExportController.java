@@ -5,13 +5,17 @@ import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
+import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
+import com.fidanlik.fidanysserver.goodsreceipt.service.GoodsReceiptService;
 import com.fidanlik.fidanysserver.inflation.service.InflationService;
 import com.fidanlik.fidanysserver.order.service.OrderService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
+import com.fidanlik.fidanysserver.supplier.repository.SupplierRepository;
 import com.fidanlik.fidanysserver.supplier.service.SupplierService;
 import com.fidanlik.fidanysserver.user.model.User;
 import com.fidanlik.fidanysserver.warehouse.model.Warehouse;
+import com.fidanlik.fidanysserver.warehouse.repository.WarehouseRepository;
 import com.fidanlik.fidanysserver.warehouse.service.WarehouseService;
 import com.fidanlik.fidanysserver.stock.dto.StockSummaryDTO;
 import com.fidanlik.fidanysserver.stock.service.StockService;
@@ -43,8 +47,12 @@ public class ExportController {
     private final SupplierService supplierService;
     private final ExpenseService expenseService;
     private final InflationService inflationService;
-    private final OrderService orderService; // <-- BU SATIRI EKLEYİN
+    private final OrderService orderService;
     private final CustomerRepository customerRepository;
+    private final GoodsReceiptService goodsReceiptService;
+    private final SupplierRepository supplierRepository;
+    private final ProductionBatchRepository productionBatchRepository;
+    private final WarehouseRepository warehouseRepository;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -169,6 +177,49 @@ public class ExportController {
 
                     row.put("Durum", order.getStatus() != null ? order.getStatus().name() : "Bilinmiyor");
                     row.put("Tutar", order.getTotalAmount());
+                    data.add(row);
+                });
+                break;
+
+            case "goods-receipts":
+                reportTitle = "Mal Giriş Raporu";
+                headers = List.of("İrsaliye No", "Kaynak", "Depo", "Tarih", "Tutar");
+
+                goodsReceiptService.getAllGoodsReceiptsByTenant(tenantId).forEach(receipt -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    // Kaynağın adını belirle (Tedarikçi veya Üretim Partisi)
+                    String sourceName;
+                    if (receipt.getSourceType() == com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt.SourceType.SUPPLIER) {
+                        sourceName = supplierRepository.findById(receipt.getSourceId())
+                                .map(s -> "Tedarikçi: " + s.getName())
+                                .orElse("Tedarikçi Bulunamadı");
+                    } else if (receipt.getSourceType() == com.fidanlik.fidanysserver.goodsreceipt.model.GoodsReceipt.SourceType.PRODUCTION_BATCH) {
+                        sourceName = productionBatchRepository.findById(receipt.getSourceId())
+                                .map(b -> "Üretim: " + b.getBatchName())
+                                .orElse("Üretim Partisi Bulunamadı");
+                    } else {
+                        sourceName = "Bilinmeyen Kaynak";
+                    }
+
+                    // Depo adını al
+                    String warehouseName = warehouseRepository.findById(receipt.getWarehouseId())
+                            .map(w -> w.getName())
+                            .orElse("Depo Bulunamadı");
+
+                    row.put("İrsaliye No", receipt.getReceiptNumber());
+                    row.put("Kaynak", sourceName);
+                    row.put("Depo", warehouseName);
+
+                    if (receipt.getReceiptDate() != null) {
+                        java.time.format.DateTimeFormatter formatter =
+                                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+                        row.put("Tarih", receipt.getReceiptDate().format(formatter));
+                    } else {
+                        row.put("Tarih", "");
+                    }
+
+                    row.put("Tutar", receipt.getTotalValue());
                     data.add(row);
                 });
                 break;
