@@ -79,6 +79,7 @@ const entityNameMap: { [key: string]: string } = {
   'supplier-accounts': 'cari-hesaplar-tedarikçi',
   'invoices': 'faturalar',
   'payments': 'kasa-banka-hareketleri',
+  'expenses': 'gider-yönetimi',
 };
 
 

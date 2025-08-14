@@ -4,6 +4,7 @@ import com.fidanlik.fidanysserver.accounting.repository.TransactionRepository;
 import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
+import com.fidanlik.fidanysserver.expense.repository.ExpenseCategoryRepository;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.repository.PlantTypeRepository;
@@ -65,6 +66,7 @@ public class ExportController {
     private final TransactionRepository transactionRepository;
     private final InvoiceService invoiceService;
     private final PaymentService paymentService;
+    private final ExpenseCategoryRepository expenseCategoryRepository;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -394,6 +396,34 @@ public class ExportController {
                     row.put("Açıklama", payment.getDescription());
                     row.put("Yöntem", payment.getMethod() != null ? payment.getMethod().name() : "");
                     row.put("Tutar", payment.getAmount());
+                    data.add(row);
+                });
+                break;
+
+            case "expenses":
+                reportTitle = "Gider Raporu";
+                headers = List.of("Tarih", "Gider Kategorisi", "Açıklama", "Tutar");
+
+                expenseService.getAllExpenses(tenantId).forEach(expense -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    java.time.format.DateTimeFormatter dateFormatter =
+                            java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+                    // DÜZELTME: Kategori ID'si null ise programın çökmesini engelliyoruz.
+                    String categoryName;
+                    if (expense.getCategoryId() != null) {
+                        categoryName = expenseCategoryRepository.findById(expense.getCategoryId())
+                                .map(cat -> cat.getName())
+                                .orElse("Kategori Bulunamadı");
+                    } else {
+                        categoryName = "Kategorisiz Gider";
+                    }
+
+                    row.put("Tarih", expense.getExpenseDate() != null ? expense.getExpenseDate().format(dateFormatter) : "");
+                    row.put("Gider Kategorisi", categoryName);
+                    row.put("Açıklama", expense.getDescription());
+                    row.put("Tutar", expense.getAmount());
                     data.add(row);
                 });
                 break;
