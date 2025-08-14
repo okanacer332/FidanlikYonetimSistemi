@@ -5,6 +5,7 @@ import com.fidanlik.fidanysserver.customer.service.CustomerService;
 import com.fidanlik.fidanysserver.expense.service.ExpenseService;
 import com.fidanlik.fidanysserver.fidan.model.Plant;
 import com.fidanlik.fidanysserver.fidan.service.PlantService;
+import com.fidanlik.fidanysserver.inflation.service.InflationService;
 import com.fidanlik.fidanysserver.supplier.model.Supplier;
 import com.fidanlik.fidanysserver.supplier.service.SupplierService;
 import com.fidanlik.fidanysserver.user.model.User;
@@ -39,6 +40,7 @@ public class ExportController {
     private final CustomerService customerService;
     private final SupplierService supplierService;
     private final ExpenseService expenseService;
+    private final InflationService inflationService;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -116,6 +118,26 @@ public class ExportController {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("Kategori Adı", category.getName());
                     row.put("Açıklama", category.getDescription());
+                    data.add(row);
+                });
+                break;
+
+            case "inflation-data":
+                reportTitle = "Aylık Enflasyon Verileri Raporu";
+                headers = List.of("Tarih", "Değer (%)");
+                inflationService.getAllInflationData().forEach(inflation -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    // DÜZELTME: Tarih null ise programın çökmesini engelliyoruz.
+                    if (inflation.getDate() != null) {
+                        java.time.format.DateTimeFormatter formatter =
+                                java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", new java.util.Locale("tr"));
+                        row.put("Tarih", inflation.getDate().format(formatter));
+                    } else {
+                        row.put("Tarih", "TANIMSIZ"); // veya "" boş bırakabilirsiniz.
+                    }
+
+                    row.put("Değer (%)", inflation.getValue());
                     data.add(row);
                 });
                 break;

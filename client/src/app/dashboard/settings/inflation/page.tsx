@@ -1,128 +1,161 @@
 'use client';
 
 import * as React from 'react';
-import { Button, Card, CardContent, CardHeader, Typography, Stack, CircularProgress, Alert, Divider } from '@mui/material';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { Button, Card, CardContent, CardHeader, Stack, CircularProgress, Alert } from '@mui/material';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/tr';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 
-// API servisimizdeki her iki fonksiyonu da import ediyoruz
-import { fetchInflationData, getAllInflationData } from '@/api/inflation';
+// Standart Bileşenlerimizi ve Hook'larımızı import ediyoruz
+import { PageHeader } from '@/components/common/PageHeader';
+import { ActionableTable, type ColumnDef } from '@/components/common/ActionableTable';
+import { useNotifier } from '@/hooks/useNotifier';
+import { useInflationData } from '@/hooks/use-inflation';
+import { fetchInflationData } from '@/api/inflation';
 import type { InflationData } from '@/types/inflation';
-// Yeni tablo bileşenimizi import ediyoruz
-import { InflationDataTable } from '@/components/dashboard/settings/inflation-data-table';
 
+const formatMonthYear = (dateString: string): string => {
+  try {
+    return dayjs(dateString).locale('tr').format('MMMM YYYY');
+  } catch (e) {
+    return 'Geçersiz Tarih';
+  }
+};
 
-export default function InflationSettingsPage(): React.JSX.Element {
-  // Varsayılan tarihleri güncel yıla ayarladık
-  const [startDate, setStartDate] = React.useState<Date | null>(dayjs().startOf('year').toDate());
-  const [endDate, setEndDate] = React.useState<Date | null>(dayjs().endOf('year').toDate());
+export default function InflationPage(): React.JSX.Element {
+  const notify = useNotifier();
 
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [success, setSuccess] = React.useState<string | null>(null);
+  const { data: inflationData, error, isLoading, mutate: mutateInflation } = useInflationData();
 
-  // Veri listesi için yeni bir state
-  const [data, setData] = React.useState<InflationData[]>([]);
-  const [listLoading, setListLoading] = React.useState(true);
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [order, setOrder] = React.useState<'asc' | 'desc'>('desc');
+  const [orderBy, setOrderBy] = React.useState<string>('date');
 
-  // Verileri listeleyecek fonksiyon
-  const listData = React.useCallback(async () => {
-    try {
-      setListLoading(true);
-      const inflationList = await getAllInflationData();
+  // State'i Dayjs olarak tutuyoruz, bu en tutarlı yöntem.
+  const [startDate, setStartDate] = React.useState<Dayjs | null>(dayjs().startOf('year'));
+  const [endDate, setEndDate] = React.useState<Dayjs | null>(dayjs().endOf('year'));
 
-      console.log("Backend'den gelen veri:", inflationList);
-
-      setData(inflationList);
-    } catch (err) {
-      console.error("Listeleme hatası:", err);
-      setError(err instanceof Error ? err.message : 'Veriler listelenirken bir hata oluştu.');
-    } finally {
-      setListLoading(false);
-    }
-  }, []);
-
-  // Sayfa ilk yüklendiğinde verileri listele
-  React.useEffect(() => {
-    listData();
-  }, [listData]);
+  const [isFetching, setIsFetching] = React.useState(false);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   const handleFetchData = React.useCallback(async () => {
     if (!startDate || !endDate) {
-      setError('Lütfen başlangıç ve bitiş tarihlerini seçin.');
+      setFetchError('Lütfen başlangıç ve bitiş tarihlerini seçin.');
       return;
     }
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setIsFetching(true);
+    setFetchError(null);
     try {
-      const message = await fetchInflationData(startDate, endDate);
-      setSuccess(message);
-      await listData(); // Başarıyla veri çektikten sonra listeyi yenile
+      await fetchInflationData(startDate.toDate(), endDate.toDate());
+      notify.success('Veriler başarıyla çekildi ve güncellendi.');
+      await mutateInflation();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.');
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu.';
+      setFetchError(msg);
+      notify.error(msg);
     } finally {
-      setLoading(false);
+      setIsFetching(false);
     }
-  }, [startDate, endDate, listData]);
+  }, [startDate, endDate, mutateInflation, notify]);
+
+  const columns: ColumnDef<InflationData>[] = React.useMemo(
+    () => [
+      { key: 'date', header: 'Tarih', sortable: true, render: (row) => formatMonthYear(row.date), getValue: (row) => row.date },
+      { key: 'value', header: 'Değer (%)', sortable: true, render: (row) => row.value.toFixed(2), getValue: (row) => row.value },
+    ],
+    []
+  );
+
+  const sortedAndFilteredData = React.useMemo(() => {
+    const data = inflationData || [];
+    const filtered = searchTerm
+      ? data.filter((item) => formatMonthYear(item.date).toLowerCase().includes(searchTerm.toLowerCase()))
+      : data;
+
+    return [...filtered].sort((a, b) => {
+      const aValue = (a as any)[orderBy] || '';
+      const bValue = (b as any)[orderBy] || '';
+      if (order === 'asc') return String(aValue).localeCompare(String(bValue));
+      return String(bValue).localeCompare(String(aValue));
+    });
+  }, [inflationData, searchTerm, order, orderBy]);
+
+  const paginatedData = React.useMemo(() => {
+    return sortedAndFilteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredData, page, rowsPerPage]);
+  
+  // KESİN ÇÖZÜM: onChange için ayrı bir handler fonksiyonu yazıyoruz.
+  // Bu fonksiyon gelen değerin tipini kontrol eder ve güvenli bir şekilde state'i günceller.
+  const handleDateChange = (setter: React.Dispatch<React.SetStateAction<Dayjs | null>>) => (newValue: unknown) => {
+      if (newValue === null) {
+          setter(null);
+      } else if (dayjs.isDayjs(newValue)) {
+          // Eğer gelen değer zaten bir Dayjs nesnesi ise, doğrudan ata.
+          setter(newValue);
+      } else if (newValue instanceof Date) {
+          // Eğer bir Date nesnesi gelirse (beklenmedik durum), onu Dayjs'e çevir.
+          setter(dayjs(newValue));
+      }
+      // Diğer durumları (string vs.) görmezden gelerek hataları engelle.
+  };
+
+
+  if (isLoading) return <Stack alignItems="center" justifyContent="center" sx={{ minHeight: '80vh' }}><CircularProgress /></Stack>;
+  if (error) return <Alert severity="error">{error.message}</Alert>;
 
   return (
     <Stack spacing={3}>
+      <PageHeader title="Enflasyon Verileri" />
+
       <Card>
-        <CardHeader title="Enflasyon Veri Yönetimi" subheader="TCMB EVDS servisinden periyodik gıda enflasyonu verilerini çekin." />
+        <CardHeader title="Veri Güncelleme" subheader="TCMB servisinden enflasyon verilerini çekin." />
         <CardContent>
           <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="tr">
-            {/* Tarih seçicileri ve butonu yatayda hizalamak için Stack bileşenini güncelledik */}
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }} // Küçük ekranlarda dikey, daha büyük ekranlarda yatay
-              spacing={2} // Bileşenler arası boşluğu azalt
-              alignItems="center" // Öğeleri dikeyde ortala
-              flexWrap="wrap" // Küçük ekranlarda alt satıra geçmesini sağla
-              sx={{ mb: 2 }} // Alt marj ekle
-            >
-              {/* "Tarih Aralığı Seçin" başlığını kaldırdık veya isteğe bağlı olarak entegre edebilirsiniz */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
               <DatePicker
                 label="Başlangıç Tarihi"
-                value={startDate ? dayjs(startDate) : null}
-                onChange={(newValue) => setStartDate(newValue ? newValue.toDate() : null)}
-                slotProps={{ textField: { size: 'small', sx: { minWidth: '150px' } } }} // Metin alanını küçült ve minimum genişlik ver
+                value={startDate}
+                onChange={handleDateChange(setStartDate)}
+                slotProps={{ textField: { size: 'small' } }}
               />
               <DatePicker
                 label="Bitiş Tarihi"
-                value={endDate ? dayjs(endDate) : null}
-                onChange={(newValue) => setEndDate(newValue ? newValue.toDate() : null)}
-                slotProps={{ textField: { size: 'small', sx: { minWidth: '150px' } } }} // Metin alanını küçült ve minimum genişlik ver
+                value={endDate}
+                onChange={handleDateChange(setEndDate)}
+                slotProps={{ textField: { size: 'small' } }}
               />
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleFetchData}
-                disabled={loading || !startDate || !endDate}
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                // Butonun ekstra marjını kaldırdık, Stack'in spacing'i yeterli
-              >
-                {loading ? 'Veriler Çekiliyor...' : 'Verileri Çek ve Güncelle'}
+              <Button variant="contained" onClick={handleFetchData} disabled={isFetching}>
+                {isFetching ? <CircularProgress size={24} /> : 'Verileri Çek'}
               </Button>
             </Stack>
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+            {fetchError && <Alert severity="error" sx={{ mt: 2 }}>{fetchError}</Alert>}
           </LocalizationProvider>
         </CardContent>
       </Card>
 
-      <Divider />
-
-      <Typography variant="h6">Kaydedilmiş Enflasyon Verileri</Typography>
-      {listLoading ? (
-        <Stack sx={{ alignItems: 'center', mt: 3 }}>
-          <CircularProgress />
-        </Stack>
-      ) : (
-        <InflationDataTable rows={data} />
-      )}
+      <ActionableTable
+        columns={columns}
+        rows={paginatedData}
+        count={sortedAndFilteredData.length}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+        searchTerm={searchTerm}
+        onSearch={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+        order={order}
+        orderBy={orderBy}
+        onSort={(property) => {
+          const isAsc = orderBy === property && order === 'asc';
+          setOrder(isAsc ? 'desc' : 'asc');
+          setOrderBy(property);
+        }}
+        entity="inflation-data"
+        selectionEnabled={false}
+      />
     </Stack>
   );
-};
+}
