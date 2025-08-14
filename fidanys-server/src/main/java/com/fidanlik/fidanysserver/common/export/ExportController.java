@@ -1,5 +1,6 @@
 package com.fidanlik.fidanysserver.common.export;
 
+import com.fidanlik.fidanysserver.accounting.repository.TransactionRepository;
 import com.fidanlik.fidanysserver.customer.model.Customer;
 import com.fidanlik.fidanysserver.customer.repository.CustomerRepository;
 import com.fidanlik.fidanysserver.customer.service.CustomerService;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,6 +60,7 @@ public class ExportController {
     private final ProductionBatchService productionBatchService;
     private final PlantTypeRepository plantTypeRepository;
     private final StockService stockService;
+    private final TransactionRepository transactionRepository;
 
     @GetMapping("/{format}")
     public ResponseEntity<InputStreamResource> exportData(
@@ -264,6 +267,41 @@ public class ExportController {
                     row.put("Başlangıç Miktarı", batch.getInitialQuantity());
                     row.put("Mevcut Miktar", batch.getCurrentQuantity());
                     row.put("Maliyet Havuzu", batch.getCostPool());
+                    data.add(row);
+                });
+                break;
+
+            case "customer-accounts":
+                reportTitle = "Müşteri Cari Hesap Raporu";
+                headers = List.of("Müşteri", "Toplam Borç", "Toplam Alacak", "Bakiye");
+
+                // 1. Tenant'a ait tüm müşterileri çek
+                customerRepository.findAllByTenantId(tenantId).forEach(customer -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+
+                    // 2. Her müşterinin tüm işlemlerini çek
+                    List<com.fidanlik.fidanysserver.accounting.model.Transaction> transactions =
+                            transactionRepository.findByCustomerIdAndTenantIdOrderByTransactionDateDesc(customer.getId(), tenantId);
+
+                    BigDecimal totalDebit = BigDecimal.ZERO;
+                    BigDecimal totalCredit = BigDecimal.ZERO;
+
+                    // 3. Borç ve alacakları hesapla
+                    for (com.fidanlik.fidanysserver.accounting.model.Transaction tx : transactions) {
+                        if (tx.getType() == com.fidanlik.fidanysserver.accounting.model.Transaction.TransactionType.DEBIT) {
+                            totalDebit = totalDebit.add(tx.getAmount());
+                        } else if (tx.getType() == com.fidanlik.fidanysserver.accounting.model.Transaction.TransactionType.CREDIT) {
+                            totalCredit = totalCredit.add(tx.getAmount());
+                        }
+                    }
+
+                    // 4. Bakiyeyi hesapla (Borç - Alacak)
+                    BigDecimal balance = totalDebit.subtract(totalCredit);
+
+                    row.put("Müşteri", customer.getFirstName() + " " + customer.getLastName());
+                    row.put("Toplam Borç", totalDebit);
+                    row.put("Toplam Alacak", totalCredit);
+                    row.put("Bakiye", balance);
                     data.add(row);
                 });
                 break;
