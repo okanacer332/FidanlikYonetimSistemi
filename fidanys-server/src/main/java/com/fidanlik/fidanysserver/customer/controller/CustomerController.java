@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,40 +19,73 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
+    /**
+     * Yeni bir müşteri oluşturur.
+     * Sadece ADMIN ve SALES rollerine sahip kullanıcılar erişebilir.
+     * @param customer Oluşturulacak müşteri bilgileri.
+     * @param authenticatedUser Giriş yapmış kullanıcı (otomatik olarak enjekte edilir).
+     * @return Oluşturulan müşteri nesnesi.
+     */
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
-    public ResponseEntity<Customer> createCustomer(@RequestBody Customer customer, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(customer, user.getTenantId()));
+    public ResponseEntity<Customer> createCustomer(@RequestBody Customer customer, @AuthenticationPrincipal User authenticatedUser) {
+        Customer createdCustomer = customerService.createCustomer(customer, authenticatedUser.getTenantId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdCustomer);
     }
 
+    /**
+     * Bir tenant'a ait tüm müşterileri listeler.
+     * ADMIN, SALES ve ACCOUNTANT rollerine sahip kullanıcılar erişebilir.
+     * @param authenticatedUser Giriş yapmış kullanıcı.
+     * @return Müşteri listesi.
+     */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
-    public ResponseEntity<List<Customer>> getAllCustomers(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        return ResponseEntity.ok(customerService.getAllCustomersByTenant(user.getTenantId()));
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_ACCOUNTANT')")
+    public ResponseEntity<List<Customer>> getAllCustomers(@AuthenticationPrincipal User authenticatedUser) {
+        List<Customer> customers = customerService.getAllCustomersByTenant(authenticatedUser.getTenantId());
+        return ResponseEntity.ok(customers);
     }
 
+    /**
+     * Belirli bir müşterinin detaylarını ID'ye göre getirir.
+     * ADMIN, SALES ve ACCOUNTANT rollerine sahip kullanıcılar erişebilir.
+     * @param id Müşteri ID'si.
+     * @param authenticatedUser Giriş yapmış kullanıcı.
+     * @return Bulunan müşteri nesnesi.
+     */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_WAREHOUSE_STAFF')")
-    public ResponseEntity<Customer> getCustomerById(@PathVariable String id, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        return ResponseEntity.ok(customerService.getCustomerById(id, user.getTenantId()));
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES', 'ROLE_ACCOUNTANT')")
+    public ResponseEntity<Customer> getCustomerById(@PathVariable String id, @AuthenticationPrincipal User authenticatedUser) {
+        Customer customer = customerService.getCustomerById(id, authenticatedUser.getTenantId());
+        return ResponseEntity.ok(customer);
     }
 
+    /**
+     * Mevcut bir müşterinin bilgilerini günceller.
+     * Sadece ADMIN ve SALES rollerine sahip kullanıcılar erişebilir.
+     * @param id Güncellenecek müşteri ID'si.
+     * @param customerDetails Yeni müşteri bilgileri.
+     * @param authenticatedUser Giriş yapmış kullanıcı.
+     * @return Güncellenmiş müşteri nesnesi.
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_SALES')")
-    public ResponseEntity<Customer> updateCustomer(@PathVariable String id, @RequestBody Customer customerDetails, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        Customer updatedCustomer = customerService.updateCustomer(id, customerDetails, user.getTenantId());
+    public ResponseEntity<Customer> updateCustomer(@PathVariable String id, @RequestBody Customer customerDetails, @AuthenticationPrincipal User authenticatedUser) {
+        Customer updatedCustomer = customerService.updateCustomer(id, customerDetails, authenticatedUser.getTenantId());
         return ResponseEntity.ok(updatedCustomer);
     }
 
+    /**
+     * Bir müşteriyi siler.
+     * Sadece ADMIN rolüne sahip kullanıcılar erişebilir.
+     * @param id Silinecek müşteri ID'si.
+     * @param authenticatedUser Giriş yapmış admin kullanıcısı.
+     * @return HTTP 204 No Content.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable String id, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        customerService.deleteCustomer(id, user.getTenantId());
+    public ResponseEntity<Void> deleteCustomer(@PathVariable String id, @AuthenticationPrincipal User authenticatedUser) {
+        customerService.deleteCustomer(id, authenticatedUser.getTenantId());
         return ResponseEntity.noContent().build();
     }
 }
