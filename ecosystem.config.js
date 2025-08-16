@@ -19,7 +19,7 @@ module.exports = {
       // --- Sunucu (Spring Boot) Uygulaması ---
       name: 'fidanys-server',
       script: '/usr/bin/java', // Java'nın tam yolu
-      args: ['-jar', 'target/fidanys-server-0.0.1-SNAPSHOT.jar'], // Argümanları ayrı bir dizi olarak tanımla
+      args: ['-jar', '/opt/fidanlikyonetimsistemi/fidanys-server/target/fidanys-server-0.0.1-SNAPSHOT.jar'], // Tam yolu kullanın
       cwd: '/opt/fidanlikyonetimsistemi/fidanys-server/',
       instances: 1,
       autorestart: true,
