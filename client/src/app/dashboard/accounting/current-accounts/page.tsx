@@ -77,7 +77,7 @@ export default function Page(): React.JSX.Element {
         <Button 
           variant="outlined" 
           size="small" 
-          onClick={() => router.push(`${paths.dashboard.accounting.currentAccounts}/${row.id}`)}
+          onClick={() => router.push(`${paths.dashboard.muhasebe}/${row.id}`)}
         >
           Ekstreyi Görüntüle
         </Button>
