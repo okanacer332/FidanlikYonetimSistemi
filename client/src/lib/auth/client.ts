@@ -1,92 +1,69 @@
 // Konum: client/src/lib/auth/client.ts
 'use client';
 
-// User type'ını frontend'deki User ve Role modellerine göre güncelleyelim.
+import { apiClient } from '@/lib/apiClient'; // <-- 1. YENİ İSTEMCİYİ IMPORT ET
+
+// User ve Role tipleri aynı kalabilir.
 export interface Role {
   id: string;
-  name: string; // Backend'deki Role modelinde 'name' alanı var
+  name: string;
   description?: string;
 }
 
 export interface BackendUser {
   id: string;
-  username: string; // Backend'de 'username' olarak geçiyor
+  username: string;
   email: string;
-  roleIds?: string[]; // Backend'den gelen rol ID'leri
-  roles?: Role[]; // Backend'den gelen dolu rol objeleri (User modeline transient olarak ekledik)
-  tenantId: string; // Backend'den gelen 'tenantId' alanı
+  roleIds?: string[];
+  roles?: Role[];
+  tenantId: string;
 }
 
-// Tenant adını dinamik olarak hostname'den alacak bir fonksiyon
+// Tenant adını dinamik olarak hostname'den alacak fonksiyon (BU DOĞRU, AYNI KALIYOR)
 function getTenantNameFromHostname(): string | null {
   if (typeof window === 'undefined') {
-    return null; // Sunucu tarafında çalışıyorsa
+    return null;
   }
   const hostname = window.location.hostname;
   
-  // Geliştirme ortamında varsayılan tenant adını döndürelim.
-  // Backend'de DataInitializer tarafından oluşturulan tenant adı ile eşleşmeli.
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    // Yeni domaini varsayılan olarak kullanıyoruz.
     return 'ata.fidanys.com.tr';
   }
 
   const parts = hostname.split('.');
-  // Dinamik olarak hem .com.tr hem de .xyz için kontrol yapıyoruz
   if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys') {
-    // Top-level domain'i kontrol et
     const tld = parts[parts.length - 1];
     if (tld === 'tr' && parts[parts.length - 3] === 'com') {
-      // Örn: saygi.fidanys.com.tr
-      if (parts[0] !== 'www' && parts[0] !== 'client') {
-        return hostname;
-      }
+      if (parts[0] !== 'www' && parts[0] !== 'client') return hostname;
     } else if (tld === 'xyz') {
-      // Örn: ata.fidanys.xyz
-       if (parts[0] !== 'www' && parts[0] !== 'client') {
-        return hostname;
-      }
+       if (parts[0] !== 'www' && parts[0] !== 'client') return hostname;
     }
   }
   
-  // Hiçbiri eşleşmezse null dön
   return null;
 }
 
-
 class AuthClient {
+  // 2. signInWithPassword fonksiyonunu apiClient kullanacak şekilde GÜNCELLE
   async signInWithPassword(params: { username: string; password: string }): Promise<{ error?: string; data?: { token: string; user: BackendUser } }> {
     const { username, password } = params;
-    const tenantName = getTenantNameFromHostname(); // Dinamik tenant adı
+    const tenantName = getTenantNameFromHostname();
 
     if (!tenantName) {
-      // Eğer tenant adı belirlenemezse, kullanıcıya bir hata gösterin veya varsayılanı kullanın
-      // Bu durumda frontend'in subdomain'e veya varsayılan bir tenant adını ayarlamasına bağlıdır.
       return { error: 'Şirket adı (tenant name) belirlenemedi. Lütfen doğru adresi kullandığınızdan emin olun.' };
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Backend'e tenantId yerine tenantName gönderiyoruz
-        body: JSON.stringify({ username, password, tenantName }),
+      // Eski fetch yerine apiClient.post kullanıyoruz. URL artık göreceli.
+      const loginResponse = await apiClient.post<{ token: string }>('/auth/login', {
+        username,
+        password,
+        tenantName,
       });
 
-      const data = await response.json(); // Bu satır 'Unexpected end of JSON input' hatasını verebilir
-
-      if (!response.ok) {
-        return { error: data.message || 'Kimlik doğrulama başarısız oldu.' };
-      }
-
-      const token = data.token;
+      const token = loginResponse.token;
       localStorage.setItem('authToken', token);
 
-      // Kullanıcı bilgilerini çekerken tenantName veya tenantId'ye ihtiyacımız olacak.
-      // JWT token içinde tenantId olduğu için, getUser() fonksiyonu bunu kullanabilir.
-      // Ya da, backend'in /users/me endpoint'i de tenantName veya tenantId header bekleyebilir.
       const userResponse = await this.getUser();
       if (userResponse.error || !userResponse.data) {
         localStorage.removeItem('authToken');
@@ -97,72 +74,41 @@ class AuthClient {
 
     } catch (err) {
       console.error('Sign-in error:', err);
-      // 'Unexpected end of JSON input' hatasını daha açıklayıcı hale getirelim
-      if (err instanceof SyntaxError && err.message.includes('JSON input')) {
-          return { error: 'Sunucudan geçersiz bir yanıt alındı. Lütfen sunucu loglarını kontrol edin.' };
-      }
-      return { error: 'Ağ hatası veya sunucuya erişilemiyor.' };
+      return { error: err instanceof Error ? err.message : 'Giriş sırasında bir hata oluştu.' };
     }
   }
 
+  // 3. getUser fonksiyonunu apiClient kullanacak şekilde GÜNCELLE
   async getUser(): Promise<{ data?: BackendUser | null; error?: string }> {
     const token = localStorage.getItem('authToken');
-    // Tenant adı artık doğrudan getUser için gerekli değil, JWT içinde tenantId var.
-
     if (!token) {
       return { data: null };
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          // 'X-Tenant-Id' header'ını kaldırdık veya yoruma aldık.
-          // JwtAuthenticationFilter, token'dan tenantId'yi zaten okuyup SecurityContext'e yerleştiriyor.
-        },
-      });
-
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        return { error: 'Oturum süresi doldu veya yetkisiz erişim.' };
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { error: data.message || 'Kullanıcı bilgileri alınamadı.' };
-      }
-
+      // Eski fetch yerine apiClient.get kullanıyoruz.
+      const data = await apiClient.get<BackendUser>('/users/me');
       return { data: data };
-
     } catch (err) {
+      // Token geçersizse (401/403), apiClient hata fırlatacaktır.
+      // Bu hatayı yakalayıp token'ı temizleyebiliriz.
+      localStorage.removeItem('authToken');
       console.error('Get user error:', err);
-      return { error: 'Ağ hatası veya sunucuya erişilemiyor.' };
+      return { error: err instanceof Error ? err.message : 'Oturum doğrulanırken bir hata oluştu.' };
     }
   }
 
+  // signOut fonksiyonu aynı kalabilir, API çağrısı yapmıyor.
   async signOut(): Promise<{ error?: string }> {
     localStorage.removeItem('authToken');
     return {};
   }
 
-  async signUp(_: any): Promise<{ error?: string }> {
-    return { error: 'Kayıt olma özelliği henüz implemente edilmedi.' };
-  }
-
-  async signInWithOAuth(_: any): Promise<{ error?: string }> {
-    return { error: 'Sosyal medya ile giriş implemente edilmedi.' };
-  }
-
-  async resetPassword(_: any): Promise<{ error?: string }> {
-    return { error: 'Şifre sıfırlama implemente edilmedi.' };
-  }
-
-  async updatePassword(_: any): Promise<{ error?: string }> {
-    return { error: 'Şifre güncelleme implemente edilmedi.' };
-  }
+  // Diğer fonksiyonlar aynı kalabilir.
+  async signUp(_: any): Promise<{ error?: string }> { return { error: 'Kayıt olma özelliği henüz implemente edilmedi.' }; }
+  async signInWithOAuth(_: any): Promise<{ error?: string }> { return { error: 'Sosyal medya ile giriş implemente edilmedi.' }; }
+  async resetPassword(_: any): Promise<{ error?: string }> { return { error: 'Şifre sıfırlama implemente edilmedi.' }; }
+  async updatePassword(_: any): Promise<{ error?: string }> { return { error: 'Şifre güncelleme implemente edilmedi.' }; }
 }
 
 export const authClient = new AuthClient();
