@@ -103,7 +103,7 @@ export function ProductionBatchesTable({ productionBatches: batches, plantTypeMa
                   <CompactTableCell sx={{ whiteSpace: 'nowrap' }}> {/* Aksiyon hücresi içindeki metnin kaymasını engelle */}
                     <Button
                       component={RouterLink}
-                      href={paths.dashboard.productionBatchesDetails(batch.id)}
+                      //href={paths.dashboard.productionBatchesDetails(batch.id)}
                       // Butonun boyutunu daha küçük ve kontrol edilebilir yapalım
                       sx={{
                         minWidth: 'auto', // Butonun minimum genişliğini içeriğine bırak

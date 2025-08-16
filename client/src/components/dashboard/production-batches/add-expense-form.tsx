@@ -72,7 +72,7 @@ export function AddExpenseForm({ open, onClose, onSuccess, productionBatchId }: 
         await createExpense({
           ...data,
           // Gideri üretim partisiyle ilişkilendir
-          productionBatchId: productionBatchId,
+          //productionBatchId: productionBatchId,
           expenseDate: dayjs(data.expenseDate).toISOString(),
         });
 
