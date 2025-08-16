@@ -3,8 +3,9 @@ module.exports = {
     {
       // --- İstemci (Next.js) Uygulaması ---
       name: 'fidanys-client',
-      script: 'npm',  // 'npx' yerine 'npm' olarak güncellendi
-      args: 'start',  // 'next start' yerine 'start' olarak güncellendi
+      // 'next' komutunun tam yolunu vererek belirsizliği ortadan kaldırıyoruz
+      script: '/opt/fidanlikyonetimsistemi/client/node_modules/next/dist/bin/next',
+      args: 'start', // Çalıştırılacak komut 'start'
       cwd: '/opt/fidanlikyonetimsistemi/client/', // İstemci projesinin yolu
       instances: 1,
       autorestart: true,
@@ -12,9 +13,7 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        // Nginx yönlendirmesi sayesinde API adresini bu şekilde veriyoruz
         NEXT_PUBLIC_API_BASE_URL: 'http://fidanys.com.tr/api'
-        // Eğer HTTPS kullanıyorsanız: 'https://ata.fidanys.xyz/api'
       },
     },
     {
@@ -29,7 +28,6 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         // Gerekirse buraya sunucu için ortam değişkenleri ekleyebilirsiniz.
-        // Örneğin: SPRING_PROFILES_ACTIVE: 'prod'
       },
     },
   ],
