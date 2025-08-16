@@ -1,9 +1,10 @@
 import { useApiSWR } from '@/hooks/use-api-swr';
+import { apiClient } from '@/lib/apiClient'; // <-- 1. YENİ İSTEMCİYİ IMPORT ET
 import type { Supplier, SupplierCreate } from '@/types/nursery';
 
 /**
  * Tüm tedarikçileri SWR ile çeker.
- * @returns SWR response objesi
+ * Bu fonksiyon, güncellediğimiz useApiSWR'ı kullandığı için zaten doğru çalışıyor.
  */
 export const useSuppliers = () => useApiSWR<Supplier[]>('/suppliers');
 
@@ -12,21 +13,9 @@ export const useSuppliers = () => useApiSWR<Supplier[]>('/suppliers');
  * @param values - Yeni tedarikçi için form verileri
  * @returns Oluşturulan yeni tedarikçi objesi
  */
-export const createSupplier = async (values: SupplierCreate): Promise<Supplier> => {
-    const token = localStorage.getItem('authToken');
-    if (!token) throw new Error('Oturum bulunamadı.');
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Tedarikçi oluşturulamadı.');
-    }
-    return response.json();
+export const createSupplier = (values: SupplierCreate): Promise<Supplier> => {
+    // 2. Eski fetch kodunu apiClient.post ile değiştiriyoruz.
+    return apiClient.post<Supplier>('/suppliers', values);
 };
 
 /**
@@ -35,38 +24,16 @@ export const createSupplier = async (values: SupplierCreate): Promise<Supplier> 
  * @param values - Güncel tedarikçi verileri
  * @returns Güncellenen tedarikçi objesi
  */
-export const updateSupplier = async (id: string, values: SupplierCreate): Promise<Supplier> => {
-    const token = localStorage.getItem('authToken');
-    if (!token) throw new Error('Oturum bulunamadı.');
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Tedarikçi güncellenemedi.');
-    }
-    return response.json();
+export const updateSupplier = (id: string, values: SupplierCreate): Promise<Supplier> => {
+    // 3. Eski fetch kodunu apiClient.put ile değiştiriyoruz.
+    return apiClient.put<Supplier>(`/suppliers/${id}`, values);
 };
 
 /**
  * Belirtilen ID'ye sahip tedarikçiyi siler.
  * @param id - Silinecek tedarikçinin ID'si
  */
-export const deleteSupplier = async (id: string): Promise<void> => {
-    const token = localStorage.getItem('authToken');
-    if (!token) throw new Error('Oturum bulunamadı.');
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/suppliers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Tedarikçi silinemedi.');
-    }
+export const deleteSupplier = (id: string): Promise<void> => {
+    // 4. Eski fetch kodunu apiClient.delete ile değiştiriyoruz.
+    return apiClient.delete<void>(`/suppliers/${id}`);
 };

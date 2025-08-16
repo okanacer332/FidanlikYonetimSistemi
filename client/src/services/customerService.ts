@@ -1,16 +1,16 @@
 import { useApiSWR } from '@/hooks/use-api-swr';
+import { apiClient } from '@/lib/apiClient'; // <-- 1. YENİ İSTEMCİYİ IMPORT ET
 import type { Customer, CustomerCreate } from '@/types/nursery';
 
 /**
  * Tüm müşterileri SWR ile çeker.
- * @returns SWR response objesi
+ * Bu fonksiyon, bir önceki adımda düzelttiğimiz useApiSWR'ı kullandığı için zaten doğru çalışıyor.
  */
 export const useCustomers = () => useApiSWR<Customer[]>('/customers');
 
 /**
  * Belirtilen ID'ye sahip tek bir müşteriyi SWR ile çeker.
- * @param id - Çekilecek müşterinin ID'si
- * @returns SWR response objesi
+ * Bu fonksiyon da useApiSWR'ı kullandığı için doğru çalışıyor.
  */
 export const useCustomer = (id?: string) => useApiSWR<Customer>(id ? `/customers/${id}` : null);
 
@@ -20,40 +20,18 @@ export const useCustomer = (id?: string) => useApiSWR<Customer>(id ? `/customers
  * @param values - Yeni müşteri için form verileri
  * @returns Oluşturulan yeni müşteri objesi
  */
-export const createCustomer = async (values: CustomerCreate): Promise<Customer> => {
-    const token = localStorage.getItem('authToken');
-    if (!token) throw new Error('Oturum bulunamadı.');
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(values),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Müşteri oluşturulamadı.');
-    }
-    return response.json();
+export const createCustomer = (values: CustomerCreate): Promise<Customer> => {
+    // 2. karmaşık fetch kodunu, tek satırlık apiClient çağrısıyla değiştiriyoruz.
+    return apiClient.post<Customer>('/customers', values);
 };
 
 /**
  * Belirtilen ID'ye sahip müşteriyi siler.
  * @param id - Silinecek müşterinin ID'si
  */
-export const deleteCustomer = async (id: string): Promise<void> => {
-    const token = localStorage.getItem('authToken');
-    if (!token) throw new Error('Oturum bulunamadı.');
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/customers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Müşteri silinemedi.');
-    }
+export const deleteCustomer = (id: string): Promise<void> => {
+    // 3. Buradaki fetch kodunu da apiClient ile değiştiriyoruz.
+    return apiClient.delete<void>(`/customers/${id}`);
 };
 
 // Not: updateCustomer fonksiyonu CustomerEditForm içinde kullanılıyor olabilir,

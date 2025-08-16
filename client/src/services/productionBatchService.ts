@@ -1,3 +1,4 @@
+import { apiClient } from '@/lib/apiClient'; // <-- 1. YENİ İSTEMCİYİ IMPORT ET
 import type { ProductionBatch } from '@/types/nursery';
 
 // Formdan gelen ve sadece gerekli alanları içeren tip
@@ -11,26 +12,7 @@ export type ProductionBatchCreatePayload = {
 };
 
 // Yeni bir üretim partisi oluşturmak için API isteği
-export async function createProductionBatch(data: ProductionBatchCreatePayload): Promise<ProductionBatch> {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error('Authentication token not found.');
-  }
-
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/production-batches`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  const responseData = await response.json();
-
-  if (!response.ok) {
-    throw new Error(responseData.message || 'Production batch could not be created.');
-  }
-
-  return responseData;
+export const createProductionBatch = (data: ProductionBatchCreatePayload): Promise<ProductionBatch> => {
+  // 2. karmaşık fetch kodunu, tek satırlık apiClient çağrısıyla değiştiriyoruz.
+  return apiClient.post<ProductionBatch>('/production-batches', data);
 }

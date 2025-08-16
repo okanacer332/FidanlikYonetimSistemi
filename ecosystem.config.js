@@ -12,7 +12,8 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        NEXT_PUBLIC_API_BASE_URL: 'http://fidanys.com.tr/api'
+        // 1. BU SATIRI TAMAMEN SİLİYORUZ VEYA YORUMA ALIYORUZ
+        // NEXT_PUBLIC_API_BASE_URL: 'http://fidanys.com.tr/api'
       },
     },
     {

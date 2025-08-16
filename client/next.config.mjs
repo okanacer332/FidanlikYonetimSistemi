@@ -1,15 +1,20 @@
-// Konum: next.config.mjs
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
   
-  // --- YENİ EKLENEN KISIM ---
-  // Kullanıcı dostu Türkçe URL'leri, projedeki klasör yapılarına yönlendirir.
   async rewrites() {
     return [
+      // --- YENİ EKLENEN API PROXY KURALI ---
+      // Bu kural, sadece geliştirme ortamında çalışır ve /api/ ile başlayan
+      // tüm istekleri 8080 portundaki backend sunucusuna yönlendirir.
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8080/api/:path*',
+      },
+
+      // --- MEVCUT URL YÖNLENDİRMELERİNİZ ---
       // Ana Rotalar
       { source: '/dashboard/profilim', destination: '/dashboard/account' },
       
