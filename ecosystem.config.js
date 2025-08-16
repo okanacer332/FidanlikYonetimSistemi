@@ -13,7 +13,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // Nginx yönlendirmesi sayesinde API adresini bu şekilde veriyoruz
-        NEXT_PUBLIC_API_BASE_URL: 'http://ata.fidanys.xyz/api'
+        NEXT_PUBLIC_API_BASE_URL: 'http://fidanys.com.tr/api'
         // Eğer HTTPS kullanıyorsanız: 'https://ata.fidanys.xyz/api'
       },
     },
