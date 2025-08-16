@@ -71,7 +71,13 @@ public class SecurityConfiguration {
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "https://ata.fidanys.xyz",
-                "http://ata.fidanys.xyz"
+                "http://ata.fidanys.xyz",
+                "http://saygi.fidanys.com.tr",
+                "https://saygi.fidanys.com.tr",
+                "http://test.fidanys.com.tr",
+                "https://test.fidanys.com.tr",
+                "http://fidanys.com.tr",
+                "https://fidanys.com.tr"
         ));
         // YENİ: PATCH metodu izin verilenler listesine eklendi
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
