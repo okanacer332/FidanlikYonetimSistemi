@@ -106,7 +106,7 @@ export function MainNav(): React.JSX.Element {
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
             <Tooltip title="Müşteriler">
-              <IconButton onClick={() => router.push(paths.dashboard.customers)}>
+              <IconButton onClick={() => router.push(paths.dashboard.muhasebe.currentAccounts)}>
                 <UsersIcon />
               </IconButton>
             </Tooltip>

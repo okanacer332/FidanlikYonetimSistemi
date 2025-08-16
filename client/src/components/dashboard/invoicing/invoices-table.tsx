@@ -81,7 +81,7 @@ export function InvoicesTable({ rows = [] }: InvoicesTableProps): React.JSX.Elem
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title="Faturayı Görüntüle">
-                      <IconButton onClick={() => router.push(`${paths.dashboard.accounting.invoices}/${row.id}`)}>
+                      <IconButton onClick={() => router.push(`${paths.dashboard.muhasebe.invoices}/${row.id}`)}>
                         <EyeIcon />
                       </IconButton>
                     </Tooltip>
