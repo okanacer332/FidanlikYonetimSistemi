@@ -23,28 +23,33 @@ function getTenantNameFromHostname(): string | null {
     return null; // Sunucu tarafında çalışıyorsa
   }
   const hostname = window.location.hostname;
-  // hostname "okan.fidanys.com" ise "okan.fidanys.com"u, "www.fidanys.com" veya "localhost" ise varsayılanı döndürmeli
+  
+  // Geliştirme ortamında varsayılan tenant adını döndürelim.
+  // Backend'de DataInitializer tarafından oluşturulan tenant adı ile eşleşmeli.
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    // Geliştirme ortamında varsayılan tenant adını döndürelim.
-    // Backend'de DataInitializer tarafından oluşturulan tenant adı ile eşleşmeli.
-    // DataInitializer'da 'okan.fidanys.com' olarak tanımlanmış.
-    return 'ata.fidanys.xyz'; // Backend'deki tenant ismi
+    // Yeni domaini varsayılan olarak kullanıyoruz.
+    return 'ata.fidanys.com.tr';
   }
 
-  // Örneğin: okan.fidanys.com -> okan.fidanys.com
-  // Bu kısım production ortamında subdomain'den tenant adını çıkarmak için daha sofistike olabilir.
-  // Şimdilik hostname'in tamamını veya ilgili kısmını tenant adı olarak alalım.
-  // Basitlik adına, eğer subdomain tabanlı bir yapıdaysak ve tenant adı subdomain ise:
   const parts = hostname.split('.');
-  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys' && parts[parts.length - 1] === 'xyz') {
-    if (parts[0] !== 'www' && parts[0] !== 'client') { // "client" da Next.js'in hostunda olabilir
-      return hostname; // Örn: "okan.fidanys.com"
+  // Dinamik olarak hem .com.tr hem de .xyz için kontrol yapıyoruz
+  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys') {
+    // Top-level domain'i kontrol et
+    const tld = parts[parts.length - 1];
+    if (tld === 'tr' && parts[parts.length - 3] === 'com') {
+      // Örn: saygi.fidanys.com.tr
+      if (parts[0] !== 'www' && parts[0] !== 'client') {
+        return hostname;
+      }
+    } else if (tld === 'xyz') {
+      // Örn: ata.fidanys.xyz
+       if (parts[0] !== 'www' && parts[0] !== 'client') {
+        return hostname;
+      }
     }
   }
-  // Eğer özel bir subdomain yoksa veya başka bir senaryo ise null döndürebiliriz
-  // veya varsayılan bir tenant adı atayabiliriz.
-  // Bu senaryoda login request'e 'tenantName'i eklediğimiz için null döndürmek daha güvenli olabilir.
-  // Backend'e null giderse, backend'in varsayılan tenantı varsa onu kullanabilir.
+  
+  // Hiçbiri eşleşmezse null dön
   return null;
 }
 
