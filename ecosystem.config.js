@@ -17,18 +17,18 @@ module.exports = {
       },
     },
     {
-      // --- Sunucu (Spring Boot) Uygulaması ---
-      name: 'fidanys-server',
-      script: '/usr/bin/java', // Java'nın tam yolu
-      args: ['-jar', '/opt/fidanlikyonetimsistemi/fidanys-server/target/fidanys-server-0.0.1-SNAPSHOT.jar'], // Tam yolu kullanın
-      cwd: '/opt/fidanlikyonetimsistemi/fidanys-server/',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        // Gerekirse buraya sunucu için ortam değişkenleri ekleyebilirsiniz.
-      },
-    },
+  // --- Sunucu (Spring Boot) Uygulaması ---
+  name: 'fidanys-server',
+  script: '/opt/fidanlikyonetimsistemi/fidanys-server/target/fidanys-server-0.0.1-SNAPSHOT.jar', // <-- BURAYI DEĞİŞTİRDİK
+  // args: ['-jar', '...'] satırını sildik, script artık doğrudan JAR dosyasını gösteriyor
+  cwd: '/opt/fidanlikyonetimsistemi/fidanys-server/',
+  instances: 1,
+  autorestart: true,
+  watch: false,
+  max_memory_restart: '1G',
+  env: {
+    // Gerekirse buraya sunucu için ortam değişkenleri ekleyebilirsiniz.
+  },
+},
   ],
 };
