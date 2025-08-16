@@ -31,77 +31,84 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        Tenant ataTechTenant = tenantRepository.findByName("ata.fidanys.xyz")
+        System.out.println("Başlangıç verileri kontrol ediliyor...");
+
+        // Yeni ve mevcut kiracılar için başlangıç verilerini oluştur.
+        initializeTenantData("ata.fidanys.com.tr");
+        initializeTenantData("saygi.fidanys.com.tr");
+        initializeTenantData("test.fidanys.com.tr");
+    }
+
+    private void initializeTenantData(String tenantName) {
+        Tenant tenant = tenantRepository.findByName(tenantName)
                 .orElseGet(() -> {
-                    System.out.println("Ana tenant 'ata.fidanys.xyz' bulunamadı, oluşturuluyor...");
+                    System.out.println("Ana tenant '" + tenantName + "' bulunamadı, oluşturuluyor...");
                     Tenant newTenant = new Tenant();
-                    newTenant.setName("ata.fidanys.xyz");
+                    newTenant.setName(tenantName);
                     newTenant.setActive(true);
                     return tenantRepository.save(newTenant);
                 });
 
-        String ataTechTenantId = ataTechTenant.getId();
+        String tenantId = tenant.getId();
 
-        if (roleRepository.findAllByTenantId(ataTechTenantId).isEmpty()) {
-            System.out.println("Bu tenant için roller bulunamadı, başlangıç verileri (İzinler, Roller, Kullanıcılar) oluşturuluyor...");
+        if (roleRepository.findAllByTenantId(tenantId).isEmpty()) {
+            System.out.println("'" + tenantName + "' için roller bulunamadı, başlangıç verileri (İzinler, Roller, Kullanıcılar) oluşturuluyor...");
 
-            // --- YENİ MUHASEBE İZİNLERİ ---
-            Permission cariYonetimi = createPermission("CARI_YONETIMI", "Müşteri ve tedarikçi cari hesaplarını yönetme.", ataTechTenantId);
-            Permission faturaYonetimi = createPermission("FATURA_YONETIMI", "Faturaları yönetme yetkisi.", ataTechTenantId);
-            Permission odemeYonetimi = createPermission("ODEME_YONETIMI", "Ödeme ve tahsilatları yönetme.", ataTechTenantId);
-            Permission giderYonetimi = createPermission("GIDER_YONETIMI", "Şirket giderlerini yönetme.", ataTechTenantId);
-            Permission raporlama = createPermission("RAPORLAMA", "Muhasebe raporlarını görüntüleme.", ataTechTenantId);
+            // --- İZİNLER ---
+            Permission cariYonetimi = createPermission("CARI_YONETIMI", "Müşteri ve tedarikçi cari hesaplarını yönetme.", tenantId);
+            Permission faturaYonetimi = createPermission("FATURA_YONETIMI", "Faturaları yönetme yetkisi.", tenantId);
+            Permission odemeYonetimi = createPermission("ODEME_YONETIMI", "Ödeme ve tahsilatları yönetme.", tenantId);
+            Permission giderYonetimi = createPermission("GIDER_YONETIMI", "Şirket giderlerini yönetme.", tenantId);
+            Permission raporlama = createPermission("RAPORLAMA", "Muhasebe raporlarını görüntüleme.", tenantId);
             permissionRepository.saveAll(Arrays.asList(cariYonetimi, faturaYonetimi, odemeYonetimi, giderYonetimi, raporlama));
             System.out.println("Muhasebe izinleri oluşturuldu.");
 
-            Permission tumYetkiler = createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", ataTechTenantId);
-            Permission kullaniciYonetimi = createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", ataTechTenantId);
-            Permission fidanEkle = createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", ataTechTenantId);
-            Permission stokGoruntuleme = createPermission("STOK_GORUNTULEME", "Stok durumunu görüntüleme yetkisi.", ataTechTenantId);
-            Permission siparisOlusturma = createPermission("SIPARIS_OLUSTURMA", "Yeni sipariş oluşturma yetkisi.", ataTechTenantId);
-            Permission malKabulOlusturma = createPermission("MAL_KABUL_OLUSTURMA", "Mal kabul kaydı oluşturma yetkisi.", ataTechTenantId);
-            Permission siparisSevkiyat = createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", ataTechTenantId);
+            Permission tumYetkiler = createPermission("TUM_YETKILER", "Sistemdeki tüm yetkileri kapsar.", tenantId);
+            Permission kullaniciYonetimi = createPermission("KULLANICI_YONETIMI", "Kullanıcıları yönetme yetkisi.", tenantId);
+            Permission fidanEkle = createPermission("FIDAN_EKLE", "Yeni fidan ekleme yetkisi.", tenantId);
+            Permission stokGoruntuleme = createPermission("STOK_GORUNTULEME", "Stok durumunu görüntüleme yetkisi.", tenantId);
+            Permission siparisOlusturma = createPermission("SIPARIS_OLUSTURMA", "Yeni sipariş oluşturma yetkisi.", tenantId);
+            Permission malKabulOlusturma = createPermission("MAL_KABUL_OLUSTURMA", "Mal kabul kaydı oluşturma yetkisi.", tenantId);
+            Permission siparisSevkiyat = createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", tenantId);
             permissionRepository.saveAll(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat));
             System.out.println("Mevcut izinler oluşturuldu.");
 
-            // --- ADMIN Rolü ---
+            // --- ROLLER ---
             Role adminRol = new Role();
             adminRol.setName("ADMIN");
-            adminRol.setTenantId(ataTechTenantId);
+            adminRol.setTenantId(tenantId);
             adminRol.setPermissions(new HashSet<>(Arrays.asList(tumYetkiler, kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat, cariYonetimi, faturaYonetimi, odemeYonetimi, giderYonetimi, raporlama)));
             roleRepository.save(adminRol);
 
-            // --- SALES Rolü ---
             Role satisPersoneliRol = new Role();
             satisPersoneliRol.setName("SALES");
-            satisPersoneliRol.setTenantId(ataTechTenantId);
+            satisPersoneliRol.setTenantId(tenantId);
             satisPersoneliRol.setPermissions(new HashSet<>(Arrays.asList(siparisOlusturma, stokGoruntuleme, fidanEkle)));
             roleRepository.save(satisPersoneliRol);
 
-            // --- WAREHOUSE Rolü ---
             Role depoSorumlusuRol = new Role();
             depoSorumlusuRol.setName("WAREHOUSE_STAFF");
-            depoSorumlusuRol.setTenantId(ataTechTenantId);
+            depoSorumlusuRol.setTenantId(tenantId);
             depoSorumlusuRol.setPermissions(new HashSet<>(Arrays.asList(malKabulOlusturma, stokGoruntuleme, siparisSevkiyat)));
             roleRepository.save(depoSorumlusuRol);
 
-            // --- YENİ ACCOUNTANT Rolü ---
             Role muhasebeRol = new Role();
             muhasebeRol.setName("ACCOUNTANT");
-            muhasebeRol.setTenantId(ataTechTenantId);
+            muhasebeRol.setTenantId(tenantId);
             muhasebeRol.setPermissions(new HashSet<>(Arrays.asList(cariYonetimi, faturaYonetimi, odemeYonetimi, giderYonetimi, raporlama, stokGoruntuleme)));
             roleRepository.save(muhasebeRol);
             System.out.println("Roller oluşturuldu.");
 
-            // --- Kullanıcılar ---
-            createUser("admin", "admin@fidanys.xyz", "admin", ataTechTenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
-            createUser("satis", "satis@fidanys.xyz", "satis", ataTechTenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
-            createUser("depo", "depo@fidanys.xyz", "depo", ataTechTenantId, new HashSet<>(Collections.singletonList(depoSorumlusuRol.getId())));
-            createUser("muhasebe", "muhasebe@fidanys.xyz", "muhasebe", ataTechTenantId, new HashSet<>(Collections.singletonList(muhasebeRol.getId())));
+            // --- KULLANICILAR ---
+            // Her kiracı için farklı bir email ve kullanıcı adı oluşturmak daha mantıklı.
+            createUser("admin", "admin@" + tenantName, "admin", tenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
+            createUser("satis", "satis@" + tenantName, "satis", tenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
+            createUser("depo", "depo@" + tenantName, "depo", tenantId, new HashSet<>(Collections.singletonList(depoSorumlusuRol.getId())));
+            createUser("muhasebe", "muhasebe@" + tenantName, "muhasebe", tenantId, new HashSet<>(Collections.singletonList(muhasebeRol.getId())));
             System.out.println("Kullanıcılar oluşturuldu.");
 
         } else {
-            System.out.println("Varsayılan roller zaten mevcut, veri oluşturma işlemi atlandı.");
+            System.out.println("'" + tenantName + "' için varsayılan roller zaten mevcut, veri oluşturma işlemi atlandı.");
         }
     }
 
