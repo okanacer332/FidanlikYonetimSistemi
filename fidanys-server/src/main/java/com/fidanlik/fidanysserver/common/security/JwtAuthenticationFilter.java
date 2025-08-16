@@ -28,7 +28,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    // DÜZELTME: Rolleri çekebilmek için RoleRepository'yi ekliyoruz.
     private final RoleRepository roleRepository;
 
     @Override
@@ -36,6 +35,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+
+        // --- YENİ EKLENEN DEBUG SATIRLARI ---
+        System.out.println("GELEN ISTEK -> URI: " + request.getRequestURI());
+        System.out.println("GELEN ISTEK -> HOST: " + request.getHeader("Host"));
+        // ------------------------------------
+
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -49,8 +54,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (username != null && tenantId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             userRepository.findByUsernameAndTenantId(username, tenantId).ifPresent(user -> {
-                // DÜZELTME: Her istekte kullanıcının rollerini veritabanından çekip User nesnesine set ediyoruz.
-                // Bu, User nesnesindeki getAuthorities() metodunun doğru çalışması için zorunludur.
                 if (user.getRoleIds() != null && !user.getRoleIds().isEmpty()) {
                     Set<Role> roles = user.getRoleIds().stream()
                             .map(roleRepository::findById)
@@ -66,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             user,
                             null,
-                            user.getAuthorities() // Artık bu metot içi dolu bir yetki listesi döndürecek.
+                            user.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
