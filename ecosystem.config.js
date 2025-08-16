@@ -3,10 +3,9 @@ module.exports = {
     {
       // --- İstemci (Next.js) Uygulaması ---
       name: 'fidanys-client',
-      // 'next' komutunun tam yolunu vererek belirsizliği ortadan kaldırıyoruz
       script: '/opt/fidanlikyonetimsistemi/client/node_modules/next/dist/bin/next',
-      args: 'start', // Çalıştırılacak komut 'start'
-      cwd: '/opt/fidanlikyonetimsistemi/client/', // İstemci projesinin yolu
+      args: 'start',
+      cwd: '/opt/fidanlikyonetimsistemi/client/',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -19,9 +18,9 @@ module.exports = {
     {
       // --- Sunucu (Spring Boot) Uygulaması ---
       name: 'fidanys-server',
-      script: 'java',
-      args: '-jar target/fidanys-server-0.0.1-SNAPSHOT.jar',
-      cwd: '/opt/fidanlikyonetimsistemi/fidanys-server/', // Sunucu projesinin yolu
+      script: '/usr/bin/java', // Java'nın tam yolu
+      args: ['-jar', 'target/fidanys-server-0.0.1-SNAPSHOT.jar'], // Argümanları ayrı bir dizi olarak tanımla
+      cwd: '/opt/fidanlikyonetimsistemi/fidanys-server/',
       instances: 1,
       autorestart: true,
       watch: false,
