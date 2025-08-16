@@ -3,8 +3,8 @@ module.exports = {
     {
       // --- İstemci (Next.js) Uygulaması ---
       name: 'fidanys-client',
-      script: 'npx',
-      args: 'next start',
+      script: 'npm',  // 'npx' yerine 'npm' olarak güncellendi
+      args: 'start',  // 'next start' yerine 'start' olarak güncellendi
       cwd: '/opt/fidanlikyonetimsistemi/client/', // İstemci projesinin yolu
       instances: 1,
       autorestart: true,
