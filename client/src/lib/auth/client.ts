@@ -19,27 +19,27 @@ export interface BackendUser {
   tenantId: string;
 }
 
-// Tenant adını dinamik olarak hostname'den alacak fonksiyon (BU DOĞRU, AYNI KALIYOR)
+// Tenant adını dinamik olarak hostname'den alacak fonksiyon
 function getTenantNameFromHostname(): string | null {
   if (typeof window === 'undefined') {
     return null;
   }
   const hostname = window.location.hostname;
-  
+
+  // localhost veya 127.0.0.1 için varsayılan tenant adını döndür
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
     return 'ata.fidanys.com.tr';
   }
 
-  const parts = hostname.split('.');
-  if (parts.length >= 3 && parts[parts.length - 2] === 'fidanys') {
-    const tld = parts[parts.length - 1];
-    if (tld === 'tr' && parts[parts.length - 3] === 'com') {
-      if (parts[0] !== 'www' && parts[0] !== 'client') return hostname;
-    } else if (tld === 'xyz') {
-       if (parts[0] !== 'www' && parts[0] !== 'client') return hostname;
+  // Hostname'in yeni veya eski domain uzantılarımızdan biriyle bittiğini kontrol et
+  if (hostname.endsWith('.fidanys.com.tr') || hostname.endsWith('.fidanys.xyz')) {
+    // Ana domain'in kendisi olmadığından emin ol (örn: "fidanys.com.tr" değil)
+    if (hostname !== 'fidanys.com.tr' && hostname !== 'fidanys.xyz') {
+      return hostname;
     }
   }
   
+  // Yukarıdaki koşulların hiçbirine uymayan durumlarda null döndür
   return null;
 }
 
