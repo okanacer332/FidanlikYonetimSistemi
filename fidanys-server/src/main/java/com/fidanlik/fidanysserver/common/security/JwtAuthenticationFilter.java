@@ -36,6 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        // --- YENİ EKLENEN KONTROL ---
+        // /api/v1/auth/ ile başlayan istekleri JWT filtresinden muaf tut.
+        if (request.getRequestURI().startsWith("/api/v1/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        // --- KONTROL BİTİŞİ ---
+
         // --- YENİ EKLENEN DEBUG SATIRLARI ---
         System.out.println("GELEN ISTEK -> URI: " + request.getRequestURI());
         System.out.println("GELEN ISTEK -> HOST: " + request.getHeader("Host"));
