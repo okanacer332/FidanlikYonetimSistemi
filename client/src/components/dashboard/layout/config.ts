@@ -122,9 +122,19 @@ export const navItems: NavItemConfig[] = [
     title: 'Raporlar',
     roles: ['ADMIN', 'ACCOUNTANT'],
     items: [
-      { type: 'item', key: 'profitability-report', title: 'Kar/Zarar Analizi', href: paths.dashboard.raporlar.profitability, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'] },
+      { type: 'item', key: 'inflation-overview', title: 'Enflasyon Genel Bakış', href: paths.dashboard.raporlar.inflationOverview, icon: 'chart-line', roles: ['ADMIN', 'ACCOUNTANT'] },
+      { type: 'item', key: 'cost-analysis', title: 'Maliyet Analizi', href: paths.dashboard.raporlar.costAnalysis, icon: 'chart-line', roles: ['ADMIN', 'ACCOUNTANT'] },
+      { type: 'item', key: 'price-performance', title: 'Fiyat Performansı', href: paths.dashboard.raporlar.pricePerformance, icon: 'chart-bar', roles: ['ADMIN', 'ACCOUNTANT'] },
     ],
   },
+  { 
+  type: 'item', 
+  key: 'profitability-report', 
+  title: 'Kar/Zarar Analizi', 
+  href: paths.dashboard.raporlar.profitability, 
+  icon: 'chart-bar', 
+  roles: ['ADMIN', 'ACCOUNTANT'] 
+},
   // --- YENİ YAPI: "Sistem" menüsü sadeleştirildi ---
   {
     type: 'group',

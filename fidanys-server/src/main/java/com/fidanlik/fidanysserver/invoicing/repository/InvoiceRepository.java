@@ -11,4 +11,6 @@ public interface InvoiceRepository extends MongoRepository<Invoice, String> {
     List<Invoice> findAllByTenantId(String tenantId);
     boolean existsByOrderId(String orderId);
     List<Invoice> findByTenantIdAndStatusNotAndDueDateBefore(String tenantId, Invoice.InvoiceStatus status, LocalDate date);
+    List<Invoice> findAllByTenantIdAndIssueDateBetween(String tenantId, LocalDate startDate, LocalDate endDate);
+
 }

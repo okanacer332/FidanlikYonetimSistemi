@@ -100,7 +100,10 @@ export default function ProductionBatchDetailPage(): React.JSX.Element {
             <Grid size={{ xs: 12, lg: 4 }}>
                 <Card>
                     <CardHeader title="Genel Bilgiler" />
-                    <CardContent><Stack spacing={2}><Typography variant="body1"><strong>Parti Kodu:</strong> {batch.batchCode}</Typography><Typography variant="body1"><strong>Fidan:</strong> {plantTypeMap.get(batch.plantTypeId)} - {plantVarietyMap.get(batch.plantVarietyId)}</Typography><Typography variant="body1"><strong>Durum:</strong> <StatusChip status={batch.status} /></Typography><Typography variant="body1"><strong>Başlangıç Tarihi:</strong> {dayjs(batch.startDate).format('DD/MM/YYYY')}</Typography></Stack></CardContent>
+                    <CardContent><Stack spacing={2}><Typography variant="body1"><strong>Parti Kodu:</strong> {batch.batchCode}</Typography><Typography variant="body1"><strong>Fidan:</strong> {plantTypeMap.get(batch.plantTypeId)} - {plantVarietyMap.get(batch.plantVarietyId)}</Typography><Typography variant="body1" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  <strong>Durum:</strong>
+  <StatusChip status={batch.status} />
+</Typography><Typography variant="body1"><strong>Başlangıç Tarihi:</strong> {dayjs(batch.startDate).format('DD/MM/YYYY')}</Typography></Stack></CardContent>
                 </Card>
             </Grid>
             <Grid size={{ xs: 12, lg: 4 }}>

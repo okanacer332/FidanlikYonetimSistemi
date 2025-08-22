@@ -12,30 +12,24 @@ import java.util.Map;
 @Data
 @Builder
 public class RealProfitLossReportDTO {
-    private YearMonth period; // Rapor dönemi (örn: YIL-AY)
+    private YearMonth period;
 
-    // Gelirler
-    private BigDecimal nominalRevenue;
+    // --- Şelale Grafiği Verileri ---
+    private BigDecimal nominalRevenue;          // Şelale grafiğinin ilk yeşil sütunu (Gelirler)
+    private BigDecimal nominalCostOfGoodsSold;  // İlk kırmızı düşüş (Satılan Malın Maliyeti)
+    private BigDecimal nominalOperatingExpenses;// İkinci kırmızı düşüş (İşletme Giderleri)
+    private BigDecimal nominalNetProfit;        // Üçüncü mavi sütun (Nominal Kâr)
+    private BigDecimal realNetProfit;           // Son yeşil sütun (Reel Kâr)
+
+    // --- Pasta Grafiği ve Özet Tablo Verileri ---
+    // nominalNetProfit ve realNetProfit zaten yukarıda mevcut.
+    // Enflasyon Etkisi, bu ikisinin farkı olarak frontend'de hesaplanabilir veya burada eklenebilir.
+
+    // --- Diğer Bilgilendirici Alanlar ---
     private BigDecimal realRevenue;
-
-    // Satılan Mal Maliyeti (COGS - Cost of Goods Sold)
-    private BigDecimal nominalCostOfGoodsSold;
     private BigDecimal realCostOfGoodsSold;
-
-    // Giderler
-    private BigDecimal nominalOperatingExpenses;
     private BigDecimal realOperatingExpenses;
-
-    // Kar Zarar
-    private BigDecimal nominalGrossProfit; // nominalRevenue - nominalCostOfGoodsSold
-    private BigDecimal realGrossProfit; // realRevenue - realCostOfGoodsSold
-
-    private BigDecimal nominalNetProfit; // nominalGrossProfit - nominalOperatingExpenses
-    private BigDecimal realNetProfit; // realGrossProfit - realOperatingExpenses
-
-    // Aylık enflasyon düzeltme çarpanları (gerekirse detay için)
-    // private Map<YearMonth, BigDecimal> monthlyInflationFactors;
-
-    // Baz alınan enflasyon tarihi (raporun tüm değerlerinin güncellendiği tarih)
+    private BigDecimal nominalGrossProfit;
+    private BigDecimal realGrossProfit;
     private LocalDate baseInflationDate;
 }
