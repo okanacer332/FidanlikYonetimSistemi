@@ -1,10 +1,10 @@
 const http = require('http');
 const crypto = require('crypto');
-const { exec } = require('child_process');
+const { spawn } = require('child_process'); // 'exec' yerine 'spawn' kullanıyoruz
 
-// DİKKAT: Buraya tahmin edilmesi zor, uzun ve karmaşık bir şifre yaz.
+// DİKKAT: Buradaki şifre senin GitHub'a girdiğinle aynı olmalı
 const WEBHOOK_SECRET = 'okanumutacer33'; 
-const DEPLOY_SCRIPT_PATH = '/home/deploy/fidanys-app/deploy.sh'; // Sunucudaki script'in yolu
+const DEPLOY_SCRIPT_PATH = '/home/deploy/fidanys-app/deploy.sh';
 const PORT = 9001;
 
 const server = http.createServer((req, res) => {
@@ -15,11 +15,9 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const signature = req.headers['x-hub-signature-256'];
-        if (!signature) {
-          throw new Error('İmza başlığı eksik.');
-        }
+        if (!signature) { throw new Error('İmza başlığı eksik.'); }
 
-        const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
+        const hmac = crypto.createHmac('sha265', WEBHOOK_SECRET);
         const digest = 'sha256=' + hmac.update(data).digest('hex');
 
         if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
@@ -28,13 +26,22 @@ const server = http.createServer((req, res) => {
         
         console.log(`[${new Date().toISOString()}] Webhook doğrulandı. Deploy script'i çalıştırılıyor...`);
         
-        exec(`bash ${DEPLOY_SCRIPT_PATH}`, (error, stdout, stderr) => {
-          if (error) {
-            console.error(`[${new Date().toISOString()}] HATA: Deploy script'i çalıştırılamadı: ${error}`);
-            return;
-          }
-          if (stdout) console.log(`[${new Date().toISOString()}] Script Çıktısı:\n${stdout}`);
-          if (stderr) console.error(`[${new Date().toISOString()}] Script Hatası:\n${stderr}`);
+        // exec yerine spawn kullanıyoruz
+        const deployProcess = spawn('bash', [DEPLOY_SCRIPT_PATH]);
+
+        // Script'in ürettiği normal çıktıları anlık olarak log'la
+        deployProcess.stdout.on('data', (chunk) => {
+          console.log(chunk.toString());
+        });
+
+        // Script'in ürettiği hata çıktılarını anlık olarak log'la
+        deployProcess.stderr.on('data', (chunk) => {
+          console.error(chunk.toString());
+        });
+        
+        // Script bittiğinde log'la
+        deployProcess.on('close', (code) => {
+          console.log(`[${new Date().toISOString()}] Deploy script'i ${code} koduyla tamamlandı.`);
         });
 
         res.writeHead(200, {'Content-Type': 'text/plain'});
