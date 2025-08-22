@@ -1,8 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
-const { spawn } = require('child_process'); // 'exec' yerine 'spawn' kullanıyoruz
+const { spawn } = require('child_process');
 
-// DİKKAT: Buradaki şifre senin GitHub'a girdiğinle aynı olmalı
 const WEBHOOK_SECRET = 'okanumutacer33'; 
 const DEPLOY_SCRIPT_PATH = '/home/deploy/fidanys-app/deploy.sh';
 const PORT = 9001;
@@ -17,7 +16,7 @@ const server = http.createServer((req, res) => {
         const signature = req.headers['x-hub-signature-256'];
         if (!signature) { throw new Error('İmza başlığı eksik.'); }
 
-        const hmac = crypto.createHmac('sha265', WEBHOOK_SECRET);
+        const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET); // HATA BURADAYDI, 'sha256' OLARAK DÜZELTİLDİ
         const digest = 'sha256=' + hmac.update(data).digest('hex');
 
         if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
@@ -26,20 +25,16 @@ const server = http.createServer((req, res) => {
         
         console.log(`[${new Date().toISOString()}] Webhook doğrulandı. Deploy script'i çalıştırılıyor...`);
         
-        // exec yerine spawn kullanıyoruz
         const deployProcess = spawn('bash', [DEPLOY_SCRIPT_PATH]);
 
-        // Script'in ürettiği normal çıktıları anlık olarak log'la
         deployProcess.stdout.on('data', (chunk) => {
           console.log(chunk.toString());
         });
 
-        // Script'in ürettiği hata çıktılarını anlık olarak log'la
         deployProcess.stderr.on('data', (chunk) => {
           console.error(chunk.toString());
         });
         
-        // Script bittiğinde log'la
         deployProcess.on('close', (code) => {
           console.log(`[${new Date().toISOString()}] Deploy script'i ${code} koduyla tamamlandı.`);
         });
