@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Herhangi bir komut başarısız olursa script'i durdur. Bu önemlidir!
 set -e
 
 echo "================================================="
