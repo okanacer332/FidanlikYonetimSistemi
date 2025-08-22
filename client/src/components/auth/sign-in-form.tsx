@@ -4,8 +4,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Alert, Button, Box, FormControl, FormHelperText, InputLabel, 
-  OutlinedInput, Stack, Typography
+  Alert, Button, Box, FormControl, FormHelperText, InputLabel,
+  OutlinedInput, Stack, Typography, CircularProgress
 } from '@mui/material';
 import { Eye as EyeIcon, EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr';
 import { Controller, useForm } from 'react-hook-form';
@@ -49,9 +49,13 @@ export function SignInForm(): React.JSX.Element {
         });
 
         if (authError) {
-          setError('root', { type: 'server', message: authError });
-          setLoginError(authError);
-          setIsPending(false); // Hata durumunda pending'i bitir
+          // Hata mesajını doğrudan loginError state'ine atıyoruz
+          if (authError.includes("Bu hesapta zaten aktif bir oturum bulunmaktadır")) {
+            setLoginError("Bu hesapta zaten aktif bir oturum var. Başka bir oturum açmak için diğer oturumu sonlandırmalısınız.");
+          } else {
+            setLoginError(authError);
+          }
+          setIsPending(false);
           return;
         }
 
@@ -60,18 +64,18 @@ export function SignInForm(): React.JSX.Element {
           router.refresh();
         } else {
           const errorMessage = 'Beklenmedik bir giriş hatası oluştu.';
-          setError('root', { type: 'server', message: errorMessage });
           setLoginError(errorMessage);
         }
       } catch (error) {
+        // Bu catch bloğu, authClient içinde fırlatılan bir `new Error(...)` hatasını yakalar.
+        // Hatanın mesajını alıp loginError state'ine atarız.
         const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.';
-        setError('root', { type: 'server', message: errorMessage });
         setLoginError(errorMessage);
       } finally {
         setIsPending(false);
       }
     },
-    [checkSession, router, setError]
+    [checkSession, router]
   );
 
   return (
@@ -82,7 +86,7 @@ export function SignInForm(): React.JSX.Element {
       <Typography variant="h5" sx={{ mt: { xs: 0, sm: 0 }, mb: { xs: 1, sm: 2 } }}>
           Giriş Yap
       </Typography>
-      
+
       <form onSubmit={handleSubmit(onSubmit)} style={{ width: '100%' }}>
         <Stack spacing={2}>
           <Controller
@@ -107,10 +111,16 @@ export function SignInForm(): React.JSX.Element {
               </FormControl>
             )}
           />
-          {errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
-          {loginError ? <Alert color="error">{loginError}</Alert> : null}
+
+          {/* HATA GÖSTERİMİ */}
+          {(loginError || errors.root) && (
+              <Alert color="error" severity="error">
+                  {loginError || errors.root?.message}
+              </Alert>
+          )}
+
           <Button disabled={isPending} type="submit" variant="contained">
-            Giriş Yap
+            {isPending ? <CircularProgress size={24} color="inherit" /> : 'Giriş Yap'}
           </Button>
         </Stack>
       </form>
