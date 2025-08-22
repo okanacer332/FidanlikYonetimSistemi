@@ -39,8 +39,11 @@ export const paths = {
     },
     
     // Raporlar Grubu (Türkçeleştirildi)
-    raporlar: {
+    raporlar: { 
       profitability: '/dashboard/raporlar/kar-zarar-analizi',
+      inflationOverview: '/dashboard/raporlar/enflasyon-genel-bakis',
+      costAnalysis: '/dashboard/raporlar/maliyet-analizi',
+      pricePerformance: '/dashboard/raporlar/satis-fiyati-performansi',
     },
     
     // Sistem Grubu (Türkçeleştirildi)

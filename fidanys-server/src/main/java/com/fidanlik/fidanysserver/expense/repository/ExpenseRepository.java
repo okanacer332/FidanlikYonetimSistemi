@@ -13,4 +13,10 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
     List<Expense> findAllByProductionBatchIdAndTenantIdOrderByExpenseDateDesc(String productionBatchId, String tenantId);
     // Bu metodu ekleyin
     List<Expense> findByTenantIdAndExpenseDateAfter(String tenantId, LocalDate date);
+
+    List<Expense> findAllByTenantIdAndExpenseDateBetweenOrderByExpenseDateAsc(String tenantId, LocalDate startDate, LocalDate endDate);
+
+    // YENİ METOT: Belirli bir üretim partisine ait, belirli bir tarih aralığındaki giderleri getirir.
+    List<Expense> findAllByProductionBatchIdAndTenantIdAndExpenseDateBetweenOrderByExpenseDateAsc(String productionBatchId, String tenantId, LocalDate startDate, LocalDate endDate);
+
 }

@@ -13,6 +13,8 @@ import { List as ListIcon } from '@phosphor-icons/react/dist/ssr/List';
 import { MagnifyingGlass as MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { Users as UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 
+// YENİ: Merkezi API istemcimizi import ediyoruz
+import { apiClient } from '@/lib/apiClient';
 import { usePopover } from '@/hooks/use-popover';
 import { useUser } from '@/hooks/use-user';
 import { paths } from '@/paths';
@@ -32,50 +34,46 @@ export function MainNav(): React.JSX.Element {
   
   React.useEffect(() => {
     const fetchNotifications = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token || !user) return;
+      // apiClient token'ı otomatik yönettiği için sadece kullanıcı kontrolü yeterli.
+      if (!user) return;
 
       try {
-        // İlgili API istekleri
-        const [ordersRes, stockRes, plantsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/orders`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stock`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/plants`, { headers: { Authorization: `Bearer ${token}` } }),
+        // --- DEĞİŞEN BÖLÜM ---
+        // Artık process.env kullanmıyoruz ve tüm istekleri apiClient üzerinden yapıyoruz.
+        // Bu sayede Next.js proxy'si doğru çalışacak.
+        const [orders, stocks, plants] = await Promise.all([
+          apiClient.get<Order[]>('/orders'),
+          apiClient.get<Stock[]>('/stock'),
+          apiClient.get<Plant[]>('/plants'),
         ]);
 
         const newNotifications: Notification[] = [];
 
         // Yeni Siparişler
-        if (ordersRes.ok) {
-          const orders: Order[] = await ordersRes.json();
-          const newOrders = orders.filter(o => o.status === 'PREPARING');
-          newOrders.forEach(o => {
-            newNotifications.push({ id: `order-${o.id}`, type: 'new_order', message: `#${o.orderNumber} numaralı yeni bir sipariş alındı.` });
-          });
-        }
+        // apiClient doğrudan JSON verisini döndürdüğü için .ok ve .json() kontrollerine gerek yok.
+        const newOrders = orders.filter(o => o.status === 'PREPARING');
+        newOrders.forEach(o => {
+          newNotifications.push({ id: `order-${o.id}`, type: 'new_order', message: `#${o.orderNumber} numaralı yeni bir sipariş alındı.` });
+        });
         
         // Stoku Azalanlar
-        if (stockRes.ok && plantsRes.ok) {
-            const stocks: Stock[] = await stockRes.json();
-            const plants: Plant[] = await plantsRes.json();
-            const plantMap = new Map(plants.map(p => [p.id, `${p.plantType.name} - ${p.plantVariety.name}`]));
-
-            const lowStockItems = stocks.filter(s => s.quantity > 0 && s.quantity <= 10);
-            lowStockItems.forEach(s => {
-                const plantName = plantMap.get(s.plantId) || 'Bilinmeyen Fidan';
-                newNotifications.push({ id: `stock-${s.plantId}`, type: 'low_stock', message: `${plantName} için stok kritik seviyede: ${s.quantity} adet kaldı.` });
-            });
-        }
+        const plantMap = new Map(plants.map(p => [p.id, `${p.plantType.name} - ${p.plantVariety.name}`]));
+        const lowStockItems = stocks.filter(s => s.quantity > 0 && s.quantity <= 10);
+        lowStockItems.forEach(s => {
+            const plantName = plantMap.get(s.plantId) || 'Bilinmeyen Fidan';
+            newNotifications.push({ id: `stock-${s.plantId}`, type: 'low_stock', message: `${plantName} için stok kritik seviyede: ${s.quantity} adet kaldı.` });
+        });
 
         setNotifications(newNotifications);
 
       } catch (error) {
+        // apiClient'dan gelen hatalar daha anlamlı olacak.
         console.error("Bildirimler alınırken hata oluştu:", error);
       }
     };
 
     fetchNotifications();
-  }, [user]); // user geldiğinde de tetiklenmesi için
+  }, [user]);
 
   return (
     <React.Fragment>
@@ -117,21 +115,17 @@ export function MainNav(): React.JSX.Element {
                 </Badge>
               </IconButton>
             </Tooltip>
-            {/* --- DÜZELTİLMİŞ AVATAR KISMI --- */}
             <Avatar
               onClick={userPopover.handleOpen}
               ref={userPopover.anchorRef}
               sx={{ cursor: 'pointer' }}
-              // src="/assets/avatar.png" prop'u kaldırıldı
             >
               {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
             </Avatar>
-            {/* --- DÜZELTME SONU --- */}
           </Stack>
         </Stack>
       </Box>
       <UserPopover anchorEl={userPopover.anchorRef.current} onClose={userPopover.handleClose} open={userPopover.open} />
-      {/* Yeni eklediğimiz NotificationsPopover bileşeni */}
       <NotificationsPopover anchorEl={notificationsPopover.anchorRef.current} onClose={notificationsPopover.handleClose} open={notificationsPopover.open} notifications={notifications} />
       <MobileNav onClose={() => { setOpenNav(false); }} open={openNav} />
     </React.Fragment>

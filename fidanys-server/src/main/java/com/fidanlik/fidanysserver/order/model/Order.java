@@ -2,8 +2,10 @@ package com.fidanlik.fidanysserver.order.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,5 +34,7 @@ public class Order {
         private String plantId;
         private int quantity;
         private BigDecimal salePrice; // Satış anındaki birim fiyat
+        @Transient // Bu alanın veritabanına kaydedilmesini engeller
+        private LocalDate orderDate;
     }
 }

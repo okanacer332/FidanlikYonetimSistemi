@@ -1,24 +1,22 @@
 package com.fidanlik.fidanysserver.accounting.service;
 
 import com.fidanlik.fidanysserver.accounting.dto.RealProfitLossReportDTO;
-import com.fidanlik.fidanysserver.accounting.model.Transaction;
-import com.fidanlik.fidanysserver.accounting.repository.TransactionRepository;
 import com.fidanlik.fidanysserver.common.inflation.InflationCalculationService;
 import com.fidanlik.fidanysserver.expense.model.Expense;
 import com.fidanlik.fidanysserver.expense.repository.ExpenseRepository;
+import com.fidanlik.fidanysserver.fidan.model.Plant;
+import com.fidanlik.fidanysserver.fidan.model.ProductionBatch;
+import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
+import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository;
 import com.fidanlik.fidanysserver.inflation.model.InflationData;
+import com.fidanlik.fidanysserver.inflation.repository.InflationDataRepository;
 import com.fidanlik.fidanysserver.invoicing.model.Invoice;
 import com.fidanlik.fidanysserver.invoicing.repository.InvoiceRepository;
 import com.fidanlik.fidanysserver.order.model.Order;
 import com.fidanlik.fidanysserver.order.repository.OrderRepository;
-import com.fidanlik.fidanysserver.fidan.model.Plant;
-import com.fidanlik.fidanysserver.fidan.model.ProductionBatch;
-import com.fidanlik.fidanysserver.fidan.repository.ProductionBatchRepository;
-import com.fidanlik.fidanysserver.fidan.repository.PlantRepository;
-import com.fidanlik.fidanysserver.inflation.repository.InflationDataRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // Slf4j import'u
-
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,7 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j // Loglama için Slf4j anotasyonu
+@Slf4j
 public class FinancialReportService {
 
     private final InvoiceRepository invoiceRepository;
@@ -45,157 +43,52 @@ public class FinancialReportService {
     private final InflationCalculationService inflationCalculationService;
     private final InflationDataRepository inflationDataRepository;
 
-    // Gerçek Kar/Zarar Raporu Oluşturma
     public RealProfitLossReportDTO generateRealProfitLossReport(LocalDate startDate, LocalDate endDate, LocalDate baseDate, String tenantId) {
-        BigDecimal nominalRevenue = BigDecimal.ZERO;
-        BigDecimal realRevenue = BigDecimal.ZERO;
-        BigDecimal nominalOperatingExpenses = BigDecimal.ZERO;
-        BigDecimal realOperatingExpenses = BigDecimal.ZERO;
+        log.info("Reel Kâr/Zarar Raporu oluşturuluyor. Aral?k: {}-{}, Baz Tarih: {}, Tenant: {}", startDate, endDate, baseDate, tenantId);
+
+        // 1. Gelirleri Hesapla (Faturalardan)
+        List<Invoice> invoices = invoiceRepository.findAllByTenantIdAndIssueDateBetween(tenantId, startDate, endDate);
+        BigDecimal nominalRevenue = invoices.stream().map(Invoice::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal realRevenue = invoices.stream()
+                .map(inv -> inflationCalculationService.calculateRealValue(inv.getTotalAmount(), inv.getIssueDate(), baseDate))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        log.info("Hesaplanan Gelirler -> Nominal: {}, Reel: {}", nominalRevenue, realRevenue);
+
+        // 2. İşletme Giderlerini Hesapla
+        List<Expense> expenses = expenseRepository.findAllByTenantIdAndExpenseDateBetweenOrderByExpenseDateAsc(tenantId, startDate, endDate);
+        BigDecimal nominalOperatingExpenses = expenses.stream().map(Expense::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal realOperatingExpenses = expenses.stream()
+                .map(exp -> inflationCalculationService.calculateRealValue(exp.getAmount(), exp.getExpenseDate(), baseDate))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        log.info("Hesaplanan Giderler -> Nominal: {}, Reel: {}", nominalOperatingExpenses, realOperatingExpenses);
+
+        // 3. Satılan Malın Maliyetini (SMM) Hesapla
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+        List<Order> shippedOrders = orderRepository.findAllByTenantIdAndStatusInAndOrderDateBetween(
+                tenantId, List.of(Order.OrderStatus.SHIPPED, Order.OrderStatus.DELIVERED), startDateTime, endDateTime);
+
         BigDecimal nominalCostOfGoodsSold = BigDecimal.ZERO;
         BigDecimal realCostOfGoodsSold = BigDecimal.ZERO;
 
-        log.info("Rapor oluşturma başlatıldı. Başlangıç: {}, Bitiş: {}, Baz Tarih: {}, Tenant: {}", startDate, endDate, baseDate, tenantId);
-
-        // Enflasyon hesaplamaları için kullanılacak efektif baz tarihini belirle
-        LocalDate effectiveBaseDate = baseDate;
-
-        // İstenen baseDate için doğrudan enflasyon verisi var mı kontrol et.
-        // Eğer yoksa, en son mevcut enflasyon verisinin tarihini efektif baz tarihi olarak ayarla.
-        // Veritabanındaki tarihler ayın son günü olduğu için, baseDate'i ayın son gününe yuvarla.
-        LocalDate baseDateAsEndOfMonth = baseDate.withDayOfMonth(baseDate.lengthOfMonth());
-
-        Optional<InflationData> baseDateExactData = inflationDataRepository.findByDate(baseDateAsEndOfMonth);
-
-        if (baseDateExactData.isEmpty()) {
-            log.warn("Belirtilen baz tarihi ({}) için doğrudan enflasyon verisi bulunamadı. En son mevcut tarih aranıyor...", baseDate);
-            Optional<LocalDate> latestAvailableDateOptional = inflationCalculationService.getLatestAvailableInflationDate();
-
-            if (latestAvailableDateOptional.isPresent()) {
-                effectiveBaseDate = latestAvailableDateOptional.get();
-                log.info("En son mevcut enflasyon verisi tarihi: {}. Bu tarih baz alınacaktır.", effectiveBaseDate);
-            } else {
-                log.error("Sistemde hiçbir enflasyon verisi bulunamadı. Reel kar/zarar nominal değerler ile aynı olacaktır.");
-            }
-        } else {
-            log.info("Belirtilen baz tarihi ({}) için doğrudan enflasyon verisi mevcut. Efektif baz tarihi {} olarak ayarlandı.", baseDate, effectiveBaseDate);
-        }
-
-        // 1. Gelirleri Hesapla (Faturalardan)
-        List<Invoice> invoices = invoiceRepository.findAllByTenantId(tenantId).stream()
-                .filter(invoice -> {
-                    boolean isInRange = !invoice.getIssueDate().isBefore(startDate) && !invoice.getIssueDate().isAfter(endDate);
-                    log.info("Fatura kontrolü: ID={}, Tarih={}, Aralıkta mı? {}", invoice.getId(), invoice.getIssueDate(), isInRange);
-                    return isInRange;
-                })
-                .collect(Collectors.toList());
-        log.info("Toplam bulunan fatura sayısı: {}", invoices.size());
-
-        for (Invoice invoice : invoices) {
-            nominalRevenue = nominalRevenue.add(invoice.getTotalAmount());
-            BigDecimal realValue = inflationCalculationService.calculateRealValue(invoice.getTotalAmount(), invoice.getIssueDate(), effectiveBaseDate);
-            realRevenue = realRevenue.add(realValue);
-            log.info("Fatura işlendi: ID={}, Tutar={}, Reel Tutar={}", invoice.getId(), invoice.getTotalAmount(), realValue);
-        }
-        log.info("Faturalar işlendikten sonra - Nominal Gelir: {}, Reel Gelir: {}", nominalRevenue, realRevenue);
-
-        // 2. Giderleri Hesapla
-        List<Expense> expenses = expenseRepository.findAllByTenantIdOrderByExpenseDateDesc(tenantId).stream()
-                .filter(expense -> {
-                    boolean isInRange = !expense.getExpenseDate().isBefore(startDate) && !expense.getExpenseDate().isAfter(endDate);
-                    log.info("Gider kontrolü: ID={}, Tarih={}, Aralıkta mı? {}", expense.getId(), expense.getExpenseDate(), isInRange);
-                    return isInRange;
-                })
-                .collect(Collectors.toList());
-        log.info("Toplam bulunan gider sayısı: {}", expenses.size());
-
-        for (Expense expense : expenses) {
-            nominalOperatingExpenses = nominalOperatingExpenses.add(expense.getAmount());
-            BigDecimal realValue = inflationCalculationService.calculateRealValue(expense.getAmount(), expense.getExpenseDate(), effectiveBaseDate);
-            realOperatingExpenses = realOperatingExpenses.add(realValue);
-            log.info("Gider işlendi: ID={}, Tutar={}, Reel Tutar={}", expense.getId(), expense.getAmount(), realValue);
-        }
-        log.info("Giderler işlendikten sonra - Nominal Gider: {}, Reel Gider: {}", nominalOperatingExpenses, realOperatingExpenses);
-
-        // 3. Satılan Mal Maliyetini (COGS) Hesapla
-        List<Order> shippedOrders = orderRepository.findAllByTenantId(tenantId).stream()
-                .filter(order -> {
-                    boolean isShippedOrDelivered = order.getStatus() == Order.OrderStatus.SHIPPED || order.getStatus() == Order.OrderStatus.DELIVERED;
-                    boolean isInRange = !order.getOrderDate().toLocalDate().isBefore(startDate) && !order.getOrderDate().toLocalDate().isAfter(endDate);
-                    log.info("Sipariş kontrolü: ID={}, Durum={}, Tarih={}, Aralıkta mı? {}, Durum uygun mu? {}", order.getId(), order.getStatus(), order.getOrderDate().toLocalDate(), isInRange, isShippedOrDelivered);
-                    return isShippedOrDelivered && isInRange;
-                })
-                .collect(Collectors.toList());
-        log.info("Toplam bulunan sevk edilmiş sipariş sayısı: {}", shippedOrders.size());
-
         for (Order order : shippedOrders) {
-            log.info("Sipariş işleniyor: ID={}, Sipariş Numarası={}, Kalem Sayısı={}", order.getId(), order.getOrderNumber(), order.getItems().size());
             for (Order.OrderItem item : order.getItems()) {
-                log.info("Sipariş kalemi işleniyor: PlantId={}, Miktar={}", item.getPlantId(), item.getQuantity());
-                BigDecimal itemCost = BigDecimal.ZERO;
-                LocalDate costDate = order.getOrderDate().toLocalDate(); // Maliyet tarihi varsayılan olarak sipariş tarihi
+                // Her bir sipariş kalemi için üretim maliyetini bul ve topla
+                CostInfo costInfo = findCostForOrderItem(item, order.getOrderDate().toLocalDate(), tenantId);
+                nominalCostOfGoodsSold = nominalCostOfGoodsSold.add(costInfo.getNominalCost());
 
-                if (item.getPlantId() != null) {
-                    Optional<Plant> optionalPlant = plantRepository.findById(item.getPlantId());
-                    if (optionalPlant.isPresent()) {
-                        Plant plant = optionalPlant.get();
-                        log.info("Plant bulundu: ID={}, PlantType={}, PlantVariety={}", plant.getId(), plant.getPlantType().getId(), plant.getPlantVariety().getId());
-
-                        // Tüm ProductionBatch'leri çek ve logla
-                        List<ProductionBatch> allTenantProductionBatches = productionBatchRepository.findAllByTenantId(tenantId);
-                        log.info("findAllByTenantId tarafından çekilen ProductionBatch sayısı: {}", allTenantProductionBatches.size());
-                        allTenantProductionBatches.forEach(pb -> log.info("Çekilen ProductionBatch: ID={}, PlantType={}, PlantVariety={}, StartDate={}, CostPool={}, CurrentQuantity={}",
-                                pb.getId(), pb.getPlantTypeId(), pb.getPlantVarietyId(), pb.getStartDate(), pb.getCostPool(), pb.getCurrentQuantity()));
-
-
-                        List<ProductionBatch> matchingBatches = allTenantProductionBatches.stream() // Burayı allTenantProductionBatches.stream() olarak değiştirdik
-                                .filter(pb -> {
-                                    boolean typeMatch = pb.getPlantTypeId().equals(plant.getPlantTypeId());
-                                    boolean varietyMatch = pb.getPlantVarietyId().equals(plant.getPlantVarietyId());
-                                    // ProductionBatch'in başlangıç tarihi, sipariş tarihinden sonra olmamalı
-                                    boolean dateMatch = !pb.getStartDate().isAfter(order.getOrderDate().toLocalDate());
-                                    log.info("ProductionBatch filtresi: PB_ID={}, PB_StartDate={}, Order_Date={}, TypeMatch={}, VarietyMatch={}, DateMatch={}",
-                                            pb.getId(), pb.getStartDate(), order.getOrderDate().toLocalDate(), typeMatch, varietyMatch, dateMatch);
-                                    return typeMatch && varietyMatch && dateMatch;
-                                })
-                                .sorted(Comparator.comparing(ProductionBatch::getStartDate).reversed()) // En yeni partiden başla
-                                .collect(Collectors.toList());
-
-                        if (!matchingBatches.isEmpty()) {
-                            ProductionBatch batch = matchingBatches.get(0); // En son eşleşen partiyi al
-                            log.info("Eşleşen ProductionBatch bulundu: ID={}, CurrentQuantity={}, CostPool={}", batch.getId(), batch.getCurrentQuantity(), batch.getCostPool());
-                            if (batch.getCurrentQuantity() > 0 && batch.getCostPool() != null) {
-                                itemCost = batch.getCostPool().divide(new BigDecimal(batch.getCurrentQuantity()), 2, RoundingMode.HALF_UP);
-                                costDate = batch.getStartDate(); // Maliyetin gerçek tarihi: Üretim partisinin başlangıç tarihi
-                                log.info("Maliyet hesaplandı: ItemCost={}, CostDate={}", itemCost, costDate);
-                            } else {
-                                log.warn("ProductionBatch'in miktarı 0 veya CostPool null. Maliyet 0 olarak kabul edildi. PB_ID={}", batch.getId());
-                            }
-                        } else {
-                            log.warn("Plant için eşleşen ProductionBatch bulunamadı. PlantType={}, PlantVariety={}. Maliyet 0 olarak kabul edildi.", plant.getPlantType().getId(), plant.getPlantVariety().getId());
-                        }
-                    } else {
-                        log.warn("Sipariş kalemindeki Plant ID'si bulunamadı: {}. Maliyet 0 olarak kabul edildi.", item.getPlantId());
-                    }
-                }
-                nominalCostOfGoodsSold = nominalCostOfGoodsSold.add(itemCost.multiply(new BigDecimal(item.getQuantity())));
-                BigDecimal realItemCost = inflationCalculationService.calculateRealValue(
-                        itemCost.multiply(new BigDecimal(item.getQuantity())),
-                        costDate, // Maliyetin gerçekleştiği tarih
-                        effectiveBaseDate // Raporun baz tarihi
-                );
+                BigDecimal realItemCost = inflationCalculationService.calculateRealValue(costInfo.getNominalCost(), costInfo.getCostDate(), baseDate);
                 realCostOfGoodsSold = realCostOfGoodsSold.add(realItemCost);
-                log.info("COGS işlendi: Nominal Item Cost={}, Reel Item Cost={}", itemCost.multiply(new BigDecimal(item.getQuantity())), realItemCost);
             }
         }
-        log.info("COGS işlendikten sonra - Nominal COGS: {}, Reel COGS: {}", nominalCostOfGoodsSold, realCostOfGoodsSold);
+        log.info("Hesaplanan SMM -> Nominal: {}, Reel: {}", nominalCostOfGoodsSold, realCostOfGoodsSold);
 
+        // 4. Kâr/Zarar Hesaplamaları
         BigDecimal nominalGrossProfit = nominalRevenue.subtract(nominalCostOfGoodsSold);
         BigDecimal realGrossProfit = realRevenue.subtract(realCostOfGoodsSold);
-
         BigDecimal nominalNetProfit = nominalGrossProfit.subtract(nominalOperatingExpenses);
         BigDecimal realNetProfit = realGrossProfit.subtract(realOperatingExpenses);
-
-        log.info("Raporlama tamamlandı. Nominal Net Kar: {}, Reel Net Kar: {}", nominalNetProfit, realNetProfit);
+        log.info("Hesaplanan Net Kâr -> Nominal: {}, Reel: {}", nominalNetProfit, realNetProfit);
 
         return RealProfitLossReportDTO.builder()
                 .period(YearMonth.from(startDate))
@@ -209,7 +102,45 @@ public class FinancialReportService {
                 .realGrossProfit(realGrossProfit)
                 .nominalNetProfit(nominalNetProfit)
                 .realNetProfit(realNetProfit)
-                .baseInflationDate(effectiveBaseDate)
+                .baseInflationDate(baseDate)
                 .build();
+    }
+
+    // Satılan bir ürünün maliyetini ve maliyet tarihini bulan yardımcı metot
+    private CostInfo findCostForOrderItem(Order.OrderItem item, LocalDate orderDate, String tenantId) {
+        Plant plant = plantRepository.findById(item.getPlantId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Siparişteki fidan bulunamadı: " + item.getPlantId()));
+
+        // Fidanla eşleşen ve sipariş tarihinden önce başlamış en son üretim partisini bul
+        Optional<ProductionBatch> latestBatchOpt = productionBatchRepository.findAllByTenantId(tenantId).stream()
+                .filter(pb -> pb.getPlantTypeId().equals(plant.getPlantTypeId()) &&
+                        pb.getPlantVarietyId().equals(plant.getPlantVarietyId()) &&
+                        !pb.getStartDate().isAfter(orderDate))
+                .max(Comparator.comparing(ProductionBatch::getStartDate));
+
+        if (latestBatchOpt.isPresent()) {
+            ProductionBatch batch = latestBatchOpt.get();
+            if (batch.getCurrentQuantity() > 0 && batch.getCostPool() != null) {
+                BigDecimal unitCost = batch.getCostPool().divide(new BigDecimal(batch.getCurrentQuantity()), 2, RoundingMode.HALF_UP);
+                BigDecimal totalItemCost = unitCost.multiply(new BigDecimal(item.getQuantity()));
+                return new CostInfo(totalItemCost, batch.getStartDate());
+            }
+        }
+
+        log.warn("Fidan ID {} için üretim maliyeti bulunamadı, maliyet 0 kabul ediliyor.", item.getPlantId());
+        return new CostInfo(BigDecimal.ZERO, orderDate); // Maliyet bulunamazsa sıfır ve sipariş tarihi
+    }
+
+    // Maliyet bilgilerini taşımak için küçük bir yardımcı sınıf
+    private static class CostInfo {
+        private final BigDecimal nominalCost;
+        private final LocalDate costDate;
+
+        public CostInfo(BigDecimal nominalCost, LocalDate costDate) {
+            this.nominalCost = nominalCost;
+            this.costDate = costDate;
+        }
+        public BigDecimal getNominalCost() { return nominalCost; }
+        public LocalDate getCostDate() { return costDate; }
     }
 }

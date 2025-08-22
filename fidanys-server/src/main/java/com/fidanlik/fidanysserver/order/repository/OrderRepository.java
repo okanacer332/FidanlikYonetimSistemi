@@ -18,4 +18,14 @@ public interface OrderRepository extends MongoRepository<Order, String> {
     long countByTenantIdAndStatus(String tenantId, Order.OrderStatus status);
     List<Order> findByTenantIdAndStatusInAndOrderDateBetween(String tenantId, List<Order.OrderStatus> statuses, LocalDateTime startDate, LocalDateTime endDate);
     List<Order> findByTenantIdAndStatusIn(String tenantId, List<Order.OrderStatus> statuses);
+
+    List<Order> findAllByTenantIdAndStatusInAndOrderDateBetween(String tenantId, List<Order.OrderStatus> statuses, LocalDateTime startDate, LocalDateTime endDate);
+
+    List<Order> findAllByTenantIdAndStatusInAndOrderDateBetweenAndItems_PlantId(
+            String tenantId,
+            List<Order.OrderStatus> statuses,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            String plantId
+    );
 }
