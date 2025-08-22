@@ -4,6 +4,8 @@ import com.fidanlik.fidanysserver.role.model.Role;
 import com.fidanlik.fidanysserver.role.repository.RoleRepository;
 import com.fidanlik.fidanysserver.user.model.User;
 import com.fidanlik.fidanysserver.user.repository.UserRepository;
+import com.fidanlik.fidanysserver.user.repository.UserTokenRepository;
+import com.fidanlik.fidanysserver.user.model.UserToken;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserTokenRepository userTokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -36,18 +39,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // --- YENİ EKLENEN KONTROL ---
-        // /api/v1/auth/ ile başlayan istekleri JWT filtresinden muaf tut.
         if (request.getRequestURI().startsWith("/api/v1/auth/")) {
             filterChain.doFilter(request, response);
             return;
         }
-        // --- KONTROL BİTİŞİ ---
-
-        // --- YENİ EKLENEN DEBUG SATIRLARI ---
-        System.out.println("GELEN ISTEK -> URI: " + request.getRequestURI());
-        System.out.println("GELEN ISTEK -> HOST: " + request.getHeader("Host"));
-        // ------------------------------------
 
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -62,6 +57,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (username != null && tenantId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             userRepository.findByUsernameAndTenantId(username, tenantId).ifPresent(user -> {
+                Optional<UserToken> dbToken = userTokenRepository.findByUserIdAndTenantId(user.getId(), tenantId);
+
+                // --- GÜNCEL ÇÖZÜM: TOKEN KONTROLÜ ---
+                // Gelen JWT, veritabanında saklanan token ile birebir eşleşmeli.
+                // Eğer veritabanında token yoksa veya tokenlar eşleşmiyorsa, bu bir güvenlik açığıdır.
+                if (dbToken.isEmpty() || !dbToken.get().getToken().equals(jwt)) {
+                    System.out.println("GELEN JWT, VERİTABANINDAKİ TOKEN İLE EŞLEŞMİYOR! OTURUM SONLANDIRILIYOR -> Kullanıcı: " + user.getUsername());
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+
                 if (user.getRoleIds() != null && !user.getRoleIds().isEmpty()) {
                     Set<Role> roles = user.getRoleIds().stream()
                             .map(roleRepository::findById)
