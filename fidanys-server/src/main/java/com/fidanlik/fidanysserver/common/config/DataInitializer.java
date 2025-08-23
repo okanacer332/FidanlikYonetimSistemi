@@ -83,15 +83,32 @@ public class DataInitializer implements CommandLineRunner {
             adminRol.setPermissions(new HashSet<>(allPermissions)); // Kaydedilmiş izin nesnelerini kullan
             roleRepository.save(adminRol);
 
+            // YENİ ROL: Muhasebeci
+            Role muhasebeciRol = new Role();
+            muhasebeciRol.setName("ACCOUNTANT");
+            muhasebeciRol.setTenantId(tenantId);
+            muhasebeciRol.setPermissions(filterPermissions(allPermissions, "CARI_YONETIMI", "FATURA_YONETIMI", "ODEME_YONETIMI", "GIDER_YONETIMI", "RAPORLAMA", "STOK_GORUNTULEME"));
+            roleRepository.save(muhasebeciRol);
+
+            // YENİ ROL: Depo Personeli
+            Role depocuRol = new Role();
+            depocuRol.setName("WAREHOUSE_STAFF");
+            depocuRol.setTenantId(tenantId);
+            depocuRol.setPermissions(filterPermissions(allPermissions, "STOK_GORUNTULEME", "MAL_KABUL_OLUSTURMA", "SIPARIS_SEVKIYAT"));
+            roleRepository.save(depocuRol);
+
             Role satisPersoneliRol = new Role();
             satisPersoneliRol.setName("SALES");
             satisPersoneliRol.setTenantId(tenantId);
             satisPersoneliRol.setPermissions(filterPermissions(allPermissions, "SIPARIS_OLUSTURMA", "STOK_GORUNTULEME", "FIDAN_EKLE"));
             roleRepository.save(satisPersoneliRol);
+
             System.out.println("Roller oluşturuldu.");
 
             // --- KULLANICILAR ---
             createUser("admin", "admin@" + tenantName, "admin", tenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
+            createUser("muhasebe", "muhasebe@" + tenantName, "muhasebe", tenantId, new HashSet<>(Collections.singletonList(muhasebeciRol.getId())));
+            createUser("depo", "depo@" + tenantName, "depo", tenantId, new HashSet<>(Collections.singletonList(depocuRol.getId())));
             createUser("satis", "satis@" + tenantName, "satis", tenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
             System.out.println("Kullanıcılar oluşturuldu.");
 
