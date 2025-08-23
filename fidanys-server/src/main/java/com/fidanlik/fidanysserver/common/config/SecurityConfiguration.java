@@ -42,7 +42,7 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/v1/auth/**", "/graphql").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/graphql").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -79,7 +79,6 @@ public class SecurityConfiguration {
                 "http://fidanys.com.tr",
                 "https://fidanys.com.tr"
         ));
-        // YENİ: PATCH metodu izin verilenler listesine eklendi
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Tenant-Id"));
         configuration.setAllowCredentials(true);
