@@ -150,13 +150,14 @@ public class UserService {
             userToUpdate.setEmail(userUpdateRequest.getEmail());
         }
 
-        // Parola güncellenecekse hash'le
+        // DEĞİŞİKLİK BURADA: Parola alanını `Optional` ile kontrol et
         userUpdateRequest.getPassword().ifPresent(password -> {
-            if (!password.isEmpty()) {
+            if (password != null && !password.isEmpty()) {
                 String newHashedPassword = passwordEncoder.encode(password);
                 userToUpdate.setPassword(newHashedPassword);
             }
         });
+
 
         // Rolleri güncelle (Sadece Admin yetkili kullanıcıların rol değiştirmesine izin verilir)
         if (userUpdateRequest.getRoleIds() != null) {

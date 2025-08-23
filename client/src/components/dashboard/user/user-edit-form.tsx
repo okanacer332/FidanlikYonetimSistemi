@@ -1,3 +1,4 @@
+// client/src/components/dashboard/user/user-edit-form.tsx
 'use client';
 
 import * as React from 'react';
@@ -23,171 +24,159 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { useUser } from '@/hooks/use-user';
+import { useApiSWR } from '@/hooks/use-api-swr';
+import { updateUser } from '@/services/userService';
+import type { Role, User as UserType, UserUpdateFormValues } from '@/types/user';
 
-interface Role {
-  id: string;
-  name: string;
-}
-
-interface UserType {
-  id: string;
-  username: string;
-  email: string;
-  roles?: Role[];
-}
-
+// Yeni Zod şeması
 const schema = zod.object({
-  username: zod.string().min(1, 'Kullanıcı adı gereklidir.'),
-  email: zod.string().email('Geçerli bir e-posta adresi girin.'),
-  password: zod.string().optional(),
-  roleIds: zod.array(zod.string()).min(1, 'En az bir rol seçilmelidir.'),
+    username: zod.string().min(1, 'Kullanıcı adı gereklidir.'),
+    email: zod.string().email('Geçerli bir e-posta adresi girin.'),
+    password: zod.string().optional()
+        .refine(val => !val || val.length >= 6, {
+            message: 'Yeni şifre en az 6 karakter olmalıdır.',
+        }),
+    roleIds: zod.array(zod.string()).min(1, 'En az bir rol seçilmelidir.'),
 });
 
 type Values = zod.infer<typeof schema>;
 
 interface UserEditFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  user: UserType | null;
+    open: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    user: UserType | null;
 }
 
+// Türkçe rol çeviri haritası
+const roleTranslations: Record<string, string> = {
+  'ADMIN': 'Yönetici',
+  'SALES': 'Satış',
+  'ACCOUNTANT': 'Muhasebeci',
+  'WAREHOUSE_STAFF': 'Depo Personeli',
+};
+
 export function UserEditForm({ open, onClose, onSuccess, user }: UserEditFormProps): React.JSX.Element {
-  const { user: currentUser } = useUser();
-  const [roles, setRoles] = React.useState<Role[]>([]);
-  const [loadingRoles, setLoadingRoles] = React.useState(true);
-  const [formError, setFormError] = React.useState<string | null>(null);
+    const { user: currentUser } = useUser();
+    const { data: roles, isLoading: loadingRoles, error: rolesError } = useApiSWR<Role[]>('/roles');
+    const [formError, setFormError] = React.useState<string | null>(null);
 
-  const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
+    const isCurrentUserAdmin = currentUser?.roles?.some(role => role.name === 'ADMIN');
 
-  const defaultValues = React.useMemo(() => ({
-    username: user?.username || '',
-    email: user?.email || '',
-    password: '',
-    roleIds: user?.roles?.map(role => role.id) || [],
-  }), [user]);
+    const defaultValues = React.useMemo(() => ({
+        username: user?.username || '',
+        email: user?.email || '',
+        password: '',
+        roleIds: user?.roles?.map(role => role.id) || [],
+    }), [user]);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+    const {
+        control,
+        handleSubmit,
+        reset,
+        formState: { errors, isSubmitting },
+    } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
 
-  React.useEffect(() => {
-    async function fetchRoles() {
-      try {
-        setLoadingRoles(true);
-        const token = localStorage.getItem('authToken');
-        if (!token) throw new Error("Oturum bulunamadı.");
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/roles`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Roller yüklenemedi.');
-        const data = await response.json();
-        setRoles(data);
-      } catch (error) {
-        console.error("Roller yüklenirken hata oluştu:", error);
-      } finally {
-        setLoadingRoles(false);
-      }
-    }
-    if (open) {
-        fetchRoles();
-    }
-  }, [open]);
-
-  React.useEffect(() => {
-    if (user) {
-        reset(defaultValues);
-    }
-  }, [user, reset, defaultValues]);
-
-  const onSubmit = async (values: Values): Promise<void> => {
+    React.useEffect(() => {
+        if (user) {
+            reset(defaultValues);
+        }
+    }, [user, reset, defaultValues]);
+    
+    // Güncelleme isteğini düzenleme
+    const onSubmit = async (values: Values): Promise<void> => {
     setFormError(null);
     if (!user) return;
 
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error("Oturum bulunamadı.");
+        // payload objesini oluştururken password alanını koşullu olarak ekle
+        const payload: {
+            username: string;
+            email: string;
+            roleIds: string[];
+            password?: string; // Optional olarak tanımla
+        } = {
+            username: values.username,
+            email: values.email,
+            roleIds: values.roleIds,
+        };
 
-      const payload: any = {
-        username: values.username,
-        email: values.email,
-        roleIds: values.roleIds,
-      };
+        // Eğer parola doluysa payload'a ekle
+        if (values.password && values.password.trim() !== '') {
+            payload.password = values.password;
+        }
 
-      // Şifre alanı SADECE doluysa payload'a ekle
-      if (values.password && values.password.trim() !== '') {
-        payload.password = values.password;
-      }
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Kullanıcı güncellenemedi.');
-      }
-      onSuccess();
-      onClose();
+        // `updateUser` servisini yeni payload ile çağır
+        await updateUser(user.id, payload);
+        
+        onSuccess();
+        onClose();
     } catch (err: any) {
-      setFormError(err.message);
+        setFormError(err.message);
     }
-  };
-  
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Kullanıcı Bilgilerini Düzenle</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <Controller name="username" control={control} render={({ field }) => <TextField {...field} label="Kullanıcı Adı" error={Boolean(errors.username)} helperText={errors.username?.message} fullWidth />} />
-            <Controller name="email" control={control} render={({ field }) => <TextField {...field} label="E-posta" type="email" error={Boolean(errors.email)} helperText={errors.email?.message} fullWidth />} />
-            <Controller name="password" control={control} render={({ field }) => <TextField {...field} label="Yeni Şifre (değişmeyecekse boş bırakın)" type="password" error={Boolean(errors.password)} helperText={errors.password?.message} fullWidth />} />
-            <Controller
-              name="roleIds"
-              control={control}
-              render={({ field }) => (
-                  <FormControl fullWidth error={Boolean(errors.roleIds)}>
-                    <InputLabel>Roller</InputLabel>
-                    <Select<string[]>
-                      multiple
-                      label="Roller"
-                      disabled={loadingRoles || !isCurrentUserAdmin}
-                      value={field.value}
-                      onChange={(event: SelectChangeEvent<string[]>) => field.onChange(event.target.value)}
-                      input={<OutlinedInput label="Roller" />}
-                      renderValue={(selected) =>
-                        roles.filter(r => selected.includes(r.id)).map(r => r.name).join(', ')
-                      }
-                    >
-                      {roles.map((role) => (
-                          <MenuItem key={role.id} value={role.id}>
-                            <Checkbox checked={field.value.indexOf(role.id) > -1} />
-                            <ListItemText primary={role.name} />
-                          </MenuItem>
-                        ))}
-                    </Select>
-                    {errors.roleIds && <FormHelperText>{errors.roleIds.message}</FormHelperText>}
-                    {!isCurrentUserAdmin && <FormHelperText>Rolleri sadece yöneticiler değiştirebilir.</FormHelperText>}
-                  </FormControl>
-              )}
-            />
-            {formError && <Alert severity="error">{formError}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>İptal</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Kaydet'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  );
+};
+    
+    if (loadingRoles) {
+      return <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth><DialogContent><Stack alignItems="center"><CircularProgress /></Stack></DialogContent></Dialog>;
+    }
+    
+    if (rolesError) {
+      return <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth><DialogContent><Alert severity="error">{rolesError.message}</Alert></DialogContent></Dialog>;
+    }
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>Kullanıcı Bilgilerini Düzenle</DialogTitle>
+            <form onSubmit={handleSubmit(onSubmit)}>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 2 }}>
+                        <Controller name="username" control={control} render={({ field }) => <TextField {...field} label="Kullanıcı Adı" error={Boolean(errors.username)} helperText={errors.username?.message} fullWidth />} />
+                        <Controller name="email" control={control} render={({ field }) => <TextField {...field} label="E-posta" type="email" error={Boolean(errors.email)} helperText={errors.email?.message} fullWidth />} />
+                        <Controller name="password" control={control} render={({ field }) => <TextField {...field} label="Yeni Şifre" type="password" error={Boolean(errors.password)} helperText={errors.password?.message || "Değiştirmek istemiyorsanız boş bırakın."} fullWidth />} />
+                        <Controller
+                            name="roleIds"
+                            control={control}
+                            render={({ field }) => (
+                                <FormControl fullWidth error={Boolean(errors.roleIds)}>
+                                    <InputLabel>Roller</InputLabel>
+                                    <Select<string[]>
+                                        multiple
+                                        label="Roller"
+                                        disabled={loadingRoles || !isCurrentUserAdmin}
+                                        value={field.value}
+                                        onChange={(event: SelectChangeEvent<string[]>) => field.onChange(event.target.value)}
+                                        input={<OutlinedInput label="Roller" />}
+                                        // Türkçe çeviri mantığı eklendi
+                                        renderValue={(selected) =>
+                                          selected.map(id => {
+                                            const roleName = roles?.find(r => r.id === id)?.name;
+                                            return roleName ? roleTranslations[roleName] || roleName : '';
+                                          }).join(', ')
+                                        }
+                                    >
+                                        {roles?.map((role) => (
+                                            <MenuItem key={role.id} value={role.id}>
+                                                <Checkbox checked={field.value.indexOf(role.id) > -1} />
+                                                {/* Türkçe çeviri mantığı eklendi */}
+                                                <ListItemText primary={roleTranslations[role.name] || role.name} />
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                    {errors.roleIds && <FormHelperText>{errors.roleIds.message}</FormHelperText>}
+                                    {!isCurrentUserAdmin && <FormHelperText>Rolleri sadece yöneticiler değiştirebilir.</FormHelperText>}
+                                </FormControl>
+                            )}
+                        />
+                        {formError && <Alert severity="error">{formError}</Alert>}
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={onClose}>İptal</Button>
+                    <Button type="submit" variant="contained" disabled={isSubmitting}>
+                        {isSubmitting ? <CircularProgress size={24} /> : 'Kaydet'}
+                    </Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    );
 }

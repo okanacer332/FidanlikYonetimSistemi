@@ -5,25 +5,26 @@ import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
+import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
-import Select, { type SelectChangeEvent } from '@mui/material/Select'; // SelectChangeEvent'i doğrudan import et
 import OutlinedInput from '@mui/material/OutlinedInput';
+import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Grid from '@mui/material/Grid';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
 
+import { useNotifier } from '@/hooks/useNotifier';
+import { useApiSWR } from '@/hooks/use-api-swr';
+import { createUser } from '@/services/userService';
 import type { Role, UserCreateFormValues } from '@/types/user';
-import { useUser } from '@/hooks/use-user';
 
-// Form validasyon şeması
 const schema = zod.object({
   username: zod.string().min(1, { message: 'Kullanıcı adı gereklidir' }),
   email: zod.string().min(1, { message: 'E-posta gereklidir' }).email('Geçerli bir e-posta adresi girin'),
@@ -32,214 +33,109 @@ const schema = zod.object({
 });
 
 interface UserCreateFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newUserId: string) => void;
+  onCancel: () => void;
 }
 
-export function UserCreateForm({ open, onClose, onSuccess }: UserCreateFormProps): React.JSX.Element {
-  const { user: currentUser } = useUser();
-  const [loadingRoles, setLoadingRoles] = React.useState<boolean>(true);
-  const [roles, setRoles] = React.useState<Role[]>([]);
-  const [formError, setFormError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
-  const [isSelectOpen, setIsSelectOpen] = React.useState(false);
+const roleTranslations: Record<string, string> = {
+  'ADMIN': 'Yönetici',
+  'SALES': 'Satış',
+  'ACCOUNTANT': 'Muhasebeci',
+  'WAREHOUSE_STAFF': 'Depo Personeli',
+};
+
+export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps): React.JSX.Element {
+  const notify = useNotifier();
+  const { data: roles, isLoading: isLoadingRoles, error: rolesError } = useApiSWR<Role[]>('/roles');
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<UserCreateFormValues>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', email: '', password: '', roleIds: [] },
   });
 
-  // Rolleri backend'den çekme efekti
-  React.useEffect(() => {
-    const fetchRoles = async () => {
-      if (!open) return;
-      
-      setLoadingRoles(true);
-      setFormError(null);
-      
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('Oturum tokenı bulunamadı. Lütfen tekrar giriş yapın.');
-        }
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/roles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Roller alınırken bir sunucu hatası oluştu.' }));
-          throw new Error(errorData.message || 'Roller alınamadı.');
-        }
-        
-        const data: Role[] = await response.json();
-        setRoles(data);
-      } catch (err) {
-        console.error('Rolleri çekerken hata:', err);
-        setFormError(err instanceof Error ? err.message : 'Rolleri çekerken bir ağ hatası oluştu.');
-        setRoles([]);
-      } finally {
-        setLoadingRoles(false);
-      }
-    };
-
-    fetchRoles();
-
-    // Form kapandığında state'i sıfırla
-    return () => {
-      if (!open) {
-        reset({ username: '', email: '', password: '', roleIds: [] });
-        setFormError(null);
-      }
-    };
-  }, [open, reset]);
-
-  // Form gönderim fonksiyonu
   const onSubmit = React.useCallback(
     async (values: UserCreateFormValues): Promise<void> => {
-      setIsSubmitting(true);
-      setFormError(null);
-
       try {
-        const token = localStorage.getItem('authToken');
-        if (!token || !currentUser?.tenantId) {
-          setFormError('Yetkilendirme bilgileri eksik. Lütfen tekrar giriş yapın.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(values),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Kullanıcı oluşturulurken bir sunucu hatası oluştu.' }));
-          if (response.status === 409) {
-            throw new Error('Bu kullanıcı adı veya e-posta zaten kullanılıyor.');
-          }
-          throw new Error(errorData.message || 'Kullanıcı oluşturulamadı.');
-        }
-
-        onSuccess();
-        onClose();
+        const newUser = await createUser(values);
+        notify.success('Kullanıcı başarıyla oluşturuldu.');
+        reset();
+        onSuccess(newUser.id);
       } catch (err) {
-        console.error('Kullanıcı oluşturma hatası:', err);
-        setFormError(err instanceof Error ? err.message : 'Bir ağ hatası oluştu.');
-      } finally {
-        setIsSubmitting(false);
+        notify.error(err instanceof Error ? err.message : 'Bir hata oluştu.');
       }
     },
-    [currentUser, onSuccess, onClose]
+    [onSuccess, reset, notify]
   );
+  
+  if (isLoadingRoles) {
+    return <Stack alignItems="center"><CircularProgress /></Stack>;
+  }
+
+  if (rolesError) {
+    return <Alert severity="error">{rolesError.message}</Alert>;
+  }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <Controller
-              name="username"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.username)}>
-                  <InputLabel>Kullanıcı Adı</InputLabel>
-                  <OutlinedInput {...field} label="Kullanıcı Adı" />
-                  {errors.username ? <FormHelperText>{errors.username.message}</FormHelperText> : null}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Grid container spacing={2} sx={{ p: 2 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller name="username" control={control} render={({ field }) => ( <TextField {...field} label="Kullanıcı Adı" fullWidth size="small" required error={Boolean(errors.username)} helperText={errors.username?.message} /> )} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller name="email" control={control} render={({ field }) => ( <TextField {...field} label="E-posta" fullWidth size="small" required type="email" error={Boolean(errors.email)} helperText={errors.email?.message} /> )} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller name="password" control={control} render={({ field }) => ( <TextField {...field} label="Şifre" fullWidth size="small" required type="password" error={Boolean(errors.password)} helperText={errors.password?.message} /> )} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="roleIds"
+            control={control}
+            render={({ field }) => {
+              const selectedValue = field.value === undefined || field.value === null ? [] : (field.value as string[]);
+              return (
+                <FormControl fullWidth error={Boolean(errors.roleIds)} size="small">
+                  <InputLabel>Roller</InputLabel>
+                  <Select<string[]>
+                    multiple
+                    label="Roller"
+                    value={selectedValue}
+                    onChange={(event: SelectChangeEvent<string[]>) => field.onChange(event.target.value)}
+                    renderValue={(selected) =>
+                      selected
+                        .map((id) => {
+                          const roleName = roles?.find((r) => r.id === id)?.name;
+                          return roleName ? roleTranslations[roleName] || roleName : null;
+                        })
+                        .filter(Boolean)
+                        .join(', ')
+                    }
+                  >
+                    {roles?.map((role) => (
+                      <MenuItem key={role.id} value={role.id}>
+                        <Checkbox checked={selectedValue.includes(role.id)} />
+                        <ListItemText primary={roleTranslations[role.name] || role.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
                 </FormControl>
-              )}
-            />
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.email)}>
-                  <InputLabel>E-posta</InputLabel>
-                  <OutlinedInput {...field} label="E-posta" type="email" />
-                  {errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth error={Boolean(errors.password)}>
-                  <InputLabel>Şifre</InputLabel>
-                  <OutlinedInput {...field} label="Şifre" type="password" />
-                  {errors.password ? <FormHelperText>{errors.password.message}</FormHelperText> : null}
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="roleIds"
-              control={control}
-              render={({ field }) => {
-                // value prop'u için string[] olmasını garanti et
-                const selectedValue = (field.value === undefined || field.value === null) ? [] : field.value as string[];
-                return (
-                  <FormControl fullWidth error={Boolean(errors.roleIds)}>
-                    <InputLabel>Roller</InputLabel>
-                    {/* Select bileşeninin generic tipini açıkça belirtiyoruz */}
-                    <Select<string[]>
-                      multiple
-                      label="Roller"
-                      disabled={loadingRoles || roles.length === 0}
-                      value={selectedValue}
-                      name={field.name}
-                      onBlur={field.onBlur}
-                      ref={field.ref}
-                      onChange={(event: SelectChangeEvent<string[]>) => { // event tipini SelectChangeEvent<string[]> olarak belirt
-                        field.onChange(event.target.value); // React Hook Form'a string[] gönder
-                        setIsSelectOpen(false);
-                      }}
-                      renderValue={(selected) => (selected as string[]).map((id) => roles.find((r) => r.id === id)?.name).join(', ')}
-                      open={isSelectOpen}
-                      onClose={() => setIsSelectOpen(false)}
-                      onOpen={() => setIsSelectOpen(true)}
-                    >
-                      {loadingRoles ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} /> Yükleniyor...
-                        </MenuItem>
-                      ) : roles.length === 0 ? (
-                        <MenuItem disabled>Rol bulunamadı.</MenuItem>
-                      ) : (
-                        roles.map((role) => (
-                          <MenuItem key={role.id} value={role.id}>
-                            {role.name}
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
-                    {errors.roleIds ? <FormHelperText>{errors.roleIds.message}</FormHelperText> : null}
-                  </FormControl>
-                );
-              }}
-            />
-            {formError && <Alert severity="error">{formError}</Alert>}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={isSubmitting}>
-            İptal
-          </Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Oluştur'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+              );
+            }}
+          />
+        </Grid>
+      </Grid>
+      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{mt: 2}}>
+        <Button onClick={onCancel} disabled={isSubmitting} color="secondary">İptal</Button>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
+          {isSubmitting ? <CircularProgress size={24} /> : 'Oluştur'}
+        </Button>
+      </Stack>
+    </form>
   );
 }

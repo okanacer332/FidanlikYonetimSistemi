@@ -21,3 +21,10 @@ export interface UserCreateFormValues {
   password: string;
   roleIds: string[]; // Rol ID'leri listesi
 }
+
+export interface UserUpdateFormValues {
+  username: string;
+  email: string;
+  password?: string; // Şifre alanı opsiyonel yapıldı
+  roleIds: string[];
+}
