@@ -101,9 +101,21 @@ class AuthClient {
     }
   }
 
+  // YENİ GÜNCELLENMİŞ METOT
   async signOut(): Promise<{ error?: string }> {
-    if (isBrowser) {
-      localStorage.removeItem('authToken');
+    try {
+      // Backend'deki yeni /logout endpoint'ini çağır.
+      // apiClient, Authorization header'ını otomatik olarak ekleyecektir.
+      await apiClient.post('/auth/logout', {});
+    } catch (err) {
+      // Hata olsa bile client tarafında çıkış işlemini tamamla.
+      // Bu, sunucuya ulaşılamadığı durumlarda kullanıcının takılıp kalmasını önler.
+      console.error('Logout API call failed:', err);
+    } finally {
+      // Her durumda local storage'daki token'ı temizle.
+      if (isBrowser) {
+        localStorage.removeItem('authToken');
+      }
     }
     return {};
   }

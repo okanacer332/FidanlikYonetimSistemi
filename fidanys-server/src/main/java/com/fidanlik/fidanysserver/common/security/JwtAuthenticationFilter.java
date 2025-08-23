@@ -39,7 +39,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        if (request.getRequestURI().startsWith("/api/v1/auth/")) {
+        // --- DEĞİŞİKLİK BURADA ---
+        // Artık sadece /login isteğini atlıyoruz. /logout ve diğerleri token kontrolünden geçecek.
+        if (request.getRequestURI().equals("/api/v1/auth/login")) {
             filterChain.doFilter(request, response);
             return;
         }

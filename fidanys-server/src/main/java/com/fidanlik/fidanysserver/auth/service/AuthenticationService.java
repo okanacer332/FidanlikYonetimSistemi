@@ -71,4 +71,10 @@ public class AuthenticationService {
 
         return LoginResponse.builder().token(jwtToken).build();
     }
+
+    // YENİ METOT: Kullanıcının veritabanındaki token kaydını siler.
+    public void logout(User user) {
+        // Kullanıcının ID'si ve Tenant ID'si ile veritabanındaki token'ı bul ve sil.
+        userTokenRepository.findByUserIdAndTenantId(user.getId(), user.getTenantId()).ifPresent(userTokenRepository::delete);
+    }
 }
