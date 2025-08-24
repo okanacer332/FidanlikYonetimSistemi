@@ -52,10 +52,11 @@ public class DataInitializer implements CommandLineRunner {
 
         String tenantId = tenant.getId();
 
-        if (roleRepository.findAllByTenantId(tenantId).isEmpty()) {
-            System.out.println("'" + tenantName + "' için roller bulunamadı, başlangıç verileri oluşturuluyor...");
-
-            // --- İZİNLER ---
+        // --- İZİNLER ---
+        // İzinlerin tenant için daha önce oluşturulup oluşturulmadığını kontrol et
+        List<Permission> allPermissions;
+        if (permissionRepository.findAllByTenantId(tenantId).isEmpty()) {
+            System.out.println("'" + tenantName + "' için izinler oluşturuluyor...");
             Permission cariYonetimi = createPermission("CARI_YONETIMI", "Müşteri ve tedarikçi cari hesaplarını yönetme.", tenantId);
             Permission faturaYonetimi = createPermission("FATURA_YONETIMI", "Faturaları yönetme yetkisi.", tenantId);
             Permission odemeYonetimi = createPermission("ODEME_YONETIMI", "Ödeme ve tahsilatları yönetme.", tenantId);
@@ -69,52 +70,68 @@ public class DataInitializer implements CommandLineRunner {
             Permission malKabulOlusturma = createPermission("MAL_KABUL_OLUSTURMA", "Mal kabul kaydı oluşturma yetkisi.", tenantId);
             Permission siparisSevkiyat = createPermission("SIPARIS_SEVKIYAT", "Sipariş sevkiyatı yapma.", tenantId);
 
-            // Önce tüm izinleri kaydet ve ID'lerini al
-            List<Permission> allPermissions = permissionRepository.saveAll(Arrays.asList(
+            allPermissions = permissionRepository.saveAll(Arrays.asList(
                     cariYonetimi, faturaYonetimi, odemeYonetimi, giderYonetimi, raporlama, tumYetkiler,
                     kullaniciYonetimi, fidanEkle, stokGoruntuleme, siparisOlusturma, malKabulOlusturma, siparisSevkiyat
             ));
             System.out.println("İzinler oluşturuldu.");
-
-            // --- ROLLER ---
-            Role adminRol = new Role();
-            adminRol.setName("ADMIN");
-            adminRol.setTenantId(tenantId);
-            adminRol.setPermissions(new HashSet<>(allPermissions)); // Kaydedilmiş izin nesnelerini kullan
-            roleRepository.save(adminRol);
-
-            // YENİ ROL: Muhasebeci
-            Role muhasebeciRol = new Role();
-            muhasebeciRol.setName("ACCOUNTANT");
-            muhasebeciRol.setTenantId(tenantId);
-            muhasebeciRol.setPermissions(filterPermissions(allPermissions, "CARI_YONETIMI", "FATURA_YONETIMI", "ODEME_YONETIMI", "GIDER_YONETIMI", "RAPORLAMA", "STOK_GORUNTULEME"));
-            roleRepository.save(muhasebeciRol);
-
-            // YENİ ROL: Depo Personeli
-            Role depocuRol = new Role();
-            depocuRol.setName("WAREHOUSE_STAFF");
-            depocuRol.setTenantId(tenantId);
-            depocuRol.setPermissions(filterPermissions(allPermissions, "STOK_GORUNTULEME", "MAL_KABUL_OLUSTURMA", "SIPARIS_SEVKIYAT"));
-            roleRepository.save(depocuRol);
-
-            Role satisPersoneliRol = new Role();
-            satisPersoneliRol.setName("SALES");
-            satisPersoneliRol.setTenantId(tenantId);
-            satisPersoneliRol.setPermissions(filterPermissions(allPermissions, "SIPARIS_OLUSTURMA", "STOK_GORUNTULEME", "FIDAN_EKLE"));
-            roleRepository.save(satisPersoneliRol);
-
-            System.out.println("Roller oluşturuldu.");
-
-            // --- KULLANICILAR ---
-            createUser("admin", "admin@" + tenantName, "admin", tenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
-            createUser("muhasebe", "muhasebe@" + tenantName, "muhasebe", tenantId, new HashSet<>(Collections.singletonList(muhasebeciRol.getId())));
-            createUser("depo", "depo@" + tenantName, "depo", tenantId, new HashSet<>(Collections.singletonList(depocuRol.getId())));
-            createUser("satis", "satis@" + tenantName, "satis", tenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
-            System.out.println("Kullanıcılar oluşturuldu.");
-
         } else {
-            System.out.println("'" + tenantName + "' için varsayılan roller zaten mevcut, veri oluşturma işlemi atlandı.");
+            allPermissions = permissionRepository.findAllByTenantId(tenantId);
+            System.out.println("'" + tenantName + "' için izinler zaten mevcut.");
         }
+
+
+        // --- ROLLER VE KULLANICILAR (TEK TEK KONTROL) ---
+
+        // ADMIN Rolü ve Kullanıcısı
+        Role adminRol = roleRepository.findByNameAndTenantId("ADMIN", tenantId)
+                .orElseGet(() -> {
+                    System.out.println("'" + tenantName + "' için ADMIN rolü oluşturuluyor...");
+                    Role role = new Role();
+                    role.setName("ADMIN");
+                    role.setTenantId(tenantId);
+                    role.setPermissions(new HashSet<>(allPermissions));
+                    return roleRepository.save(role);
+                });
+        createUser("admin", "admin@" + tenantName, "admin", tenantId, new HashSet<>(Collections.singletonList(adminRol.getId())));
+
+        // ACCOUNTANT Rolü ve Kullanıcısı
+        Role muhasebeciRol = roleRepository.findByNameAndTenantId("ACCOUNTANT", tenantId)
+                .orElseGet(() -> {
+                    System.out.println("'" + tenantName + "' için ACCOUNTANT rolü oluşturuluyor...");
+                    Role role = new Role();
+                    role.setName("ACCOUNTANT");
+                    role.setTenantId(tenantId);
+                    role.setPermissions(filterPermissions(allPermissions, "CARI_YONETIMI", "FATURA_YONETIMI", "ODEME_YONETIMI", "GIDER_YONETIMI", "RAPORLAMA", "STOK_GORUNTULEME"));
+                    return roleRepository.save(role);
+                });
+        createUser("muhasebe", "muhasebe@" + tenantName, "muhasebe", tenantId, new HashSet<>(Collections.singletonList(muhasebeciRol.getId())));
+
+        // WAREHOUSE_STAFF Rolü ve Kullanıcısı
+        Role depocuRol = roleRepository.findByNameAndTenantId("WAREHOUSE_STAFF", tenantId)
+                .orElseGet(() -> {
+                    System.out.println("'" + tenantName + "' için WAREHOUSE_STAFF rolü oluşturuluyor...");
+                    Role role = new Role();
+                    role.setName("WAREHOUSE_STAFF");
+                    role.setTenantId(tenantId);
+                    role.setPermissions(filterPermissions(allPermissions, "STOK_GORUNTULEME", "MAL_KABUL_OLUSTURMA", "SIPARIS_SEVKIYAT"));
+                    return roleRepository.save(role);
+                });
+        createUser("depo", "depo@" + tenantName, "depo", tenantId, new HashSet<>(Collections.singletonList(depocuRol.getId())));
+
+        // SALES Rolü ve Kullanıcısı
+        Role satisPersoneliRol = roleRepository.findByNameAndTenantId("SALES", tenantId)
+                .orElseGet(() -> {
+                    System.out.println("'" + tenantName + "' için SALES rolü oluşturuluyor...");
+                    Role role = new Role();
+                    role.setName("SALES");
+                    role.setTenantId(tenantId);
+                    role.setPermissions(filterPermissions(allPermissions, "SIPARIS_OLUSTURMA", "STOK_GORUNTULEME", "FIDAN_EKLE"));
+                    return roleRepository.save(role);
+                });
+        createUser("satis", "satis@" + tenantName, "satis", tenantId, new HashSet<>(Collections.singletonList(satisPersoneliRol.getId())));
+
+        System.out.println("'" + tenantName + "' için roller ve kullanıcılar kontrol edildi/oluşturuldu.");
     }
 
     // Yardımcı metodlar
@@ -142,6 +159,7 @@ public class DataInitializer implements CommandLineRunner {
             user.setTenantId(tenantId);
             user.setRoleIds(roleIds);
             userRepository.save(user);
+            System.out.println("Kullanıcı oluşturuldu: " + username);
         }
     }
 }
